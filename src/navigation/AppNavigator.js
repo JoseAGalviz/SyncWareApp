@@ -7,7 +7,8 @@ import { useNavigation } from "@react-navigation/native";
 import HomeScreen from "../screens/HomeScreen";
 import VisitaScreen from "../screens/VisitaScreen";
 import FacturasScreen from "../screens/FacturasScreen";
-import RecepcionGuiasScreen from "../screens/RecepcionGuiasScreen"; 
+import RecepcionGuiasScreen from "../screens/RecepcionGuiasScreen";
+import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -61,7 +62,9 @@ export default function AppNavigator() {
             iconName = focused ? "receipt" : "receipt-outline";
           } else if (route.name === "Recibir Guías de Carga") {
             iconName = focused ? "cube" : "cube-outline";
-          } 
+          } else if (route.name === "Montar Pedidos") {
+            iconName = focused ? "cart" : "cart-outline";
+          }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: "#49AF4E",
@@ -71,13 +74,14 @@ export default function AppNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Inicio" component={HomeScreen} /> 
+      <Tab.Screen name="Inicio" component={HomeScreen} />
       <Tab.Screen name="Visita" component={VisitaScreen} />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen
         name="Recibir Guías de Carga"
         component={RecepcionGuiasScreen}
       />
+      <Tab.Screen name="Montar Pedidos" component={MontarPedidoScreen} />
     </Tab.Navigator>
   );
 }
