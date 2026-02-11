@@ -47,14 +47,14 @@ const SCREEN_BREAKPOINTS = {
 // Utilidades
 const transformarNumFactura = (num_factura) => {
   if (!num_factura) return num_factura;
-  
+
   if (/^A\d{7}$/.test(num_factura)) {
     if (num_factura.startsWith("A2")) {
       return "7" + num_factura.slice(1);
     }
     return String(Number(num_factura.slice(1)));
   }
-  
+
   if (/^B\d{7}$/.test(num_factura)) {
     const serie = num_factura.slice(1);
     if (serie < "0050000") {
@@ -62,7 +62,7 @@ const transformarNumFactura = (num_factura) => {
     }
     return "5" + serie;
   }
-  
+
   return num_factura;
 };
 
@@ -78,11 +78,11 @@ const obtenerFechaHoraActual = () => {
 // Hooks personalizados
 const useResponsiveLayout = () => {
   const { width, height } = useWindowDimensions();
-  
+
   const isSmallScreen = width <= SCREEN_BREAKPOINTS.small;
   const isMediumScreen = width > SCREEN_BREAKPOINTS.small && width <= SCREEN_BREAKPOINTS.medium;
   const isLargeScreen = width > SCREEN_BREAKPOINTS.medium;
-  
+
   return {
     isSmallScreen,
     isMediumScreen,
@@ -102,18 +102,18 @@ const useGuiasStorage = () => {
         AsyncStorage.getItem(STORAGE_KEYS.GUIAS_GUARDADAS),
         AsyncStorage.getItem(STORAGE_KEYS.GUIAS_CARGADAS_VEHICULO)
       ]);
-      
+
       let guias = guiasData ? JSON.parse(guiasData) : [];
-      
+
       const ahora = Date.now();
-      const guiasFiltradas = guias.filter(g => 
+      const guiasFiltradas = guias.filter(g =>
         g.timestampGuardado ? ahora - g.timestampGuardado < GUIA_MAX_AGE_MS : true
       );
-      
+
       if (guiasFiltradas.length !== guias.length) {
         await AsyncStorage.setItem(STORAGE_KEYS.GUIAS_GUARDADAS, JSON.stringify(guiasFiltradas));
       }
-      
+
       setGuiasGuardadas(guiasFiltradas);
       setGuiasCargadasVehiculo(cargadasData ? JSON.parse(cargadasData) : []);
     } catch (error) {
@@ -151,7 +151,7 @@ const useEscaneos = (guiaSeleccionada) => {
 
   const cargarEscaneos = useCallback(async () => {
     if (!guiaSeleccionada) return;
-    
+
     try {
       const saved = await AsyncStorage.getItem(
         `${STORAGE_KEYS.ESCANEOS_PREFIX}${guiaSeleccionada.numeroCarga}`
@@ -164,7 +164,7 @@ const useEscaneos = (guiaSeleccionada) => {
 
   const guardarEscaneos = useCallback(async (nuevosEscaneos) => {
     if (!guiaSeleccionada) return;
-    
+
     try {
       await AsyncStorage.setItem(
         `${STORAGE_KEYS.ESCANEOS_PREFIX}${guiaSeleccionada.numeroCarga}`,
@@ -207,15 +207,15 @@ const useCameraScanner = () => {
 const useScanUtilities = (guiaSeleccionada, escaneos, setEscaneos, guardarEscaneos) => {
   const verificarScan = useCallback((valorOriginal) => {
     if (!valorOriginal || !guiaSeleccionada) return false;
-    
+
     const valor = transformarNumFactura(valorOriginal.trim());
     let encontrado = false;
     let nuevoEscaneos = { ...escaneos };
-    
+
     // Usamos un bucle for clásico para mejor rendimiento con break
     for (let idx = 0; idx < guiaSeleccionada.detalle.length; idx++) {
       const item = guiaSeleccionada.detalle[idx];
-      
+
       // Verifica factura
       if (String(item.factura).trim() === valor) {
         if (!nuevoEscaneos[idx] || !nuevoEscaneos[idx].factura) {
@@ -228,7 +228,7 @@ const useScanUtilities = (guiaSeleccionada, escaneos, setEscaneos, guardarEscane
           break;
         }
       }
-      
+
       // Verifica nota
       if (String(item.nota).trim() === valor) {
         if (!nuevoEscaneos[idx] || !nuevoEscaneos[idx].nota) {
@@ -242,30 +242,30 @@ const useScanUtilities = (guiaSeleccionada, escaneos, setEscaneos, guardarEscane
         }
       }
     }
-    
+
     if (encontrado) {
       setEscaneos(nuevoEscaneos);
       guardarEscaneos(nuevoEscaneos);
     }
-    
+
     return encontrado;
   }, [guiaSeleccionada, escaneos, setEscaneos, guardarEscaneos]);
 
   const esCodigoDuplicado = useCallback((valor) => {
     if (!guiaSeleccionada) return false;
-    
+
     const valorTransformado = transformarNumFactura(valor.trim());
-    
+
     for (let idx = 0; idx < guiaSeleccionada.detalle.length; idx++) {
       const item = guiaSeleccionada.detalle[idx];
       const escaneo = escaneos[idx] || {};
-      
+
       if ((String(item.factura || "").trim() === valorTransformado && escaneo.factura) ||
-          (String(item.nota || "").trim() === valorTransformado && escaneo.nota)) {
+        (String(item.nota || "").trim() === valorTransformado && escaneo.nota)) {
         return true;
       }
     }
-    
+
     return false;
   }, [guiaSeleccionada, escaneos]);
 
@@ -304,7 +304,7 @@ const TableRow = React.memo(({ item, escaneo, index, isSmallScreen }) => {
   let rowStyle = index % 2 === 0 ? styles.rowEven : styles.rowOdd;
   if (escaneo.factura && escaneo.nota) rowStyle = styles.rowAmbos;
   else if (escaneo.factura || escaneo.nota) rowStyle = styles.rowUno;
-  
+
   let textStyle = styles.tableCell;
   if (escaneo.factura && escaneo.nota) textStyle = styles.cellAmbos;
   else if (escaneo.factura) textStyle = styles.cellFactura;
@@ -343,10 +343,10 @@ const TablaDetalle = React.memo(({ detalleOrdenado, escaneos, isSmallScreen }) =
       )}
     </View>
     {detalleOrdenado.map((item, idx) => (
-      <TableRow 
-        key={item._idx} 
-        item={item} 
-        escaneo={escaneos[item._idx] || {}} 
+      <TableRow
+        key={item._idx}
+        item={item}
+        escaneo={escaneos[item._idx] || {}}
         index={idx}
         isSmallScreen={isSmallScreen}
       />
@@ -354,10 +354,10 @@ const TablaDetalle = React.memo(({ detalleOrdenado, escaneos, isSmallScreen }) =
   </View>
 ));
 
-const ComentarioBox = React.memo(({ 
-  detalleFaltantes, 
-  comentario, 
-  setComentario, 
+const ComentarioBox = React.memo(({
+  detalleFaltantes,
+  comentario,
+  setComentario,
   onEnviarDatos,
   isSmallScreen
 }) => (
@@ -379,7 +379,7 @@ const ComentarioBox = React.memo(({
     )}
     <Text style={{ fontWeight: "bold", marginBottom: 8, marginTop: 8 }}>
       {detalleFaltantes &&
-      detalleFaltantes.trim() !== "Todos los pedidos/facturas están completos."
+        detalleFaltantes.trim() !== "Todos los pedidos/facturas están completos."
         ? "Motivo de faltante:"
         : "Descripción o comentario:"}
     </Text>
@@ -399,10 +399,10 @@ const ComentarioBox = React.memo(({
   </View>
 ));
 
-const CameraComponent = React.memo(({ 
-  permission, 
-  requestPermission, 
-  scanned, 
+const CameraComponent = React.memo(({
+  permission,
+  requestPermission,
+  scanned,
   onBarCodeScanned,
   loading,
   isSmallScreen
@@ -493,9 +493,9 @@ export default function CargarRutaScreen() {
   } = useCameraScanner();
 
   const { verificarScan, esCodigoDuplicado } = useScanUtilities(
-    guiaSeleccionada, 
-    escaneos, 
-    setEscaneos, 
+    guiaSeleccionada,
+    escaneos,
+    setEscaneos,
     guardarEscaneos
   );
 
@@ -514,7 +514,7 @@ export default function CargarRutaScreen() {
       Alert.alert("Ya cargada", "Esta guía ya fue cargada en el vehículo.");
       return;
     }
-    
+
     setGuiaSeleccionada(guia);
     setNotaScan("");
     setErrorScan("");
@@ -539,9 +539,9 @@ export default function CargarRutaScreen() {
 
   const handleVerificarScan = useCallback(() => {
     if (!notaScan.trim()) return;
-    
+
     const encontrado = verificarScan(notaScan);
-    
+
     if (encontrado) {
       setErrorScan("");
     } else {
@@ -552,20 +552,20 @@ export default function CargarRutaScreen() {
 
   const handleBarCodeScanned = useCallback(({ data }) => {
     const valorOriginal = data.trim();
-    
+
     if (esCodigoDuplicado(valorOriginal)) {
       Alert.alert("Escaneo duplicado", "Este código ya fue registrado.");
       setScanned(true);
       setTimeout(() => setScanned(false), 1500);
       return;
     }
-    
+
     setScanned(true);
     setLoading(true);
     setErrorScan("");
-    
+
     const encontrado = verificarScan(valorOriginal);
-    
+
     if (encontrado) {
       Alert.alert(
         "Escaneo exitoso",
@@ -578,7 +578,7 @@ export default function CargarRutaScreen() {
         "El valor no pertenece a ninguna factura o nota de esta guía."
       );
     }
-    
+
     setNotaScan("");
     setLoading(false);
     setTimeout(() => setScanned(false), 1500);
@@ -586,13 +586,13 @@ export default function CargarRutaScreen() {
 
   const calcularFaltantes = useCallback((guia) => {
     if (!guia || !guia.detalle) return "";
-    
+
     const faltantes = [];
-    
+
     for (let idx = 0; idx < guia.detalle.length; idx++) {
       const item = guia.detalle[idx];
       const esc = escaneos[idx] || {};
-      
+
       if (!esc.factura && !esc.nota) {
         faltantes.push(`Pedido ${item.factura || item.nota}: Sin escanear`);
       } else if (!esc.factura) {
@@ -601,7 +601,7 @@ export default function CargarRutaScreen() {
         faltantes.push(`Pedido ${item.factura || item.nota}: Falta nota`);
       }
     }
-    
+
     return faltantes.length > 0
       ? "Faltantes:\n" + faltantes.join("\n")
       : "Todos los pedidos/facturas están completos.";
@@ -609,10 +609,10 @@ export default function CargarRutaScreen() {
 
   const enviarDatos = useCallback(async () => {
     if (!guiaSeleccionada) return;
-    
+
     const { escaneos: escaneosGuia, ...restoGuia } = guiaSeleccionada;
     const { fecha, hora, timestamp } = obtenerFechaHoraActual();
-    
+
     const registro = {
       ...restoGuia,
       comentario,
@@ -620,21 +620,21 @@ export default function CargarRutaScreen() {
       horaGuardado: hora,
       timestampGuardado: timestamp,
     };
-    
+
     const success = await guardarGuiaCargada(registro);
-    
+
     if (success) {
       Alert.alert("Éxito", "Guía cargada en el vehículo.");
       volver();
       cargarGuias();
-      
-      try {
+
+      /* 
+        // Comentado para permitir que el estado de los escaneos persista 
+        // y no se borren los pedidos de la tabla al finalizar.
         await AsyncStorage.removeItem(
           `${STORAGE_KEYS.ESCANEOS_PREFIX}${guiaSeleccionada.numeroCarga}`
         );
-      } catch (error) {
-        console.error("Error eliminando escaneos:", error);
-      }
+      */
     }
   }, [guiaSeleccionada, comentario, guardarGuiaCargada, volver, cargarGuias]);
 
@@ -646,7 +646,7 @@ export default function CargarRutaScreen() {
   // Memoized values
   const detalleOrdenado = useMemo(() => {
     if (!guiaSeleccionada) return [];
-    
+
     return [
       ...Object.keys(escaneos)
         .filter(idx => escaneos[idx]?.factura || escaneos[idx]?.nota)
@@ -662,7 +662,7 @@ export default function CargarRutaScreen() {
   }, [guiaSeleccionada, escaneos]);
 
   const todosVerificados = useMemo(() => {
-    return guiaSeleccionada && 
+    return guiaSeleccionada &&
       guiaSeleccionada.detalle.every((item, idx) => {
         const esc = escaneos[idx] || {};
         return esc.factura && esc.nota;
@@ -680,18 +680,18 @@ export default function CargarRutaScreen() {
           <TouchableOpacity onPress={volver}>
             <Text style={styles.backButtonText}>← Volver</Text>
           </TouchableOpacity>
-          
+
           <Text style={[styles.title, isSmallScreen && styles.titleSmall]}>
             Cargar Guía #{guiaSeleccionada.numeroCarga}
           </Text>
-          
+
           <Text style={[styles.pedidosCount, isSmallScreen && styles.pedidosCountSmall]}>
             Cantidad de pedidos:{" "}
             <Text style={styles.pedidosCountNumber}>
               {guiaSeleccionada.detalle.length}
             </Text>
           </Text>
-          
+
           {/* Cámara SIEMPRE visible mientras no esté mostrando comentario */}
           {!showComentario && (
             <CameraComponent
@@ -703,11 +703,11 @@ export default function CargarRutaScreen() {
               isSmallScreen={isSmallScreen}
             />
           )}
-          
+
           {errorScan ? (
             <Text style={styles.errorText}>{errorScan}</Text>
           ) : null}
-          
+
           {!showComentario && (
             <>
               <TextInput
@@ -720,18 +720,18 @@ export default function CargarRutaScreen() {
                 returnKeyType="done"
                 editable={!showComentario}
               />
-              
+
               <ScrollView
                 style={{ width: "100%" }}
                 keyboardShouldPersistTaps="handled"
               >
-                <TablaDetalle 
-                  detalleOrdenado={detalleOrdenado} 
+                <TablaDetalle
+                  detalleOrdenado={detalleOrdenado}
                   escaneos={escaneos}
                   isSmallScreen={isSmallScreen}
                 />
               </ScrollView>
-              
+
               <Text style={[
                 styles.statusText,
                 { color: todosVerificados ? COLORS.success : COLORS.error }
@@ -753,7 +753,7 @@ export default function CargarRutaScreen() {
               )}
             </>
           )}
-          
+
           {!showComentario && !todosVerificados && (
             <TouchableOpacity
               style={[styles.saveButton, { backgroundColor: COLORS.warning }, isSmallScreen && styles.saveButtonSmall]}
@@ -764,7 +764,7 @@ export default function CargarRutaScreen() {
               </Text>
             </TouchableOpacity>
           )}
-          
+
           {showComentario && (
             <ComentarioBox
               detalleFaltantes={detalleFaltantes}
@@ -782,11 +782,11 @@ export default function CargarRutaScreen() {
   return (
     <View style={styles.container}>
       <Text style={[styles.title, isSmallScreen && styles.titleSmall]}>Cargar Ruta</Text>
-      
+
       <Text style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}>
         Guías guardadas
       </Text>
-      
+
       <GuiasList
         guiasGuardadas={guiasGuardadas}
         esGuiaProcesada={esGuiaProcesada}
@@ -894,10 +894,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     padding: 6,
   },
-  tableRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    minHeight: 36 
+  tableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 36
   },
   tableRowSmall: {
     minHeight: 30,
@@ -917,17 +917,17 @@ const styles = StyleSheet.create({
   rowOdd: { backgroundColor: "#f2fcf6" },
   rowUno: { backgroundColor: COLORS.warning },
   rowAmbos: { backgroundColor: COLORS.success },
-  cellFactura: { 
-    color: COLORS.info, 
-    fontWeight: "bold" 
+  cellFactura: {
+    color: COLORS.info,
+    fontWeight: "bold"
   },
-  cellNota: { 
-    color: COLORS.error, 
-    fontWeight: "bold" 
+  cellNota: {
+    color: COLORS.error,
+    fontWeight: "bold"
   },
-  cellAmbos: { 
-    color: COLORS.white, 
-    fontWeight: "bold" 
+  cellAmbos: {
+    color: COLORS.white,
+    fontWeight: "bold"
   },
   guiaItem: {
     backgroundColor: COLORS.white,
@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   guiaItemTitle: {
-    fontWeight: "bold", 
+    fontWeight: "bold",
     color: COLORS.primary,
     fontSize: 16,
   },
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   guiaItemWarning: {
-    color: COLORS.error, 
+    color: COLORS.error,
     fontWeight: "bold",
     fontSize: 14,
   },

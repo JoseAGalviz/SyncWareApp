@@ -9,6 +9,7 @@ import VisitaScreen from "../screens/VisitaScreen";
 import FacturasScreen from "../screens/FacturasScreen";
 import RecepcionGuiasScreen from "../screens/RecepcionGuiasScreen";
 import MontarPedidoScreen from "../screens/MontarPedidoScreen";
+import PedidosHistorialScreen from "../screens/PedidosHistorialScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -64,6 +65,8 @@ export default function AppNavigator() {
             iconName = focused ? "cube" : "cube-outline";
           } else if (route.name === "Montar Pedidos") {
             iconName = focused ? "cart" : "cart-outline";
+          } else if (route.name === "Historial") {
+            iconName = focused ? "clipboard" : "clipboard-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -81,7 +84,15 @@ export default function AppNavigator() {
         name="Recibir Guías de Carga"
         component={RecepcionGuiasScreen}
       />
-      <Tab.Screen name="Montar Pedidos" component={MontarPedidoScreen} />
+      <Tab.Screen
+        name="Montar Pedidos"
+        component={MontarPedidoScreen}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen
+        name="Historial"
+        component={PedidosHistorialScreen}
+      />
     </Tab.Navigator>
   );
 }

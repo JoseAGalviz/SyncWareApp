@@ -8,7 +8,9 @@ class ApiService {
      * @returns {Promise<any>} - JSON response
      */
     async request(endpoint, options = {}) {
-        const url = `${Config.API_BASE_URL}${endpoint}`;
+        const url = endpoint.startsWith("http")
+            ? endpoint
+            : `${Config.API_BASE_URL}${endpoint}`;
         const headers = {
             "Content-Type": "application/json",
             ...options.headers,
