@@ -18,9 +18,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
+import COLORS from '../constants/Colors';
+
 
 const ESTADO_COLORS = {
-    pendiente: { bg: '#fffbeb', border: '#fde68a', text: '#b45309', label: 'Pendiente' },
+    pendiente: { bg: 'transparent', border: 'transparent', text: 'transparent', label: '' },
     aprobado: { bg: '#ecfdf5', border: '#a7f3d0', text: '#047857', label: 'Aprobado' },
     rechazado: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: 'Rechazado' },
     procesado: { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', label: 'Procesado' },
@@ -123,20 +125,22 @@ const PedidosHistorialScreen = ({ navigation }) => {
             >
                 <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
-                        <MaterialIcons name="receipt-long" size={24} color="#007a5e" />
+                        <MaterialIcons name="receipt-long" size={24} color={COLORS.PRIMARY} />
                         <View style={styles.cardHeaderInfo}>
                             <Text style={styles.pedidoCode}>{item.codigo_pedido}</Text>
                             <Text style={styles.pedidoDate}>{formatDate(item.fecha_creacion)}</Text>
                         </View>
                     </View>
-                    <View style={[
-                        styles.estadoBadge,
-                        { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
-                    ]}>
-                        <Text style={[styles.estadoText, { color: estadoConfig.text }]}>
-                            {estadoConfig.label}
-                        </Text>
-                    </View>
+                    {estadoConfig.label ? (
+                        <View style={[
+                            styles.estadoBadge,
+                            { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
+                        ]}>
+                            <Text style={[styles.estadoText, { color: estadoConfig.text }]}>
+                                {estadoConfig.label}
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 <View style={styles.cardDivider} />
@@ -176,7 +180,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
 
                 <View style={styles.cardFooter}>
                     <Text style={styles.viewDetailText}>Ver detalles</Text>
-                    <MaterialIcons name="chevron-right" size={20} color="#007a5e" />
+                    <MaterialIcons name="chevron-right" size={20} color={COLORS.PRIMARY} />
                 </View>
             </TouchableOpacity>
         );
@@ -210,17 +214,19 @@ const PedidosHistorialScreen = ({ navigation }) => {
 
                         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                             {/* Estado */}
-                            <View style={styles.detailSection}>
-                                <Text style={styles.detailSectionTitle}>Estado</Text>
-                                <View style={[
-                                    styles.estadoBadgeLarge,
-                                    { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
-                                ]}>
-                                    <Text style={[styles.estadoTextLarge, { color: estadoConfig.text }]}>
-                                        {estadoConfig.label}
-                                    </Text>
+                            {estadoConfig.label ? (
+                                <View style={styles.detailSection}>
+                                    <Text style={styles.detailSectionTitle}>Estado</Text>
+                                    <View style={[
+                                        styles.estadoBadgeLarge,
+                                        { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
+                                    ]}>
+                                        <Text style={[styles.estadoTextLarge, { color: estadoConfig.text }]}>
+                                            {estadoConfig.label}
+                                        </Text>
+                                    </View>
                                 </View>
-                            </View>
+                            ) : null}
 
                             {/* Información del Cliente */}
                             <View style={styles.detailSection}>
@@ -284,7 +290,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
     const DetailRow = ({ icon, label, value, highlight }) => (
         <View style={styles.detailRow}>
             <View style={styles.detailRowLeft}>
-                {icon && <MaterialIcons name={icon} size={16} color="#94a3b8" style={styles.detailIcon} />}
+                {icon && <MaterialIcons name={icon} size={16} color={COLORS.MUTED} style={styles.detailIcon} />}
                 <Text style={styles.detailLabel}>{label}</Text>
             </View>
             <Text style={[styles.detailValue, highlight && styles.detailValueHighlight]}>
@@ -295,7 +301,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
 
     const ListEmpty = () => (
         <View style={styles.emptyContainer}>
-            <MaterialIcons name="receipt-long" size={64} color="#e2e8f0" />
+            <MaterialIcons name="receipt-long" size={64} color={COLORS.BORDER} />
             <Text style={styles.emptyText}>
                 {searchQuery.trim()
                     ? 'No se encontraron pedidos'
@@ -311,17 +317,17 @@ const PedidosHistorialScreen = ({ navigation }) => {
             {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputWrapper}>
-                    <MaterialIcons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
+                    <MaterialIcons name="search" size={20} color={COLORS.MUTED} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Buscar por código, cliente..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={COLORS.MUTED}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <MaterialIcons name="close" size={20} color="#94a3b8" />
+                            <MaterialIcons name="close" size={20} color={COLORS.MUTED} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -331,7 +337,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
             {/* Lista de Pedidos */}
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#007a5e" />
+                    <ActivityIndicator size="large" color={COLORS.PRIMARY} />
                     <Text style={styles.loadingText}>Cargando pedidos...</Text>
                 </View>
             ) : (
@@ -345,8 +351,8 @@ const PedidosHistorialScreen = ({ navigation }) => {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            colors={['#007a5e']}
-                            tintColor="#007a5e"
+                            colors={[COLORS.PRIMARY]}
+                            tintColor={COLORS.PRIMARY}
                         />
                     }
                 />
@@ -370,9 +376,9 @@ const styles = StyleSheet.create({
     searchInputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: COLORS.BORDER,
         borderRadius: 12,
         paddingHorizontal: 12,
         height: 48,
@@ -390,7 +396,7 @@ const styles = StyleSheet.create({
         paddingBottom: 32,
     },
     pedidoCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
@@ -425,7 +431,7 @@ const styles = StyleSheet.create({
     },
     pedidoDate: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
     },
     estadoBadge: {
         paddingHorizontal: 10,
@@ -480,7 +486,7 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         marginBottom: 4,
         textTransform: 'uppercase',
     },
@@ -490,7 +496,7 @@ const styles = StyleSheet.create({
         color: '#1e293b',
     },
     statValueHighlight: {
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     cardFooter: {
         flexDirection: 'row',
@@ -504,7 +510,7 @@ const styles = StyleSheet.create({
     viewDetailText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
         marginRight: 4,
     },
     loadingContainer: {
@@ -515,7 +521,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 12,
         fontSize: 14,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
     },
     emptyContainer: {
         flex: 1,
@@ -526,7 +532,7 @@ const styles = StyleSheet.create({
     emptyText: {
         marginTop: 16,
         fontSize: 15,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         textAlign: 'center',
     },
     modalOverlay: {
@@ -535,7 +541,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '90%',
@@ -607,7 +613,7 @@ const styles = StyleSheet.create({
     detailValueHighlight: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     estadoBadgeLarge: {
         paddingHorizontal: 16,
@@ -626,7 +632,7 @@ const styles = StyleSheet.create({
     },
     itemRow: {
         flexDirection: 'row',
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderRadius: 12,
         padding: 12,
         borderWidth: 1,
@@ -645,7 +651,7 @@ const styles = StyleSheet.create({
     },
     itemCode: {
         fontSize: 12,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
     },
     itemQuantityContainer: {
         alignItems: 'center',
@@ -656,18 +662,18 @@ const styles = StyleSheet.create({
     },
     itemQuantityLabel: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         fontWeight: '700',
         marginBottom: 2,
     },
     itemQuantityValue: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     emptyItemsText: {
         textAlign: 'center',
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         fontSize: 14,
         fontStyle: 'italic',
         marginTop: 8,

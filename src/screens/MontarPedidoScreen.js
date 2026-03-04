@@ -15,11 +15,14 @@ import {
     FlatList,
     Modal
 } from 'react-native';
+import { showMessage } from "react-native-flash-message";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
+import COLORS from '../constants/Colors';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -28,7 +31,7 @@ const AVATAR_COLORS = [
     '#8b5cf6', // violet-500
     '#ec4899', // pink-500
     '#f43f5e', // rose-500
-    '#f59e0b', // amber-500
+    COLORS.WARNING, // amber-500
     '#10b981', // emerald-500
     '#06b6d4', // cyan-500
     '#3b82f6', // blue-500
@@ -60,11 +63,14 @@ const MontarPedidoScreen = ({ navigation }) => {
     // Payment Times State
     const [paymentTimes, setPaymentTimes] = useState([]);
 
-    // Cart State
     const [cart, setCart] = useState([]);
     const [cartModalVisible, setCartModalVisible] = useState(false);
     const [selectedDiscounts, setSelectedDiscounts] = useState([]);
     const [confirmingOrder, setConfirmingOrder] = useState(false);
+
+    // Product Detail State
+    const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
 
     // Helper to calculate total
     const cartTotal = cart.reduce((sum, item) => sum + (item.priceNum * item.quantity), 0);
@@ -209,7 +215,10 @@ const MontarPedidoScreen = ({ navigation }) => {
                     subtotal: 0,
                     priceNum: discountedPrice, // Store discounted numeric price for calcs
                     categoryDiscount: item.descuento_por_categoria || 0,
-                    lineDiscount: item.descuento_por_linea || 0
+                    lineDiscount: item.descuento_por_linea || 0,
+                    category: item.linea || item.categoria || 'General',
+                    co_art: item.co_art || item.imagen,
+                    marca: item.marca || 'N/A'
                 };
             });
 
@@ -258,6 +267,15 @@ const MontarPedidoScreen = ({ navigation }) => {
     };
 
     const handleIncrement = (product) => {
+        if (product.quantity >= product.stock) {
+            showMessage({
+                message: "Stock insuficiente",
+                description: `No puedes agregar más de la cantidad disponible (${product.stock})`,
+                type: "warning",
+                icon: "warning"
+            });
+            return;
+        }
         // Implementation for increasing quantity
         // 1. Update Products State
         const updatedProducts = products.map(p => {
@@ -275,6 +293,12 @@ const MontarPedidoScreen = ({ navigation }) => {
             return p;
         });
         setOriginalProducts(updatedOriginal);
+
+        // 1.5 Update selected product for detail if it's the one being modified
+        if (selectedProductForDetail && selectedProductForDetail.id === product.id) {
+            setSelectedProductForDetail({ ...selectedProductForDetail, quantity: selectedProductForDetail.quantity + 1 });
+        }
+
 
         // 2. Update Cart State
         const existingItem = cart.find(c => c.id === product.id);
@@ -305,12 +329,56 @@ const MontarPedidoScreen = ({ navigation }) => {
         });
         setOriginalProducts(updatedOriginal);
 
+        // 1.5 Update selected product for detail if it's the one being modified
+        if (selectedProductForDetail && selectedProductForDetail.id === product.id) {
+            setSelectedProductForDetail({ ...selectedProductForDetail, quantity: Math.max(0, selectedProductForDetail.quantity - 1) });
+        }
+
+
         // 2. Update Cart State
         const existingItem = cart.find(c => c.id === product.id);
         if (existingItem) {
             if (existingItem.quantity > 1) {
                 setCart(cart.map(c => c.id === product.id ? { ...c, quantity: c.quantity - 1 } : c));
             } else {
+                setCart(cart.filter(c => c.id !== product.id));
+            }
+        }
+    };
+
+    const handleQuantityChange = (product, text) => {
+        let newQuantity = text === '' ? 0 : parseInt(text.replace(/[^0-9]/g, '')) || 0;
+
+        if (newQuantity > product.stock) {
+            newQuantity = product.stock;
+            showMessage({
+                message: "Límite de stock",
+                description: `Cantidad ajustada al máximo disponible: ${product.stock}`,
+                type: "info",
+                icon: "info"
+            });
+        }
+
+        // 1. Update Products State
+        const updateP = (list) => list.map(p => p.id === product.id ? { ...p, quantity: newQuantity } : p);
+        setProducts(updateP(products));
+        setOriginalProducts(updateP(originalProducts));
+
+        // Update selected product for detail if it's the one being modified
+        if (selectedProductForDetail && selectedProductForDetail.id === product.id) {
+            setSelectedProductForDetail({ ...selectedProductForDetail, quantity: newQuantity });
+        }
+
+        // 2. Update Cart State
+        const inCart = cart.find(c => c.id === product.id);
+        if (newQuantity > 0) {
+            if (inCart) {
+                setCart(cart.map(c => c.id === product.id ? { ...c, quantity: newQuantity } : c));
+            } else {
+                setCart([...cart, { ...product, quantity: newQuantity, priceNum: product.priceNum || parseFloat(product.price) }]);
+            }
+        } else {
+            if (inCart) {
                 setCart(cart.filter(c => c.id !== product.id));
             }
         }
@@ -376,7 +444,7 @@ const MontarPedidoScreen = ({ navigation }) => {
             codigo_pedido: codigo_pedido,
             porc_gdesc: parseFloat(porc_gdesc),
             porc_gdesc_proveedor: selectedClient?.desc_glob || 0,
-            descrip: "Pedido de prueba desde APP",
+            descrip: "Pedido realizado desde la APP",
             ip_cliente: ip_cliente,
             items: items
         };
@@ -485,16 +553,16 @@ const MontarPedidoScreen = ({ navigation }) => {
             borderColor = '#a7f3d0'; // emerald-200
             valueColor = '#065f46'; // emerald-800
         } else {
-            bgColor = '#ffffff';
+            bgColor = COLORS.WHITE;
             textColor = '#64748b'; // slate-500
-            borderColor = '#e2e8f0'; // slate-200
-            valueColor = '#007a5e'; // primary
+            borderColor = COLORS.BORDER; // slate-200
+            valueColor = COLORS.PRIMARY; // primary
         }
 
         return (
             <View style={[styles.discountCard, { backgroundColor: bgColor, borderColor: borderColor }]}>
                 <Text style={[styles.discountTag, { color: textColor }]}>{title}</Text>
-                <Text style={[styles.discountValue, { color: colorType === 'amber' || colorType === 'emerald' ? valueColor : '#007a5e' }]}>{value}</Text>
+                <Text style={[styles.discountValue, { color: colorType === 'amber' || colorType === 'emerald' ? valueColor : COLORS.PRIMARY }]}>{value}</Text>
             </View>
         );
     };
@@ -504,7 +572,14 @@ const MontarPedidoScreen = ({ navigation }) => {
 
         return (
             <View key={product.id} style={[styles.productCard, isAgotado && { opacity: 0.7 }]}>
-                <View style={styles.productMainInfo}>
+                <TouchableOpacity
+                    style={styles.productMainInfo}
+                    onPress={() => {
+                        setSelectedProductForDetail(product);
+                        setDetailModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                >
                     <View style={styles.productImageContainer}>
                         <Image
                             source={{ uri: product.image }}
@@ -521,7 +596,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                             {product.lineDiscount > 0 && (
                                 <View style={[styles.productImageBadge, { backgroundColor: '#dcfce7', borderColor: '#86efac' }]}>
                                     <MaterialIcons name="auto-awesome" size={10} color="#166534" />
-                                    <Text style={[styles.imageBadgeText, { color: '#166534' }]}>-{product.lineDiscount}%</Text>
+                                    <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS }]}>-{product.lineDiscount}%</Text>
                                 </View>
                             )}
                         </View>
@@ -549,7 +624,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                             </View>
                         </View>
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 {!isAgotado && (
                     <View style={styles.productActionRow}>
@@ -557,11 +632,17 @@ const MontarPedidoScreen = ({ navigation }) => {
                             <Text style={styles.quantityLabel}>CANT.</Text>
                             <View style={styles.quantitySelector}>
                                 <TouchableOpacity style={styles.quantityButton} onPress={() => handleDecrement(product)}>
-                                    <MaterialIcons name="remove" size={16} color="#007a5e" />
+                                    <MaterialIcons name="remove" size={16} color={COLORS.PRIMARY} />
                                 </TouchableOpacity>
-                                <Text style={styles.quantityText}>{product.quantity}</Text>
+                                <TextInput
+                                    style={styles.quantityText}
+                                    value={String(product.quantity)}
+                                    onChangeText={(text) => handleQuantityChange(product, text)}
+                                    keyboardType="numeric"
+                                    selectTextOnFocus={true}
+                                />
                                 <TouchableOpacity style={[styles.quantityButton, styles.quantityButtonActive]} onPress={() => handleIncrement(product)}>
-                                    <MaterialIcons name="add" size={16} color="#ffffff" />
+                                    <MaterialIcons name="add" size={16} color={COLORS.WHITE} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -586,15 +667,15 @@ const MontarPedidoScreen = ({ navigation }) => {
         if (loading) {
             return (
                 <View style={{ alignItems: 'center', marginTop: 40 }}>
-                    <ActivityIndicator size="large" color="#007a5e" />
-                    <Text style={{ color: '#94a3b8', marginTop: 12 }}>Cargando catálogo...</Text>
+                    <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+                    <Text style={{ color: COLORS.MUTED, marginTop: 12 }}>Cargando catálogo...</Text>
                 </View>
             );
         }
         return (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-                <MaterialIcons name="shopping-basket" size={64} color="#e2e8f0" />
-                <Text style={{ color: '#94a3b8', marginTop: 12 }}>
+                <MaterialIcons name="shopping-basket" size={64} color={COLORS.BORDER} />
+                <Text style={{ color: COLORS.MUTED, marginTop: 12 }}>
                     {searchQuery ? "No se encontraron coincidencias" : "No hay productos disponibles"}
                 </Text>
             </View>
@@ -612,27 +693,27 @@ const MontarPedidoScreen = ({ navigation }) => {
                 activeOpacity={0.7}
             >
                 <View style={[styles.clientAvatarContainer, { backgroundColor: avatarColor }]}>
-                    <MaterialIcons name="local-hospital" size={24} color="#ffffff" />
+                    <MaterialIcons name="local-hospital" size={24} color={COLORS.WHITE} />
                 </View>
 
                 <View style={styles.clientContent}>
                     <View style={styles.clientMainRow}>
                         <Text style={styles.clientName} numberOfLines={1}>{clientName}</Text>
-                        <MaterialIcons name="chevron-right" size={20} color="#cbd5e1" />
+                        <MaterialIcons name="chevron-right" size={20} color={COLORS.BORDER} />
                     </View>
 
                     <View style={styles.clientDivider} />
 
                     <View style={styles.clientDetailsGrid}>
                         <View style={styles.clientDetailItem}>
-                            <MaterialIcons name="fingerprint" size={14} color="#94a3b8" />
+                            <MaterialIcons name="fingerprint" size={14} color={COLORS.MUTED} />
                             <Text style={styles.clientDetailValue}>{item.co_cli}</Text>
                         </View>
 
                         {item.login !== undefined && (
                             <View style={styles.clientDetailItem}>
-                                <Ionicons name="wallet-outline" size={14} color="#007a5e" />
-                                <Text style={[styles.clientDetailValue, { color: '#007a5e', fontWeight: 'bold' }]}>
+                                <Ionicons name="wallet-outline" size={14} color={COLORS.PRIMARY} />
+                                <Text style={[styles.clientDetailValue, { color: COLORS.PRIMARY, fontWeight: 'bold' }]}>
                                     {parseFloat(item.login).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                 </Text>
                             </View>
@@ -674,17 +755,17 @@ const MontarPedidoScreen = ({ navigation }) => {
 
                 <View style={styles.searchContainer}>
                     <View style={styles.searchInputWrapper}>
-                        <MaterialIcons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
+                        <MaterialIcons name="search" size={20} color={COLORS.MUTED} style={styles.searchIcon} />
                         <TextInput
                             style={styles.searchInput}
                             placeholder="Buscar cliente..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={COLORS.MUTED}
                             value={clientSearch}
                             onChangeText={handleClientSearch}
                         />
                         {clientSearch.length > 0 && (
                             <TouchableOpacity onPress={() => handleClientSearch('')}>
-                                <MaterialIcons name="close" size={20} color="#94a3b8" />
+                                <MaterialIcons name="close" size={20} color={COLORS.MUTED} />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -698,9 +779,9 @@ const MontarPedidoScreen = ({ navigation }) => {
                     ListEmptyComponent={
                         <View style={{ alignItems: 'center', marginTop: 40 }}>
                             {loadingClients ? (
-                                <ActivityIndicator size="large" color="#007a5e" />
+                                <ActivityIndicator size="large" color={COLORS.PRIMARY} />
                             ) : (
-                                <Text style={{ color: '#94a3b8' }}>No se encontraron clientes</Text>
+                                <Text style={{ color: COLORS.MUTED }}>No se encontraron clientes</Text>
                             )}
                         </View>
                     }
@@ -750,7 +831,7 @@ const MontarPedidoScreen = ({ navigation }) => {
             {/* Floating Action Button - Replaces Bottom Bar */}
             <TouchableOpacity style={styles.fab} onPress={() => setCartModalVisible(true)}>
                 <View style={styles.fabIconContainer}>
-                    <MaterialIcons name="shopping-cart" size={28} color="#ffffff" />
+                    <MaterialIcons name="shopping-cart" size={28} color={COLORS.WHITE} />
                     {cartItemsCount > 0 && (
                         <View style={styles.badge}>
                             <Text style={styles.badgeText}>{cartItemsCount}</Text>
@@ -769,8 +850,18 @@ const MontarPedidoScreen = ({ navigation }) => {
                 onSelectDiscounts={setSelectedDiscounts}
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
+                onQuantityChange={handleQuantityChange}
                 onConfirmOrder={handleConfirmOrder}
                 confirmingOrder={confirmingOrder}
+            />
+
+            <ProductDetailModal
+                visible={detailModalVisible}
+                onClose={() => setDetailModalVisible(false)}
+                product={selectedProductForDetail}
+                onIncrement={handleIncrement}
+                onDecrement={handleDecrement}
+                onQuantityChange={handleQuantityChange}
             />
         </SafeAreaView>
     );
@@ -788,11 +879,11 @@ const MontarPedidoListHeader = ({
             {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputWrapper}>
-                    <MaterialIcons name="inventory-2" size={20} color="#94a3b8" style={styles.searchIcon} />
+                    <MaterialIcons name="inventory-2" size={20} color={COLORS.MUTED} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Buscar producto por nombre..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={COLORS.MUTED}
                         value={searchQuery}
                         onChangeText={onSearch}
                     />
@@ -801,7 +892,7 @@ const MontarPedidoListHeader = ({
 
             {selectedClient?.desc_glob > 0 && (
                 <View style={styles.globalDiscountBanner}>
-                    <MaterialIcons name="local-offer" size={16} color="#007a5e" />
+                    <MaterialIcons name="local-offer" size={16} color={COLORS.PRIMARY} />
                     <Text style={styles.globalDiscountText}>
                         Precios con Descuento Global del {selectedClient.desc_glob}% aplicado
                     </Text>
@@ -822,6 +913,7 @@ const CartModal = ({
     onSelectDiscounts,
     onIncrement,
     onDecrement,
+    onQuantityChange,
     onConfirmOrder,
     confirmingOrder
 }) => {
@@ -882,10 +974,10 @@ const CartModal = ({
             borderColor = isSelected ? '#f97316' : '#fde68a';
             valueColor = '#92400e';
         } else {
-            bgColor = isSelected ? '#f0fdf4' : '#ffffff';
+            bgColor = isSelected ? '#f0fdf4' : COLORS.WHITE;
             textColor = '#64748b';
-            borderColor = isSelected ? '#22c55e' : '#e2e8f0';
-            valueColor = '#007a5e';
+            borderColor = isSelected ? '#22c55e' : COLORS.BORDER;
+            valueColor = COLORS.PRIMARY;
         }
 
         return (
@@ -969,9 +1061,15 @@ const CartModal = ({
                                         <TouchableOpacity onPress={() => onDecrement(item)} style={styles.quantityButtonSm}>
                                             <MaterialIcons name={item.quantity === 1 ? "delete" : "remove"} size={14} color="#ef4444" />
                                         </TouchableOpacity>
-                                        <Text style={styles.quantityTextSm}>{item.quantity}</Text>
+                                        <TextInput
+                                            style={styles.quantityTextSm}
+                                            value={String(item.quantity)}
+                                            onChangeText={(text) => onQuantityChange(item, text)}
+                                            keyboardType="numeric"
+                                            selectTextOnFocus={true}
+                                        />
                                         <TouchableOpacity onPress={() => onIncrement(item)} style={[styles.quantityButtonSm, styles.quantityButtonActiveSm]}>
-                                            <MaterialIcons name="add" size={14} color="#ffffff" />
+                                            <MaterialIcons name="add" size={14} color={COLORS.WHITE} />
                                         </TouchableOpacity>
                                     </View>
                                     <Text style={styles.cartItemSubtotal}>
@@ -1015,15 +1113,157 @@ const CartModal = ({
                             disabled={confirmingOrder}
                         >
                             {confirmingOrder ? (
-                                <ActivityIndicator size="small" color="#ffffff" />
+                                <ActivityIndicator size="small" color={COLORS.WHITE} />
                             ) : (
                                 <>
                                     <Text style={styles.checkoutButtonText}>CONFIRMAR PEDIDO</Text>
-                                    <MaterialIcons name="check-circle" size={20} color="#ffffff" />
+                                    <MaterialIcons name="check-circle" size={20} color={COLORS.WHITE} />
                                 </>
                             )}
                         </TouchableOpacity>
                     </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+// Product Detail Modal Component
+const ProductDetailModal = ({
+    visible,
+    onClose,
+    product,
+    onIncrement,
+    onDecrement,
+    onQuantityChange
+}) => {
+    if (!product) return null;
+
+    const isAgotado = product.stock <= 0;
+
+    return (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={visible}
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { height: 'auto', maxHeight: '85%' }]}>
+                    <View style={styles.modalHeader}>
+                        <View>
+                            <Text style={styles.modalTitle}>Detalle de Producto</Text>
+                            <Text style={styles.modalSubtitle}>COD: {product.co_art}</Text>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <MaterialIcons name="close" size={24} color="#64748b" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.detailScrollContent}>
+                        <View style={styles.detailImageContainer}>
+                            <Image
+                                source={{ uri: product.image }}
+                                style={styles.detailImage}
+                                resizeMode="contain"
+                            />
+                            {isAgotado && (
+                                <View style={styles.detailAgotadoBadge}>
+                                    <Text style={styles.detailAgotadoText}>AGOTADO</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={styles.detailInfoSection}>
+                            <Text style={styles.detailTitle}>{product.title}</Text>
+
+                            <View style={styles.detailMetaData}>
+                                <View style={styles.detailMetaItem}>
+                                    <Text style={styles.detailMetaLabel}>Categoría</Text>
+                                    <Text style={styles.detailMetaValue}>{product.category}</Text>
+                                </View>
+                                <View style={styles.detailMetaItem}>
+                                    <Text style={styles.detailMetaLabel}>Marca</Text>
+                                    <Text style={styles.detailMetaValue}>{product.marca}</Text>
+                                </View>
+                                <View style={styles.detailMetaItem}>
+                                    <Text style={styles.detailMetaLabel}>Vencimiento</Text>
+                                    <Text style={styles.detailMetaValue}>{product.expiry}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.detailPriceSection}>
+                                <View>
+                                    <Text style={styles.detailPriceLabel}>Precio Unitario</Text>
+                                    <Text style={styles.detailPriceValue}>{product.price}</Text>
+                                </View>
+                                <View style={styles.detailBadgeRow}>
+                                    {product.categoryDiscount > 0 && (
+                                        <View style={[styles.productImageBadge, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
+                                            <MaterialIcons name="local-offer" size={14} color="#b45309" />
+                                            <Text style={[styles.imageBadgeText, { color: '#b45309', fontSize: 12 }]}>-{product.categoryDiscount}% Cat.</Text>
+                                        </View>
+                                    )}
+                                    {product.lineDiscount > 0 && (
+                                        <View style={[styles.productImageBadge, { backgroundColor: '#dcfce7', borderColor: '#86efac' }]}>
+                                            <MaterialIcons name="auto-awesome" size={14} color="#166534" />
+                                            <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS, fontSize: 12 }]}>-{product.lineDiscount}% Línea</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+
+                            <View style={styles.detailStockSection}>
+                                <Text style={styles.detailSectionTitle}>Disponibilidad en Almacenes</Text>
+                                <View style={styles.detailStockGrid}>
+                                    <View style={styles.detailStockCard}>
+                                        <Text style={styles.detailStockWarehouse}>TACHIRA</Text>
+                                        <Text style={[styles.detailStockLarge, product.stock_tachira <= 0 && styles.stockAgotadoText]}>
+                                            {product.stock_tachira}
+                                        </Text>
+                                        <Text style={styles.detailStockUnit}>UNIDADES</Text>
+                                    </View>
+                                    <View style={styles.detailStockCard}>
+                                        <Text style={styles.detailStockWarehouse}>BARQUISIMETO</Text>
+                                        <Text style={[styles.detailStockLarge, product.stock_barquisimeto <= 0 && styles.stockAgotadoText]}>
+                                            {product.stock_barquisimeto}
+                                        </Text>
+                                        <Text style={styles.detailStockUnit}>UNIDADES</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.detailTotalStock}>
+                                    <Text style={styles.detailTotalLabel}>STOCK TOTAL DISPONIBLE:</Text>
+                                    <Text style={styles.detailTotalValue}>{product.stock}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </ScrollView>
+
+                    {!isAgotado && (
+                        <View style={styles.detailActionFooter}>
+                            <View style={styles.detailQuantityWrapper}>
+                                <TouchableOpacity style={styles.detailQuantityBtn} onPress={() => onDecrement(product)}>
+                                    <MaterialIcons name="remove" size={24} color={COLORS.PRIMARY} />
+                                </TouchableOpacity>
+                                <TextInput
+                                    style={styles.detailQuantityInput}
+                                    value={String(product.quantity)}
+                                    onChangeText={(text) => onQuantityChange(product, text)}
+                                    keyboardType="numeric"
+                                    selectTextOnFocus={true}
+                                />
+                                <TouchableOpacity style={[styles.detailQuantityBtn, styles.detailQuantityBtnActive]} onPress={() => onIncrement(product)}>
+                                    <MaterialIcons name="add" size={24} color={COLORS.WHITE} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.detailSubtotalWrapper}>
+                                <Text style={styles.detailSubtotalLabel}>SUBTOTAL</Text>
+                                <Text style={styles.detailSubtotalValue}>
+                                    {(product.priceNum * product.quantity).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
             </View>
         </Modal>
@@ -1041,9 +1281,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
+        borderBottomColor: COLORS.BORDER,
     },
     headerLeft: {
         flexDirection: 'row',
@@ -1058,7 +1298,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 14, // Reduced from 16
         fontWeight: 'bold',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
         lineHeight: 18, // Reduced from 20
     },
     headerSubtitle: {
@@ -1099,7 +1339,7 @@ const styles = StyleSheet.create({
     sectionSubtitle: {
         fontSize: 10,
         fontWeight: '500',
-        color: '#94a3b8',
+        color: COLORS.MUTED,
     },
     discountsScroll: {
         marginBottom: 16,
@@ -1137,9 +1377,9 @@ const styles = StyleSheet.create({
     searchInputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: COLORS.BORDER,
         borderRadius: 20,
         paddingHorizontal: 12,
         height: 50,
@@ -1170,11 +1410,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#f1f5f9',
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: COLORS.BORDER,
     },
     categoryChipSelected: {
-        backgroundColor: '#007a5e',
-        borderColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
+        borderColor: COLORS.PRIMARY,
     },
     categoryText: {
         fontSize: 12,
@@ -1182,13 +1422,13 @@ const styles = StyleSheet.create({
         color: '#64748b',
     },
     categoryTextSelected: {
-        color: '#ffffff',
+        color: COLORS.WHITE,
     },
     productsContainer: {
         paddingHorizontal: 16,
     },
     productCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderRadius: 16,
         marginHorizontal: 16,
         padding: 16,
@@ -1260,7 +1500,7 @@ const styles = StyleSheet.create({
     },
     productExpiry: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         marginBottom: 8,
     },
     productPriceRow: {
@@ -1271,7 +1511,7 @@ const styles = StyleSheet.create({
     productPrice: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     stockContainer: {
         flexDirection: 'column',
@@ -1291,7 +1531,7 @@ const styles = StyleSheet.create({
     stockValue: {
         fontSize: 11,
         fontWeight: '800',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
         minWidth: 20,
         textAlign: 'right',
     },
@@ -1314,7 +1554,7 @@ const styles = StyleSheet.create({
     quantityLabel: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         marginRight: 8,
     },
     quantitySelector: {
@@ -1328,7 +1568,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -1338,7 +1578,7 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     quantityButtonActive: {
-        backgroundColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
     },
     quantityText: {
         width: 40,
@@ -1352,7 +1592,7 @@ const styles = StyleSheet.create({
     },
     subtotalLabel: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
     },
     subtotalValue: {
         fontSize: 14,
@@ -1366,7 +1606,7 @@ const styles = StyleSheet.create({
     },
     footerNote: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         textAlign: 'center',
         fontStyle: 'italic',
     },
@@ -1378,7 +1618,7 @@ const styles = StyleSheet.create({
         padding: 16,
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
+        borderTopColor: COLORS.BORDER,
         backdropFilter: 'blur(10px)',
     },
     summaryInfo: {
@@ -1391,7 +1631,7 @@ const styles = StyleSheet.create({
     summaryLabel: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         textTransform: 'uppercase',
     },
     summaryValueRow: {
@@ -1439,14 +1679,14 @@ const styles = StyleSheet.create({
     },
     orderButton: {
         flex: 2,
-        backgroundColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
         height: 52,
         borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        shadowColor: '#007a5e',
+        shadowColor: COLORS.PRIMARY,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -1455,7 +1695,7 @@ const styles = StyleSheet.create({
     orderButtonText: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#ffffff',
+        color: COLORS.WHITE,
     },
     fab: {
         position: 'absolute',
@@ -1464,7 +1704,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
@@ -1488,10 +1728,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 4,
         borderWidth: 2,
-        borderColor: '#007a5e',
+        borderColor: COLORS.PRIMARY,
     },
     badgeText: {
-        color: '#ffffff',
+        color: COLORS.WHITE,
         fontSize: 10,
         fontWeight: 'bold',
     },
@@ -1514,8 +1754,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 24,
         borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-        backgroundColor: '#ffffff',
+        borderBottomColor: COLORS.BORDER,
+        backgroundColor: COLORS.WHITE,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
     },
@@ -1527,8 +1767,217 @@ const styles = StyleSheet.create({
     closeButton: {
         padding: 4,
     },
+    modalSubtitle: {
+        fontSize: 12,
+        color: COLORS.MUTED,
+        fontWeight: '500',
+    },
+    // Product Detail Specific Styles
+    detailScrollContent: {
+        padding: 24,
+    },
+    detailImageContainer: {
+        width: '100%',
+        height: 250,
+        backgroundColor: COLORS.WHITE,
+        borderRadius: 20,
+        marginBottom: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    detailImage: {
+        width: '90%',
+        height: '90%',
+    },
+    detailAgotadoBadge: {
+        position: 'absolute',
+        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    detailAgotadoText: {
+        color: COLORS.WHITE,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    detailInfoSection: {
+        gap: 20,
+    },
+    detailTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#1e293b',
+        lineHeight: 28,
+    },
+    detailMetaData: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#f8fafc',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+    },
+    detailMetaItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    detailMetaLabel: {
+        fontSize: 10,
+        color: COLORS.MUTED,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    detailMetaValue: {
+        fontSize: 13,
+        color: '#334155',
+        fontWeight: '700',
+    },
+    detailPriceSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    detailPriceLabel: {
+        fontSize: 12,
+        color: '#64748b',
+        marginBottom: 2,
+    },
+    detailPriceValue: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: COLORS.PRIMARY,
+    },
+    detailBadgeRow: {
+        flexDirection: 'column',
+        gap: 6,
+        alignItems: 'flex-end',
+    },
+    detailStockSection: {
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+        paddingTop: 20,
+    },
+    detailSectionTitle: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#64748b',
+        textTransform: 'uppercase',
+        marginBottom: 16,
+    },
+    detailStockGrid: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 20,
+    },
+    detailStockCard: {
+        flex: 1,
+        backgroundColor: COLORS.WHITE,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    detailStockWarehouse: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: COLORS.MUTED,
+        marginBottom: 8,
+    },
+    detailStockLarge: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: COLORS.PRIMARY,
+    },
+    detailStockUnit: {
+        fontSize: 9,
+        color: COLORS.MUTED,
+        fontWeight: 'bold',
+    },
+    detailTotalStock: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    detailTotalLabel: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '600',
+    },
+    detailTotalValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1e293b',
+    },
+    detailActionFooter: {
+        padding: 24,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+        backgroundColor: COLORS.WHITE,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    detailQuantityWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f5f9',
+        borderRadius: 16,
+        padding: 6,
+    },
+    detailQuantityBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: COLORS.WHITE,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    detailQuantityBtnActive: {
+        backgroundColor: COLORS.PRIMARY,
+    },
+    detailQuantityInput: {
+        width: 60,
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1e293b',
+    },
+    detailSubtotalWrapper: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    detailSubtotalLabel: {
+        fontSize: 11,
+        color: COLORS.MUTED,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    detailSubtotalValue: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: COLORS.PRIMARY,
+    },
     cartSection: {
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#f1f5f9',
@@ -1546,7 +1995,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         padding: 16,
         marginBottom: 12,
         borderRadius: 16,
@@ -1615,7 +2064,7 @@ const styles = StyleSheet.create({
     cartItemSubtotal: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     quantityButtonSm: {
         width: 26,
@@ -1625,7 +2074,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     quantityButtonActiveSm: {
-        backgroundColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
     },
     quantityTextSm: {
         fontSize: 13,
@@ -1640,9 +2089,9 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         padding: 20,
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         borderTopWidth: 1,
         borderTopColor: '#f1f5f9',
         paddingBottom: 34, // Safe area for modern phones
@@ -1680,16 +2129,16 @@ const styles = StyleSheet.create({
     totalFinalValue: {
         fontSize: 24,
         fontWeight: '900',
-        color: '#007a5e',
+        color: COLORS.PRIMARY,
     },
     sectionSubtitle: {
         fontSize: 10,
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         paddingHorizontal: 24,
         marginTop: 4,
     },
     checkoutButton: {
-        backgroundColor: '#007a5e',
+        backgroundColor: COLORS.PRIMARY,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1697,25 +2146,25 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginTop: 16,
         gap: 10,
-        shadowColor: '#007a5e',
+        shadowColor: COLORS.PRIMARY,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 6,
     },
     checkoutButtonText: {
-        color: '#ffffff',
+        color: COLORS.WHITE,
         fontSize: 16,
         fontWeight: '800',
         letterSpacing: 0.5,
     },
     checkoutButtonDisabled: {
-        backgroundColor: '#94a3b8',
+        backgroundColor: COLORS.MUTED,
         shadowOpacity: 0.1,
     },
     emptyCartText: {
         textAlign: 'center',
-        color: '#94a3b8',
+        color: COLORS.MUTED,
         marginTop: 40,
         fontSize: 16,
     },
@@ -1734,21 +2183,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 4,
         borderWidth: 2,
-        borderColor: '#007a5e',
+        borderColor: COLORS.PRIMARY,
     },
     badgeText: {
-        color: '#ffffff',
+        color: COLORS.WHITE,
         fontSize: 10,
         fontWeight: 'bold',
     },
     clientAvatarText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#ffffff',
+        color: COLORS.WHITE,
     },
     clientCard: {
         flexDirection: 'row',
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.WHITE,
         marginHorizontal: 16,
         marginBottom: 12,
         borderRadius: 16,

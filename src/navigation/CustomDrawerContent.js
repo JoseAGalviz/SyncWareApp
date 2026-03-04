@@ -4,6 +4,8 @@ import { DrawerContentScrollView, DrawerItemList, DrawerItem } from '@react-navi
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import COLORS from '../constants/Colors';
+
 
 export default function CustomDrawerContent(props) {
     const [user, setUser] = useState(null);
@@ -43,10 +45,10 @@ export default function CustomDrawerContent(props) {
                 label="Cerrar Sesión"
                 onPress={handleLogout}
                 icon={({ color, size }) => (
-                    <Ionicons name="log-out-outline" color="#fff" size={size} />
+                    <Ionicons name="log-out-outline" color={COLORS.WHITE} size={size} />
                 )}
-                style={[styles.logoutButton, { backgroundColor: '#1A9888', borderTopWidth: 0 }]}
-                labelStyle={[styles.logoutButtonText, { color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center'}]}
+                style={[styles.logoutButton, { backgroundColor: COLORS.PRIMARY, borderTopWidth: 0 }]}
+                labelStyle={[styles.logoutButtonText, { color: COLORS.WHITE, fontWeight: 'bold', fontSize: 16, textAlign: 'center' }]}
             />
         </DrawerContentScrollView>
     );
@@ -54,31 +56,31 @@ export default function CustomDrawerContent(props) {
 
 const styles = StyleSheet.create({
     header: {
-        padding: 20,
-        backgroundColor: '#f2f2f2',
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
+        padding: 24,
+        paddingTop: 10,
+        backgroundColor: COLORS.WHITE,
         alignItems: 'center',
-        marginBottom: 10,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        marginBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#040404ff',
     },
     profilePic: {
-        width: 100,
+        width: 200,
         height: 100,
-        borderRadius: 30,
-        marginBottom: 10,
-        padding: 5,
-        borderColor: '#ddd',
+        marginBottom: 8,
         resizeMode: 'contain',
     },
     userName: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#090909ff',
     },
     userEmail: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#666',
-        marginTop: 5,
+        marginTop: 4,
     },
     logoutButton: {
         marginTop: 20,
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
         paddingTop: 10,
     },
     logoutButtonText: {
-        color: '#fff',
+        color: COLORS.WHITE,
         fontWeight: 'bold',
     },
 });

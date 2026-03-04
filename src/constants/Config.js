@@ -7,9 +7,9 @@ export const API_ENDPOINTS = {
   LOGIN: "/api/auth/login",
   CLIENTES_GESTIONES: "/api/clientes/gestiones-bitrix",
   CLIENTES_SEGMENTOS: "/api/clientes/segmentos",
-  CATALOGO: "http://192.168.4.69:8001/api/pedidosApp/catalogo",
-  CLIENTES_PEDIDOS: "http://192.168.4.69:8001/api/pedidosApp/clientes",
+  CATALOGO: "/api/pedidosApp/catalogo",
+  CLIENTES_PEDIDOS: "/api/pedidosApp/clientes",
   TIEMPOS_PAGO: "/api/transferencias/tiempos-pago",
-  CREAR_PEDIDO: "http://192.168.4.69:8001/api/pedidosApp/crear",
-  OBTENER_PEDIDOS: "http://192.168.4.69:8001/api/pedidosApp/pedidos",
+  CREAR_PEDIDO: "/api/pedidosApp/crear",
+  OBTENER_PEDIDOS: "/api/pedidosApp/pedidos",
 };

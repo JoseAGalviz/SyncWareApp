@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, Alert, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import COLORS from '../constants/Colors';
+
 
 export default function UserDataScreen({ navigation }) {
     const [userData, setUserData] = useState(null);
@@ -61,7 +63,7 @@ export default function UserDataScreen({ navigation }) {
     return (
         <View style={styles.container}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('HomeTabs')}>
-                <Ionicons name="arrow-back" size={28} color="#49AF4E" />
+                <Ionicons name="arrow-back" size={28} color={COLORS.SUCCESS} />
                 <Text style={styles.backText}>Volver al inicio</Text>
             </TouchableOpacity>
             <View style={styles.card}>
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     backText: {
-        color: '#49AF4E',
+        color: COLORS.SUCCESS,
         fontSize: 17,
         marginLeft: 6,
         fontWeight: 'bold',
@@ -131,11 +133,11 @@ const styles = StyleSheet.create({
     card: {
         width: '100%',
         maxWidth: 400,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.WHITE,
         borderRadius: 18,
         paddingVertical: 32,
         paddingHorizontal: 28,
-        shadowColor: '#49AF4E',
+        shadowColor: COLORS.SUCCESS,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.13,
         shadowRadius: 10,
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#49AF4E',
+        color: COLORS.SUCCESS,
         marginBottom: 24,
         letterSpacing: 1,
     },
@@ -165,12 +167,12 @@ const styles = StyleSheet.create({
     },
     label: {
         fontWeight: 'bold',
-        color: '#1A9888',
+        color: COLORS.PRIMARY,
         fontSize: 16,
         width: 120,
     },
     value: {
-        color: '#222',
+        color: COLORS.SECONDARY,
         fontSize: 16,
         flex: 1,
         textAlign: 'right',
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     segmentItem: {
-        color: '#333',
+        color: COLORS.SECONDARY,
         fontSize: 15,
         marginBottom: 2.5,
         textAlign: 'right',

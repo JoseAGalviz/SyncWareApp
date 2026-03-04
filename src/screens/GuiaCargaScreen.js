@@ -19,6 +19,7 @@ import { api } from '../services/api'; // Usar nuestro servicio API robusto
 import FlashMessage, { showMessage } from "react-native-flash-message";
 import SoundManager from '../utils/SoundManager';
 import { Ionicons } from '@expo/vector-icons';
+import GlobalColors from '../constants/Colors';
 
 // --- Constantes ---
 const POLL_INTERVAL = 2000; // 2 segundos
@@ -28,17 +29,17 @@ const STORAGE_KEYS = {
   ESCANEOS_PREFIX: "escaneos_"
 };
 const COLORS = {
-  primary: "#1A9888",
-  success: "#49AF4E",
-  warning: "#FFD600",
-  error: "#d9534f",
-  info: "#007bff",
-  white: "#fff",
-  lightGray: "#f7f9fa",
-  gray: "#888",
-  darkGray: "#333",
-  border: "#ddd",
-  overlay: 'rgba(0,0,0,0.5)'
+  primary: GlobalColors.PRIMARY,
+  success: GlobalColors.SUCCESS,
+  warning: GlobalColors.WARNING,
+  error: GlobalColors.ERROR,
+  info: GlobalColors.INFO,
+  white: GlobalColors.WHITE,
+  lightGray: GlobalColors.LIGHT_BG,
+  gray: GlobalColors.MUTED,
+  darkGray: GlobalColors.SECONDARY,
+  border: GlobalColors.BORDER,
+  overlay: GlobalColors.OVERLAY
 };
 
 // --- Utilidades ---

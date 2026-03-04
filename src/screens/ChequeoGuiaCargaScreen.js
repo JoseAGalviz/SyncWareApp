@@ -17,6 +17,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
+import COLORS from '../constants/Colors';
+
 
 export default function ChequeoGuiaCargaScreen() {
   // Estados
@@ -511,7 +513,7 @@ export default function ChequeoGuiaCargaScreen() {
         <View style={{ marginBottom: 10 }}>
           <TouchableOpacity
             style={{
-              backgroundColor: "#49AF4E",
+              backgroundColor: COLORS.SUCCESS,
               borderRadius: 8,
               paddingVertical: 10,
               paddingHorizontal: 18,
@@ -523,7 +525,7 @@ export default function ChequeoGuiaCargaScreen() {
             }}
             onPress={() => setMostrarCargadas(!mostrarCargadas)}
           >
-            <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+            <Text style={{ color: COLORS.WHITE, fontWeight: "bold", fontSize: 16 }}>
               {mostrarCargadas ? "Ocultar" : "Ver"} Guías Cargadas
             </Text>
           </TouchableOpacity>
@@ -595,7 +597,7 @@ export default function ChequeoGuiaCargaScreen() {
               </Text>
               {esGuiaProcesada(item.numeroCarga) && (
                 <Text
-                  style={{ color: "#d9534f", fontWeight: "bold", marginTop: 4 }}
+                  style={{ color: COLORS.ERROR, fontWeight: "bold", marginTop: 4 }}
                 >
                   Ya registrada
                 </Text>
@@ -628,7 +630,7 @@ export default function ChequeoGuiaCargaScreen() {
         />
         {loading && (
           <View style={styles.overlay}>
-            <ActivityIndicator size="large" color="#007bff" />
+            <ActivityIndicator size="large" color={COLORS.INFO} />
             <Text>Procesando escaneo...</Text>
           </View>
         )}
@@ -642,7 +644,7 @@ export default function ChequeoGuiaCargaScreen() {
           <View style={styles.result}>
             <Text
               style={{
-                color: "#d9534f",
+                color: COLORS.ERROR,
                 fontWeight: "bold",
                 alignSelf: "center",
                 marginBottom: 6,
@@ -689,7 +691,7 @@ export default function ChequeoGuiaCargaScreen() {
         >
           <TouchableOpacity onPress={volver}>
             <Text
-              style={{ color: "#1A9888", marginBottom: 10, fontWeight: "bold" }}
+              style={{ color: COLORS.PRIMARY, marginBottom: 10, fontWeight: "bold" }}
             >
               ← Volver
             </Text>
@@ -727,7 +729,7 @@ export default function ChequeoGuiaCargaScreen() {
                 />
                 {loading && (
                   <View style={styles.overlay}>
-                    <ActivityIndicator size="large" color="#007bff" />
+                    <ActivityIndicator size="large" color={COLORS.INFO} />
                     <Text>Procesando escaneo...</Text>
                   </View>
                 )}
@@ -739,7 +741,7 @@ export default function ChequeoGuiaCargaScreen() {
         {errorScan ? (
           <Text
             style={{
-              color: "#d9534f",
+              color: COLORS.ERROR,
               fontWeight: "bold",
               alignSelf: "center",
               marginBottom: 6,
@@ -814,8 +816,8 @@ export default function ChequeoGuiaCargaScreen() {
                 marginTop: 10,
                 color:
                   notasVerificadas.length === guiaSeleccionada.detalle.length
-                    ? "#49AF4E"
-                    : "#d9534f",
+                    ? COLORS.SUCCESS
+                    : COLORS.ERROR,
                 fontWeight: "bold",
                 alignSelf: "center",
               }}
@@ -845,7 +847,7 @@ export default function ChequeoGuiaCargaScreen() {
                 contentContainerStyle={{ flexGrow: 1 }}
               >
                 <View style={{ marginBottom: 8 }}>
-                  <Text style={{ fontWeight: "bold", color: "#d9534f" }}>
+                  <Text style={{ fontWeight: "bold", color: COLORS.ERROR }}>
                     Detalle de faltantes:
                   </Text>
                   <Text
@@ -853,7 +855,7 @@ export default function ChequeoGuiaCargaScreen() {
                       backgroundColor: "#f2fcf6",
                       padding: 8,
                       borderRadius: 6,
-                      color: "#333",
+                      color: COLORS.SECONDARY,
                     }}
                   >
                     {detalleFaltantes}
@@ -878,7 +880,7 @@ export default function ChequeoGuiaCargaScreen() {
               textAlignVertical="top"
             />
             <TouchableOpacity style={styles.saveButton} onPress={enviarDatos}>
-              <Text style={[styles.saveButtonText, { color: "#fff" }]}>
+              <Text style={[styles.saveButtonText, { color: COLORS.WHITE }]}>
                 Enviar datos
               </Text>
             </TouchableOpacity>
@@ -888,7 +890,7 @@ export default function ChequeoGuiaCargaScreen() {
         {/* Agrega el botón para registrar guía incompleta antes del comentario */}
         {!showComentario && (
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: "#FFD600" }]}
+            style={[styles.saveButton, { backgroundColor: COLORS.WARNING }]}
             onPress={() => {
               // Generar detalle exacto de faltantes
               const faltantes = guiaSeleccionada.detalle
@@ -937,7 +939,7 @@ export default function ChequeoGuiaCargaScreen() {
               );
             }}
           >
-            <Text style={[styles.saveButtonText, { color: "#333" }]}>
+            <Text style={[styles.saveButtonText, { color: COLORS.SECONDARY }]}>
               Registrar guía incompleta
             </Text>
           </TouchableOpacity>
@@ -949,7 +951,7 @@ export default function ChequeoGuiaCargaScreen() {
             <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
               JSON generado:
             </Text>
-            <Text style={{ fontSize: 13, color: "#333" }}>
+            <Text style={{ fontSize: 13, color: COLORS.SECONDARY }}>
               {JSON.stringify(jsonGenerado, null, 2)}
             </Text>
           </View>
@@ -961,16 +963,16 @@ export default function ChequeoGuiaCargaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f9fa", padding: 16 },
+  container: { flex: 1, backgroundColor: COLORS.LIGHT_BG, padding: 16 },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#1A9888",
+    color: COLORS.PRIMARY,
     marginBottom: 10,
     alignSelf: "center",
   },
   guiaItem: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.WHITE,
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
@@ -986,7 +988,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   empty: {
-    color: "#888",
+    color: COLORS.MUTED,
     fontStyle: "italic",
     alignSelf: "center",
     marginTop: 40,
@@ -994,8 +996,8 @@ const styles = StyleSheet.create({
   pedidosCount: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
-    backgroundColor: "#49AF4E",
+    color: COLORS.WHITE,
+    backgroundColor: COLORS.SUCCESS,
     paddingVertical: 6,
     paddingHorizontal: 18,
     borderRadius: 20,
@@ -1005,22 +1007,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   pedidosCountNumber: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontWeight: "bold",
     fontSize: 20,
   },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.WHITE,
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#1A9888",
+    borderColor: COLORS.PRIMARY,
     marginBottom: 10,
     marginTop: 5,
   },
   scanButton: {
-    backgroundColor: "#007bff",
+    backgroundColor: COLORS.INFO,
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 8,
@@ -1029,29 +1031,29 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   scanButtonText: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
   },
   table: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: COLORS.BORDER,
     borderRadius: 10,
     marginBottom: 18,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.WHITE,
     overflow: "hidden",
     elevation: 1,
   },
   tableRowHeader: {
     flexDirection: "row",
-    backgroundColor: "#49AF4E",
+    backgroundColor: COLORS.SUCCESS,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
   },
   tableHeaderCell: {
     flex: 1,
-    color: "#fff",
+    color: COLORS.WHITE,
     fontWeight: "bold",
     padding: 8,
     fontSize: 14,
@@ -1062,27 +1064,27 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 8,
     fontSize: 13,
-    color: "#333",
+    color: COLORS.SECONDARY,
     textAlign: "center",
   },
   rowEven: { backgroundColor: "#e9f7ef" },
   rowOdd: { backgroundColor: "#f2fcf6" },
-  rowChecked: { backgroundColor: "#1A9888" },
-  rowUno: { backgroundColor: "#FFD600" }, // Amarillo si solo uno escaneado
-  rowAmbos: { backgroundColor: "#49AF4E" }, // Verde si ambos escaneados
-  cellFactura: { color: "#007bff", fontWeight: "bold" }, // Azul para factura escaneada
+  rowChecked: { backgroundColor: COLORS.PRIMARY },
+  rowUno: { backgroundColor: COLORS.WARNING }, // Amarillo si solo uno escaneado
+  rowAmbos: { backgroundColor: COLORS.SUCCESS }, // Verde si ambos escaneados
+  cellFactura: { color: COLORS.INFO, fontWeight: "bold" }, // Azul para factura escaneada
   cellNota: { color: "#FF3B30", fontWeight: "bold" }, // Rojo para nota escaneada
-  cellAmbos: { color: "#fff", fontWeight: "bold" }, // Blanco si ambos escaneados
+  cellAmbos: { color: COLORS.WHITE, fontWeight: "bold" }, // Blanco si ambos escaneados
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    backgroundColor: "#f7f9fa",
+    backgroundColor: COLORS.LIGHT_BG,
   },
   backButton: {
     marginTop: 24,
-    backgroundColor: "#888",
+    backgroundColor: COLORS.MUTED,
     paddingVertical: 10,
     paddingHorizontal: 32,
     borderRadius: 8,
@@ -1090,7 +1092,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   backButtonText: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
@@ -1113,16 +1115,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   comentarioBox: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.WHITE,
     borderRadius: 10,
     padding: 16,
     marginTop: 12,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: COLORS.BORDER,
   },
   saveButton: {
-    backgroundColor: "#49AF4E",
+    backgroundColor: COLORS.SUCCESS,
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1134,12 +1136,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButtonText: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontWeight: "bold",
     fontSize: 16,
   },
   jsonBox: {
-    backgroundColor: "#f7f9fa",
+    backgroundColor: COLORS.LIGHT_BG,
     borderRadius: 10,
     padding: 12,
     marginTop: 10,
@@ -1159,7 +1161,7 @@ const styles = StyleSheet.create({
   labelCargadas: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#49AF4E",
+    color: COLORS.SUCCESS,
     marginTop: 10,
     marginBottom: 4,
     alignSelf: "center",
@@ -1167,7 +1169,7 @@ const styles = StyleSheet.create({
   labelPendientes: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#d9534f",
+    color: COLORS.ERROR,
     marginTop: 18,
     marginBottom: 4,
     alignSelf: "center",
@@ -1179,13 +1181,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#49AF4E",
+    borderColor: COLORS.SUCCESS,
   },
   guiaItemDeshabilitada: {
     opacity: 0.5,
   },
   deleteButton: {
-    backgroundColor: "#d9534f",
+    backgroundColor: COLORS.ERROR,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 18,
@@ -1194,7 +1196,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   deleteButtonText: {
-    color: "#fff",
+    color: COLORS.WHITE,
     fontWeight: "bold",
     fontSize: 15,
   },

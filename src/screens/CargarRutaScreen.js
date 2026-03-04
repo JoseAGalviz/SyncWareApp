@@ -16,6 +16,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "@react-navigation/native";
+import GlobalColors from '../constants/Colors';
 
 // Constantes
 const STORAGE_KEYS = {
@@ -25,16 +26,16 @@ const STORAGE_KEYS = {
 };
 
 const COLORS = {
-  primary: "#1A9888",
-  success: "#49AF4E",
-  warning: "#FFD600",
-  error: "#d9534f",
-  info: "#007bff",
-  white: "#fff",
-  lightGray: "#f7f9fa",
-  gray: "#888",
-  darkGray: "#333",
-  border: "#ddd"
+  primary: GlobalColors.PRIMARY,
+  success: GlobalColors.SUCCESS,
+  warning: GlobalColors.WARNING,
+  error: GlobalColors.ERROR,
+  info: GlobalColors.INFO,
+  white: GlobalColors.WHITE,
+  lightGray: GlobalColors.LIGHT_BG,
+  gray: GlobalColors.MUTED,
+  darkGray: GlobalColors.SECONDARY,
+  border: GlobalColors.BORDER
 };
 
 const GUIA_MAX_AGE_MS = 21600000; // 6 horas

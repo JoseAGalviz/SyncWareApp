@@ -10,6 +10,8 @@ import HomeScreenConductor from "../screens/HomeScreenConductor";
 import GuiaCargaScreen from "../screens/GuiaCargaScreen";
 import ChequeoGuiaCargaScreen from "../screens/ChequeoGuiaCargaScreen";
 import FacturasScreen from '../screens/FacturasScreen';
+import COLORS from '../constants/Colors';
+
 // import CargarRutaScreen from "../screens/CargarRutaScreen"; // Eliminado (Unificado)
 
 const Tab = createBottomTabNavigator();
@@ -21,7 +23,7 @@ function DrawerMenuButton() {
       onPress={() => navigation.openDrawer()}
       style={{ marginLeft: 15 }}
     >
-      <Ionicons name="menu" size={30} color="#fff" />
+      <Ionicons name="menu" size={30} color={COLORS.WHITE} />
     </TouchableOpacity>
   );
 }
@@ -33,8 +35,8 @@ export default function AppNavigatorConductor() {
         headerTitle: "Cristmedicals",
         headerTitleAlign: "center",
         headerStyle: { backgroundColor: "#000" },
-        headerTitleStyle: { color: "#fff" },
-        headerTintColor: "#fff",
+        headerTitleStyle: { color: COLORS.WHITE },
+        headerTintColor: COLORS.WHITE,
         headerLeft: () => <DrawerMenuButton />,
         headerRight: () => (
           <Image
@@ -68,8 +70,8 @@ export default function AppNavigatorConductor() {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#49AF4E",
-        tabBarInactiveTintColor: "#1A9888",
+        tabBarActiveTintColor: COLORS.SUCCESS,
+        tabBarInactiveTintColor: COLORS.PRIMARY,
         tabBarStyle: { backgroundColor: "#000" },
       })}
     >

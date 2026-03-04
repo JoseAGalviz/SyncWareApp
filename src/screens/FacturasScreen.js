@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Text, 
-  View, 
-  StyleSheet, 
-  ActivityIndicator, 
-  Modal, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert, 
+import {
+  Text,
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
   TextInput,
   Dimensions,
   Platform,
@@ -18,6 +18,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useIsFocused } from '@react-navigation/native';
+import COLORS from '../constants/Colors';
+
 
 // Constantes y utilidades
 const API_BASE_URL = 'https://98.94.185.164.nip.io/api';
@@ -28,30 +30,30 @@ const FACTURAS_LIMITE = 500; // Límite máximo de facturas a almacenar
 // Utilidades para cálculo de días de crédito y fechas
 const calcularDiasCredito = (factura) => {
   let diasCredito = 0;
-  
+
   if (factura.dias_credito != null) {
     const match = String(factura.dias_credito).match(/\d+/);
     diasCredito = match ? Number(match[0]) : 0;
   }
-  
+
   if (diasCredito === 0 && factura.tipo) {
     const tipoMatch = String(factura.tipo).match(/\d+/);
     diasCredito = tipoMatch ? Number(tipoMatch[0]) : 0;
   }
-  
+
   return diasCredito;
 };
 
 const calcularFechas = (diasCredito) => {
   const hoy = new Date();
   const pad = (n) => n.toString().padStart(2, '0');
-  
+
   const fechaEscaneo = `${hoy.getFullYear()}-${pad(hoy.getMonth() + 1)}-${pad(hoy.getDate())} ${pad(hoy.getHours())}:${pad(hoy.getMinutes())}:${pad(hoy.getSeconds())}`;
-  
+
   const fechaVencimiento = new Date(hoy);
   fechaVencimiento.setDate(fechaVencimiento.getDate() + diasCredito);
   const fecVencDespues = fechaVencimiento.toISOString().substring(0, 10);
-  
+
   return { fechaEscaneo, fecVencDespues };
 };
 
@@ -148,10 +150,10 @@ const limpiarFacturasAntiguas = async () => {
   try {
     const stored = await AsyncStorage.getItem('facturas');
     if (!stored) return;
-    
+
     let facturas = JSON.parse(stored);
     const hoy = new Date();
-    
+
     // Filtrar facturas con más de 7 días
     const facturasFiltradas = facturas.filter(f => {
       if (!f.fecha_escaneo) return true;
@@ -163,7 +165,7 @@ const limpiarFacturasAntiguas = async () => {
         return false;
       }
     });
-    
+
     // Si aún supera el límite después de filtrar, eliminar las más antiguas
     if (facturasFiltradas.length > FACTURAS_LIMITE) {
       // Ordenar por fecha (más recientes primero)
@@ -176,13 +178,13 @@ const limpiarFacturasAntiguas = async () => {
           return 0;
         }
       });
-      
+
       // Mantener solo las más recientes
       const facturasLimitadas = facturasFiltradas.slice(0, FACTURAS_LIMITE);
       await AsyncStorage.setItem('facturas', JSON.stringify(facturasLimitadas));
       return facturasLimitadas;
     }
-    
+
     await AsyncStorage.setItem('facturas', JSON.stringify(facturasFiltradas));
     return facturasFiltradas;
   } catch (error) {
@@ -202,10 +204,10 @@ export default function FacturasScreen() {
   const [manualFactura, setManualFactura] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [comentarioRango, setComentarioRango] = useState('');
-  
+
   // 1. NUEVO ESTADO PARA EL USUARIO LOGUEADO
   const [currentUserCoVend, setCurrentUserCoVend] = useState(null);
-  
+
   const isFocused = useIsFocused();
 
   // 2. NUEVO EFECTO PARA CARGAR EL USUARIO LOGUEADO AL INICIAR
@@ -253,21 +255,21 @@ export default function FacturasScreen() {
         Alert.alert('Permiso de ubicación denegado');
         return null;
       }
-      
+
       const lastLocation = await Location.getLastKnownPositionAsync();
       if (lastLocation) {
         return `${lastLocation.coords.latitude},${lastLocation.coords.longitude}`;
       }
-      
+
       const locationPromise = Location.getCurrentPositionAsync({});
       const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 7000));
       const location = await Promise.race([locationPromise, timeoutPromise]);
-      
+
       if (!location) {
         Alert.alert('No se pudo obtener la ubicación a tiempo');
         return null;
       }
-      
+
       return `${location.coords.latitude},${location.coords.longitude}`;
     } catch {
       return null;
@@ -279,7 +281,7 @@ export default function FacturasScreen() {
     try {
       const diasCredito = calcularDiasCredito(factura);
       const { fechaEscaneo, fecVencDespues } = calcularFechas(diasCredito);
-      
+
       const facturaActualizada = {
         ...factura,
         dias_credito: diasCredito,
@@ -287,26 +289,26 @@ export default function FacturasScreen() {
         fec_venc_despues: fecVencDespues,
         // 3. AQUÍ REEMPLAZAMOS EL VENDEDOR
         // Si existe el usuario logueado, lo usa. Si no, mantiene el original.
-        co_ven: currentUserCoVend || factura.co_ven 
+        co_ven: currentUserCoVend || factura.co_ven
       };
-      
+
       const coords = await obtenerCoordenadas();
       if (!coords) {
         Alert.alert('No se pudo obtener la ubicación. No se puede guardar/enviar la factura.');
         return false;
       }
-      
+
       facturaActualizada.coordenadas = coords;
 
       const stored = await AsyncStorage.getItem('facturas');
       let facturas = stored ? JSON.parse(stored) : [];
-      
+
       // Verificar si la factura ya existe
       if (facturas.some(f => String(f.fact_num) === String(facturaActualizada.fact_num))) {
         Alert.alert('Esta factura ya fue registrada localmente.');
         return false;
       }
-      
+
       // Limitar el número máximo de facturas
       if (facturas.length >= FACTURAS_LIMITE) {
         // Eliminar la factura más antigua
@@ -319,11 +321,11 @@ export default function FacturasScreen() {
             return 0;
           }
         });
-        
+
         facturas = facturas.slice(1);
         Alert.alert('Límite de facturas alcanzado', `Se eliminó la factura más antigua.`);
       }
-      
+
       facturas.push(facturaActualizada);
       await AsyncStorage.setItem('facturas', JSON.stringify(facturas));
       setFacturasLocales(facturas);
@@ -340,7 +342,7 @@ export default function FacturasScreen() {
     try {
       const stored = await AsyncStorage.getItem('facturasEnviadas');
       let facturasEnviadas = stored ? JSON.parse(stored) : [];
-      
+
       if (!facturasEnviadas.includes(String(factNum))) {
         facturasEnviadas.push(String(factNum));
         await AsyncStorage.setItem('facturasEnviadas', JSON.stringify(facturasEnviadas));
@@ -445,7 +447,7 @@ export default function FacturasScreen() {
     setLoading(true);
     const ok = await guardarFacturaLocal(facturaData);
     setLoading(false);
-    
+
     if (ok) {
       Alert.alert('Factura registrada localmente con éxito.');
       setScanned(false);
@@ -462,7 +464,7 @@ export default function FacturasScreen() {
         fact_num: [String(facturaData.fact_num)],
         fec_venc_despues: [facturaData.fec_venc_despues],
       };
-      
+
       const responseUpdate = await fetch(`${API_BASE_URL}/facturas/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -489,7 +491,7 @@ export default function FacturasScreen() {
         coordenadas: facturaData.coordenadas,
         comentario_rango: facturaData.estado_rango === "FUERA DE RANGO" ? comentario.trim() : "",
       }];
-      
+
       console.log("Enviando payload con vendedor:", facturaPayload[0].co_ven);
 
       const responseLocales = await fetch(`${API_BASE_URL}/facturas_locales`, {
@@ -514,7 +516,7 @@ export default function FacturasScreen() {
       return;
     }
     setLoading(true);
-    
+
     try {
       // Verifica coordenadas antes de enviar
       if (!facturaData.coordenadas) {
@@ -528,11 +530,11 @@ export default function FacturasScreen() {
       }
 
       const success = await enviarFactura(facturaData, comentarioRango);
-      
+
       if (success) {
         await marcarFacturaComoEnviada(facturaData.fact_num);
         // Al guardar localmente después de enviar, también usará el ID correcto gracias al cambio en guardarFacturaLocal
-        await guardarFacturaLocal(facturaData); 
+        await guardarFacturaLocal(facturaData);
         Alert.alert('Factura enviada y guardada correctamente.');
         setScanned(false);
         setBarcode(null);
@@ -569,7 +571,7 @@ export default function FacturasScreen() {
 
     try {
       const result = await consultarFactura(manualFactura.trim());
-      
+
       if (!result) {
         setLoading(false);
         setTimeout(() => {
@@ -578,7 +580,7 @@ export default function FacturasScreen() {
         }, 500);
         return;
       }
-      
+
       setFacturaData(result);
     } catch (error) {
       setError(error.message);
@@ -598,7 +600,7 @@ export default function FacturasScreen() {
   if (!permission) {
     return <Text>Solicitando permiso de cámara...</Text>;
   }
-  
+
   if (!permission.granted) {
     return (
       <View style={styles.centered}>
@@ -611,7 +613,7 @@ export default function FacturasScreen() {
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
@@ -620,7 +622,7 @@ export default function FacturasScreen() {
       <Text style={styles.subtitle}>
         Escanea el código de barras de tu factura para consultar y registrar sus datos.
       </Text>
-      
+
       <View style={styles.cameraContainer}>
         {isFocused && permission?.granted ? (
           <CameraView
@@ -634,10 +636,10 @@ export default function FacturasScreen() {
           </TouchableOpacity>
         )}
       </View>
-      
+
       {loading && (
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#007bff" />
+          <ActivityIndicator size="large" color={COLORS.INFO} />
           <Text>Procesando...</Text>
           <TouchableOpacity
             style={[styles.modalButton, styles.closeButton]}
@@ -654,12 +656,12 @@ export default function FacturasScreen() {
           </TouchableOpacity>
         </View>
       )}
-      
+
       {facturaData && (
         <View style={styles.facturaDataContainer}>
           <Text style={styles.cardTitle}>Datos de la Factura</Text>
           <View style={styles.modalDivider} />
-          
+
           {error ? (
             <Text style={styles.modalError}>{error}</Text>
           ) : (
@@ -672,7 +674,7 @@ export default function FacturasScreen() {
               <ModalRow label="Venc. después" value={facturaData.fec_venc_despues} />
             </View>
           )}
-          
+
           {!error && (
             <>
               <TouchableOpacity
@@ -683,10 +685,10 @@ export default function FacturasScreen() {
               >
                 <Text style={styles.modalButtonText}>Enviar datos</Text>
               </TouchableOpacity>
-              
+
             </>
           )}
-          
+
           {facturaData && facturaData.estado_rango === "FUERA DE RANGO" && (
             <View style={styles.comentarioContainer}>
               <Text style={styles.comentarioLabel}>
@@ -702,7 +704,7 @@ export default function FacturasScreen() {
               />
             </View>
           )}
-          
+
           <TouchableOpacity
             style={[styles.modalButton, styles.closeButton]}
             onPress={() => {
@@ -717,7 +719,7 @@ export default function FacturasScreen() {
           </TouchableOpacity>
         </View>
       )}
-      
+
       <View style={styles.buttonGroup}>
         <TouchableOpacity
           style={styles.tableButton}
@@ -734,7 +736,7 @@ export default function FacturasScreen() {
             Ver facturas guardadas ({facturasLocales.length})
           </Text>
         </TouchableOpacity>
-        
+
         {/* Botón para limpiar facturas manualmente */}
         {facturasLocales.length > 0 && (
           <TouchableOpacity
@@ -745,8 +747,8 @@ export default function FacturasScreen() {
                 `¿Estás seguro de que quieres eliminar todas las facturas guardadas? (${facturasLocales.length} facturas)`,
                 [
                   { text: 'Cancelar', style: 'cancel' },
-                  { 
-                    text: 'Limpiar', 
+                  {
+                    text: 'Limpiar',
                     style: 'destructive',
                     onPress: async () => {
                       await AsyncStorage.removeItem('facturas');
@@ -763,13 +765,13 @@ export default function FacturasScreen() {
           </TouchableOpacity>
         )}
       </View>
-      
+
       <FacturasModal
         visible={showModal}
         onClose={() => setShowModal(false)}
         facturasLocales={facturasLocales}
       />
-      
+
       <View style={styles.manualInputContainer}>
         <Text style={styles.manualInputLabel}>
           Ingresar factura manualmente
@@ -801,7 +803,7 @@ export default function FacturasScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f9fa',
+    backgroundColor: COLORS.LIGHT_BG,
   },
   scrollContent: {
     padding: isSmallDevice ? 16 : 24,
@@ -812,7 +814,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#f7f9fa',
+    backgroundColor: COLORS.LIGHT_BG,
   },
   permissionText: {
     fontSize: 16,
@@ -823,7 +825,7 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? 24 : 28,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#007bff',
+    color: COLORS.INFO,
     textAlign: 'center',
   },
   subtitle: {
@@ -834,7 +836,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   scanButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: COLORS.INFO,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -852,7 +854,7 @@ const styles = StyleSheet.create({
     }),
   },
   scanButtonText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -875,7 +877,7 @@ const styles = StyleSheet.create({
     }),
   },
   tableButtonText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -896,7 +898,7 @@ const styles = StyleSheet.create({
     padding: isSmallDevice ? 16 : 24,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     borderRadius: 16,
     padding: isSmallDevice ? 20 : 28,
     width: '100%',
@@ -918,7 +920,7 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? 20 : 22,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#007bff',
+    color: COLORS.INFO,
     alignSelf: 'center',
     textAlign: 'center',
   },
@@ -941,11 +943,11 @@ const styles = StyleSheet.create({
   },
   facturaNumero: {
     fontWeight: 'bold',
-    color: '#007bff',
+    color: COLORS.INFO,
     fontSize: 16,
   },
   facturaDescripcion: {
-    color: '#333',
+    color: COLORS.SECONDARY,
     fontSize: 14,
     marginTop: 2,
   },
@@ -961,7 +963,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#888',
+    color: COLORS.MUTED,
     textAlign: 'center',
   },
   modalButton: {
@@ -982,7 +984,7 @@ const styles = StyleSheet.create({
     }),
   },
   modalCloseButton: {
-    backgroundColor: '#888',
+    backgroundColor: COLORS.MUTED,
   },
   sendButton: {
     backgroundColor: '#17a2b8',
@@ -991,10 +993,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
   },
   closeButton: {
-    backgroundColor: '#888',
+    backgroundColor: COLORS.MUTED,
   },
   modalButtonText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -1016,7 +1018,7 @@ const styles = StyleSheet.create({
   },
   modalRowLabel: {
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.SECONDARY,
     minWidth: 100,
     fontSize: isSmallDevice ? 14 : 16,
   },
@@ -1045,12 +1047,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: '#007bff',
-    backgroundColor: '#222',
+    borderColor: COLORS.INFO,
+    backgroundColor: COLORS.SECONDARY,
   },
   facturaDataContainer: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     borderRadius: 10,
     padding: isSmallDevice ? 12 : 16,
     marginVertical: 8,
@@ -1066,12 +1068,12 @@ const styles = StyleSheet.create({
       },
     }),
     borderLeftWidth: 4,
-    borderLeftColor: '#007bff',
+    borderLeftColor: COLORS.INFO,
   },
   cardTitle: {
     fontSize: isSmallDevice ? 18 : 20,
     fontWeight: 'bold',
-    color: '#007bff',
+    color: COLORS.INFO,
     marginBottom: 6,
     textAlign: 'center',
   },
@@ -1080,13 +1082,13 @@ const styles = StyleSheet.create({
   },
   comentarioLabel: {
     fontWeight: 'bold',
-    color: '#d9534f',
+    color: COLORS.ERROR,
     marginBottom: 6,
     fontSize: isSmallDevice ? 14 : 16,
   },
   comentarioInput: {
     borderWidth: 1,
-    borderColor: '#d9534f',
+    borderColor: COLORS.ERROR,
     borderRadius: 6,
     padding: 10,
     minHeight: 80,
@@ -1100,7 +1102,7 @@ const styles = StyleSheet.create({
   manualInputLabel: {
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#007bff',
+    color: COLORS.INFO,
     fontSize: isSmallDevice ? 14 : 16,
   },
   manualInputRow: {
@@ -1109,17 +1111,17 @@ const styles = StyleSheet.create({
   },
   manualInput: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#007bff',
+    borderColor: COLORS.INFO,
     padding: 10,
     fontSize: 16,
     marginRight: 8,
     minHeight: 44,
   },
   consultButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: COLORS.INFO,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -1138,7 +1140,7 @@ const styles = StyleSheet.create({
     }),
   },
   consultButtonText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontWeight: 'bold',
     fontSize: 16,
   },

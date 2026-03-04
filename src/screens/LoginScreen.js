@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
+import COLORS from "../constants/Colors";
 // import { api } from "../services/api"; // Ya no se usa directamente aquí
 // import { Config, API_ENDPOINTS } from "../constants/Config"; // Ya no se usa directamente aquí
 
@@ -140,7 +141,7 @@ export default function LoginScreen({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Usuario"
-            placeholderTextColor="#000"
+            placeholderTextColor={COLORS.MUTED}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -155,7 +156,7 @@ export default function LoginScreen({ navigation }) {
             <TextInput
               style={[styles.input, styles.passwordInputBase]}
               placeholder="Contraseña"
-              placeholderTextColor="#000"
+              placeholderTextColor={COLORS.MUTED}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!isPasswordVisible} // Oculta/Muestra según el estado
@@ -182,7 +183,7 @@ export default function LoginScreen({ navigation }) {
               title={isLoading ? "Ingresando..." : "Ingresar"}
               onPress={handleLogin}
               disabled={isLoading} // Deshabilita el botón mientras la petición está en curso
-              color="#49AF4E" // Añadir color aquí puede ser útil para temas globales
+              color={COLORS.SUCCESS} // Añadir color aquí puede ser útil para temas globales
             />
             {/* Mejora de UX: Indicador de carga sutil si no se usa en el botón */}
             {/* {isLoading && <ActivityIndicator style={styles.loadingIndicator} color="#49AF4E" />} */}
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     marginBottom: 24,
     fontWeight: "bold",
-    color: "#49AF4E",
+    color: COLORS.SUCCESS,
     letterSpacing: 1,
   },
   // Estilo base para el TextInput
@@ -240,12 +241,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderWidth: 1.5,
-    borderColor: "#1A9888",
+    borderColor: COLORS.PRIMARY,
     borderRadius: 10,
     marginBottom: 18,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: COLORS.LIGHT_BG,
     fontSize: 16,
-    color: "#222",
+    color: COLORS.TEXT,
   },
   passwordContainer: {
     width: "100%",
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   },
   showPasswordText: {
     fontSize: 22,
-    color: "#1A9888",
+    color: COLORS.PRIMARY,
   },
   buttonWrapper: {
     // Renombrado de 'button' a 'buttonWrapper' para mayor claridad

@@ -18,6 +18,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { showMessage } from "react-native-flash-message";
+import COLORS from '../constants/Colors';
+
 
 // ===== CONSTANTES Y CONFIGURACIÓN =====
 const API_URL = "https://98.94.185.164.nip.io/api/gestiones";
@@ -29,8 +31,8 @@ const RADIO_OPTIONS = [
 ];
 
 const RADIO_TIPO_GESTION = [
-  { label: "Concretada", value: "concretada", color: "#49AF4E" },
-  { label: "En Proceso", value: "en_proceso", color: "#FFD600" },
+  { label: "Concretada", value: "concretada", color: COLORS.SUCCESS },
+  { label: "En Proceso", value: "en_proceso", color: COLORS.WARNING },
   { label: "Negativa", value: "negativa", color: "#FF3B30" },
 ];
 
@@ -47,14 +49,14 @@ const GestionTypes = {
 };
 
 const Colors = {
-  PRIMARY: "#1A9888",
-  SECONDARY: "#49AF4E",
-  WARNING: "#FFD600",
+  PRIMARY: COLORS.PRIMARY,
+  SECONDARY: COLORS.SUCCESS,
+  WARNING: COLORS.WARNING,
   ERROR: "#FF3B30",
   BACKGROUND: "#F8FAFC",
-  TEXT: "#333333",
-  LIGHT_TEXT: "#888888",
-  WHITE: "#FFFFFF",
+  TEXT: COLORS.SECONDARY,
+  LIGHT_TEXT: COLORS.MUTED,
+  WHITE: COLORS.WHITE,
   LIGHT_BACKGROUND: "#E3F6F2",
   DARK_YELLOW: "#FFC107"
 };
@@ -678,7 +680,7 @@ export default function VisitaScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: "#d9534f" }]}
+          style={[styles.roundButton, { backgroundColor: COLORS.ERROR }]}
           onPress={handleDeleteGestionesEnviadas}
           activeOpacity={0.8}
           accessibilityLabel="Eliminar gestiones enviadas"
@@ -921,7 +923,7 @@ export default function VisitaScreen() {
         statusBarTranslucent={true}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: "#f7f9fa", borderColor: Colors.SECONDARY, borderWidth: 2 }]}>
+          <View style={[styles.modalContent, { backgroundColor: COLORS.LIGHT_BG, borderColor: Colors.SECONDARY, borderWidth: 2 }]}>
             <Text style={[styles.title, { color: Colors.SECONDARY, marginBottom: 12 }]}>Detalle de Gestión</Text>
             
             {gestionSeleccionada && (
@@ -1101,7 +1103,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderBottomColor: COLORS.BORDER,
   },
   clienteItemSelected: {
     backgroundColor: Colors.PRIMARY,

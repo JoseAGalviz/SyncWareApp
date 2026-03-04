@@ -10,6 +10,9 @@ import FacturasScreen from "../screens/FacturasScreen";
 import RecepcionGuiasScreen from "../screens/RecepcionGuiasScreen";
 import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 import PedidosHistorialScreen from "../screens/PedidosHistorialScreen";
+import MatrixExcelScreen from "../screens/MatrixExcelScreen";
+import COLORS from '../constants/Colors';
+
 
 const Tab = createBottomTabNavigator();
 
@@ -20,7 +23,7 @@ function DrawerMenuButton() {
       onPress={() => navigation.openDrawer()}
       style={{ marginLeft: 15 }}
     >
-      <Ionicons name="menu" size={30} color="#fff" />
+      <Ionicons name="menu" size={30} color={COLORS.WHITE} />
     </TouchableOpacity>
   );
 }
@@ -36,9 +39,9 @@ export default function AppNavigator() {
           backgroundColor: "#000", // Negro para el header
         },
         headerTitleStyle: {
-          color: "#fff", // Blanco para el texto del header
+          color: COLORS.WHITE, // Blanco para el texto del header
         },
-        headerTintColor: "#fff", // Blanco para íconos y flechas
+        headerTintColor: COLORS.WHITE, // Blanco para íconos y flechas
         headerLeft: () => <DrawerMenuButton />,
         headerRight: () => (
           <Image
@@ -67,11 +70,13 @@ export default function AppNavigator() {
             iconName = focused ? "cart" : "cart-outline";
           } else if (route.name === "Historial") {
             iconName = focused ? "clipboard" : "clipboard-outline";
+          } else if (route.name === "Consulta Matrix") {
+            iconName = focused ? "grid" : "grid-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#49AF4E",
-        tabBarInactiveTintColor: "#1A9888",
+        tabBarActiveTintColor: COLORS.SUCCESS,
+        tabBarInactiveTintColor: COLORS.PRIMARY,
         tabBarStyle: {
           backgroundColor: "#000", // Negro para el tabBar
         },
@@ -81,17 +86,9 @@ export default function AppNavigator() {
       <Tab.Screen name="Visita" component={VisitaScreen} />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen
-        name="Recibir Guías de Carga"
-        component={RecepcionGuiasScreen}
-      />
-      <Tab.Screen
         name="Montar Pedidos"
         component={MontarPedidoScreen}
         options={{ headerShown: false }}
-      />
-      <Tab.Screen
-        name="Historial"
-        component={PedidosHistorialScreen}
       />
     </Tab.Navigator>
   );

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import COLORS from '../constants/Colors';
+
 
 export default function HomeScreenConductor() {
   const [user, setUser] = useState(null);
@@ -54,11 +56,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1 
   },
   card: { 
-    backgroundColor: '#fff', 
+    backgroundColor: COLORS.WHITE, 
     borderRadius: 18, 
     padding: 32, 
     elevation: 6, 
-    shadowColor: '#1A9888', 
+    shadowColor: COLORS.PRIMARY, 
     shadowOpacity: 0.15, 
     shadowRadius: 10, 
     shadowOffset: { width: 0, height: 4 },
@@ -69,14 +71,14 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#1A9888',
+    backgroundColor: COLORS.PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 18,
     elevation: 3,
   },
   avatarText: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontSize: 34,
     fontWeight: 'bold',
   },
@@ -90,16 +92,16 @@ const styles = StyleSheet.create({
   },
   label: { 
     fontWeight: 'bold', 
-    color: '#1A9888', 
+    color: COLORS.PRIMARY, 
     fontSize: 17 
   },
   value: { 
-    color: '#333', 
+    color: COLORS.SECONDARY, 
     fontSize: 17, 
     fontWeight: '600' 
   },
   loading: {
-    color: '#888',
+    color: COLORS.MUTED,
     fontSize: 16,
   },
 });
