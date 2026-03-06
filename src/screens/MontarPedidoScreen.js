@@ -199,8 +199,13 @@ const MontarPedidoScreen = ({ navigation }) => {
             // Mapear los datos del API al formato que usa el componente
             const mappedProducts = data.map((item, index) => {
                 const basePrice = item.Precio ? parseFloat(item.Precio) : 0;
-                const discountedPrice = basePrice * (1 - (globalDiscount / 100));
-                const priceLabel = discountedPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                const catDiscount = item.descuento_por_categoria || 0;
+                const lineDiscount = item.descuento_por_linea || 0;
+                // Paso 1: aplicar descuento por categoría del producto
+                const priceAfterCategoryDiscount = basePrice * (1 - (catDiscount / 100));
+                // Paso 2: sobre ese resultado, aplicar el descuento global del cliente
+                const finalPrice = priceAfterCategoryDiscount * (1 - (globalDiscount / 100));
+                const priceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
                 return {
                     id: item.imagen || index,
@@ -213,9 +218,9 @@ const MontarPedidoScreen = ({ navigation }) => {
                     expiry: item.descripcion.match(/FV\.?\s*(\d{2}\/\d{4})/)?.[1] || 'N/A',
                     quantity: 0,
                     subtotal: 0,
-                    priceNum: discountedPrice, // Store discounted numeric price for calcs
-                    categoryDiscount: item.descuento_por_categoria || 0,
-                    lineDiscount: item.descuento_por_linea || 0,
+                    priceNum: finalPrice, // Precio final con ambos descuentos aplicados
+                    categoryDiscount: catDiscount,
+                    lineDiscount: lineDiscount,
                     category: item.linea || item.categoria || 'General',
                     co_art: item.co_art || item.imagen,
                     marca: item.marca || 'N/A'

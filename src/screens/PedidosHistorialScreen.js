@@ -81,9 +81,9 @@ const PedidosHistorialScreen = ({ navigation }) => {
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(p =>
-                p.codigo_pedido?.toLowerCase().includes(query) ||
-                p.nombre_cliente?.toLowerCase().includes(query) ||
-                p.cod_cliente?.toLowerCase().includes(query)
+                String(p.codigo_pedido || '').toLowerCase().includes(query) ||
+                String(p.nombre_cliente || '').toLowerCase().includes(query) ||
+                String(p.cod_cliente || '').toLowerCase().includes(query)
             );
         }
 

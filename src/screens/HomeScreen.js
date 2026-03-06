@@ -355,6 +355,21 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
+          {user && user.co_ven && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#7B5EA7' }]}
+              onPress={() => Linking.openURL('https://despacho.cristmedicals.com/listado/negociacion.php')}
+              accessibilityLabel="Ir a Comparador de Precios y Negociaciones"
+              accessibilityHint="Abre la pantalla de Comparador de Precios y Negociaciones"
+            >
+              <View style={styles.btnIconContainer}>
+                <Ionicons name="swap-horizontal" size={22} color={COLORS.WHITE} />
+              </View>
+              <Text style={styles.actionButtonText}>Comparador - Precios - Negociaciones</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
+            </TouchableOpacity>
+          )}
+
 
           {/* KPI Metrics Section */}
           {loadingKpi && (
