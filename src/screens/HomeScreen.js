@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions, Linking, Modal, TextInput, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions, Linking, Modal, TextInput, Platform, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncAllData } from '../services/syncAllData'; // Importa la función correctamente
@@ -7,6 +7,7 @@ import FlashMessage, { showMessage } from "react-native-flash-message";
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import COLORS from '../constants/Colors';
+import styles from '../styles/HomeScreen.styles';
 
 // Constantes para evitar "magic strings"
 const STORAGE_KEYS = {
@@ -38,6 +39,7 @@ export default function HomeScreen({ navigation }) {
   // Estados para KPI data
   const [kpiData, setKpiData] = useState(null);
   const [loadingKpi, setLoadingKpi] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // ... (rest of the functions remain the same until handleCobranzaPreventiva)
 
@@ -89,8 +91,14 @@ export default function HomeScreen({ navigation }) {
 
     setLoadingKpi(true);
     try {
-      const endpoint = `/api/auditoria/kpi-metas?co_ven=${user.co_ven}`;
-      const response = await api.get(endpoint);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      const fechaInicio = `${year}-${month}-01`;
+      const fechaFin = `${year}-${month}-${lastDay}`;
+      const endpoint = `/api/auditoria/kpi-metas?co_ven=${user.co_ven}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+      const response = await api.request(endpoint, { method: 'GET', timeout: 120000 });
 
       if (response && response.length > 0) {
         setKpiData(response[0]); // Asumiendo que viene un array con el primer elemento
@@ -107,6 +115,18 @@ export default function HomeScreen({ navigation }) {
       setLoadingKpi(false);
     }
   }, [user]);
+
+  // Pull to refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Ejecutamos en paralelo la carga de datos locales y los KPIs
+    await Promise.all([
+      fetchKpiData(),
+      obtenerTotales(),
+      cargarClientes()
+    ]);
+    setRefreshing(false);
+  }, [fetchKpiData, obtenerTotales, cargarClientes]);
 
   // Manejar la sincronización de datos
   const handleSync = useCallback(async () => {
@@ -274,6 +294,14 @@ export default function HomeScreen({ navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.PRIMARY]}
+            tintColor={COLORS.PRIMARY}
+          />
+        }
       >
         <View style={styles.container}>
           <Text style={styles.subtitle}>Hola, {user ? user.nombre : 'Usuario'}</Text>
@@ -394,12 +422,12 @@ export default function HomeScreen({ navigation }) {
                 </View>
                 <View style={styles.kpiDataItem}>
                   <Text style={styles.kpiDataLabel}>Ventas Actuales:</Text>
-                  <Text style={styles.kpiDataValue}>${Number(kpiData.ventas_factura_sum || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  <Text style={styles.kpiDataValue}>${(Number(kpiData.ventas_factura_sum || 0) * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={styles.kpiDataItem}>
                   <Text style={styles.kpiDataLabel}>% Cumplido:</Text>
                   <Text style={styles.kpiDataValue}>
-                    {Number(kpiData.metaVentas) > 0 ? ((Number(kpiData.ventas_factura_sum) / Number(kpiData.metaVentas)) * 100).toFixed(2) : '0.00'}%
+                    {Number(kpiData.metaVentas) > 0 ? ((Number(kpiData.ventas_factura_sum) * 0.9 / Number(kpiData.metaVentas)) * 100).toFixed(2) : '0.00'}%
                   </Text>
                 </View>
 
@@ -587,368 +615,4 @@ export default function HomeScreen({ navigation }) {
 }
 
 // Estilos adaptados y reorganizados
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: '4%',
-    paddingTop: 30,
-    width: '100%',
-    minHeight: '100%',
-  },
-  subtitle: {
-    fontSize: 24,
-    color: COLORS.SECONDARY,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-    textAlign: 'left',
-    width: '100%',
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: COLORS.MUTED,
-    marginBottom: 20,
-    textAlign: 'left',
-    width: '100%',
-  },
-  syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    width: '100%',
-    maxWidth: 500,
-  },
-  syncButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.WHITE,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    minWidth: 140,
-  },
-  syncButtonText: {
-    color: COLORS.PRIMARY,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  syncIcon: {
-    marginRight: 6,
-  },
-  clientesInfoBox: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    minWidth: 100,
-    maxWidth: SCREEN_WIDTH * 0.45,
-    shadowColor: COLORS.SECONDARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  infoTitle: {
-    color: COLORS.MUTED,
-    fontWeight: '600',
-    fontSize: 12,
-    marginBottom: 2,
-    textAlign: 'center',
-    width: '100%',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  infoNumber: {
-    color: COLORS.PRIMARY,
-    fontWeight: 'bold',
-    fontSize: 34,
-    marginVertical: 2,
-    textAlign: 'center',
-    width: '100%',
-  },
-  infoSubtitle: {
-    color: COLORS.MUTED,
-    fontSize: 12,
-    textAlign: 'center',
-    width: '100%',
-  },
-  menuButton: {
-    marginLeft: 15,
-  },
-  syncingOverlay: {
-    position: 'absolute',
-    top: '40%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingVertical: 40,
-    width: '100%',
-  },
-  syncingText: {
-    marginTop: 16,
-    fontSize: 18,
-    color: COLORS.PRIMARY,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    width: '100%',
-  },
-  syncDetailBox: {
-    marginTop: 30,
-    backgroundColor: COLORS.LIGHT_BACKGROUND,
-    borderRadius: 10,
-    padding: 18,
-    width: '100%',
-    maxWidth: 500,
-    alignSelf: 'center',
-    elevation: 2,
-  },
-  syncDetailTitle: {
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-    width: '100%',
-  },
-  syncDetailItem: {
-    fontSize: 15,
-    color: COLORS.TEXT,
-    marginBottom: 4,
-    textAlign: 'center',
-    width: '100%',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.ACCENT,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    marginTop: 15,
-    width: '100%',
-    maxWidth: 500,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  btnIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  actionButtonText: {
-    color: COLORS.WHITE,
-    fontWeight: 'bold',
-    fontSize: 17,
-    letterSpacing: 0.5,
-    flex: 1,
-  },
-  btnIcon: {
-    marginRight: 10,
-  },
-  // Estilos del Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 20,
-    padding: 25,
-    width: '100%',
-    maxWidth: 340,
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
-    marginBottom: 10,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: COLORS.TEXT,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  discountInput: {
-    width: '100%',
-    height: 50,
-    borderWidth: 2,
-    borderColor: COLORS.PRIMARY,
-    borderRadius: 10,
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
-    marginBottom: 25,
-    backgroundColor: COLORS.LIGHT_BG,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  cancelButton: {
-    backgroundColor: '#EEEEEE',
-  },
-  confirmButton: {
-    backgroundColor: COLORS.PRIMARY,
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  confirmButtonText: {
-    color: COLORS.WHITE,
-    fontWeight: 'bold',
-  },
-  // Loading and Container Styles
-  kpiLoadingContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-    padding: 20,
-  },
-  kpiLoadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.PRIMARY,
-    fontWeight: '600',
-  },
-  kpiContainer: {
-    marginTop: 15,
-    width: '100%',
-    maxWidth: 500,
-    paddingBottom: 20,
-  },
-  // KPI Revamp Styles
-  kpiHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    width: '100%',
-  },
-  kpiHeaderBox: {
-    flex: 1,
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 12,
-    padding: 15,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  kpiHeaderLabel: {
-    fontSize: 13,
-    color: COLORS.TEXT,
-    marginBottom: 5,
-    fontWeight: '600',
-  },
-  kpiHeaderValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
-  },
-  kpiNewSection: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-  },
-  kpiTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  kpiNewSectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.SECONDARY,
-    marginLeft: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  kpiDataItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  kpiDataLabel: {
-    fontSize: 14,
-    color: COLORS.MUTED,
-    flex: 1,
-    fontWeight: '500',
-  },
-  kpiDataValue: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.TEXT,
-    textAlign: 'right',
-  },
-  kpiDivider: {
-    height: 1,
-    backgroundColor: '#EDF2F7',
-    width: '100%',
-  },
-});
+

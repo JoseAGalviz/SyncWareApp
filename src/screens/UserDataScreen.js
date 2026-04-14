@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Image, Alert, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import COLORS from '../constants/Colors';
+import styles from '../styles/UserDataScreen.styles';
 
 
 export default function UserDataScreen({ navigation }) {
@@ -108,84 +109,3 @@ export default function UserDataScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#e9f5ee',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        marginBottom: 18,
-        marginLeft: 5,
-        marginTop: 10,
-    },
-    backText: {
-        color: COLORS.SUCCESS,
-        fontSize: 17,
-        marginLeft: 6,
-        fontWeight: 'bold',
-    },
-    card: {
-        width: '100%',
-        maxWidth: 400,
-        backgroundColor: COLORS.WHITE,
-        borderRadius: 18,
-        paddingVertical: 32,
-        paddingHorizontal: 28,
-        shadowColor: COLORS.SUCCESS,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.13,
-        shadowRadius: 10,
-        elevation: 7,
-        alignItems: 'center',
-    },
-    logo: {
-        width: 220,
-        height: 115,
-        marginBottom: 5,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.SUCCESS,
-        marginBottom: 24,
-        letterSpacing: 1,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        marginBottom: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-        paddingBottom: 6,
-    },
-    label: {
-        fontWeight: 'bold',
-        color: COLORS.PRIMARY,
-        fontSize: 16,
-        width: 120,
-    },
-    value: {
-        color: COLORS.SECONDARY,
-        fontSize: 16,
-        flex: 1,
-        textAlign: 'right',
-    },
-    segmentList: {
-        width: '100%',
-        paddingLeft: 8,
-        marginBottom: 6,
-    },
-    segmentItem: {
-        color: COLORS.SECONDARY,
-        fontSize: 15,
-        marginBottom: 2.5,
-        textAlign: 'right',
-    },
-});

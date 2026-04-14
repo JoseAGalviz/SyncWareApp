@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   TextInput,
@@ -17,7 +16,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-import COLORS from '../constants/Colors';
+import Theme from '../constants/Theme';
+import styles from '../styles/ChequeoGuiaCargaScreen.styles';
 
 
 export default function ChequeoGuiaCargaScreen() {
@@ -513,19 +513,19 @@ export default function ChequeoGuiaCargaScreen() {
         <View style={{ marginBottom: 10 }}>
           <TouchableOpacity
             style={{
-              backgroundColor: COLORS.SUCCESS,
-              borderRadius: 8,
-              paddingVertical: 10,
-              paddingHorizontal: 18,
+              backgroundColor: Theme.colors.success,
+              borderRadius: Theme.radius.md,
+              paddingVertical: Theme.spacing.md,
+              paddingHorizontal: Theme.spacing.xl,
               alignSelf: "center",
               marginBottom: 6,
-              elevation: 2,
               flexDirection: "row",
               alignItems: "center",
+              ...Theme.shadow.xs,
             }}
             onPress={() => setMostrarCargadas(!mostrarCargadas)}
           >
-            <Text style={{ color: COLORS.WHITE, fontWeight: "bold", fontSize: 16 }}>
+            <Text style={{ color: Theme.colors.white, fontWeight: "700", fontSize: 16 }}>
               {mostrarCargadas ? "Ocultar" : "Ver"} Guías Cargadas
             </Text>
           </TouchableOpacity>
@@ -597,7 +597,7 @@ export default function ChequeoGuiaCargaScreen() {
               </Text>
               {esGuiaProcesada(item.numeroCarga) && (
                 <Text
-                  style={{ color: COLORS.ERROR, fontWeight: "bold", marginTop: 4 }}
+                  style={{ color: Theme.colors.error, fontWeight: "700", marginTop: 4 }}
                 >
                   Ya registrada
                 </Text>
@@ -630,7 +630,7 @@ export default function ChequeoGuiaCargaScreen() {
         />
         {loading && (
           <View style={styles.overlay}>
-            <ActivityIndicator size="large" color={COLORS.INFO} />
+            <ActivityIndicator size="large" color={Theme.colors.info} />
             <Text>Procesando escaneo...</Text>
           </View>
         )}
@@ -644,8 +644,8 @@ export default function ChequeoGuiaCargaScreen() {
           <View style={styles.result}>
             <Text
               style={{
-                color: COLORS.ERROR,
-                fontWeight: "bold",
+                color: Theme.colors.error,
+                fontWeight: "700",
                 alignSelf: "center",
                 marginBottom: 6,
               }}
@@ -691,7 +691,7 @@ export default function ChequeoGuiaCargaScreen() {
         >
           <TouchableOpacity onPress={volver}>
             <Text
-              style={{ color: COLORS.PRIMARY, marginBottom: 10, fontWeight: "bold" }}
+              style={{ color: Theme.colors.primary, marginBottom: 10, fontWeight: "700" }}
             >
               ← Volver
             </Text>
@@ -729,7 +729,7 @@ export default function ChequeoGuiaCargaScreen() {
                 />
                 {loading && (
                   <View style={styles.overlay}>
-                    <ActivityIndicator size="large" color={COLORS.INFO} />
+                    <ActivityIndicator size="large" color={Theme.colors.info} />
                     <Text>Procesando escaneo...</Text>
                   </View>
                 )}
@@ -741,8 +741,8 @@ export default function ChequeoGuiaCargaScreen() {
         {errorScan ? (
           <Text
             style={{
-              color: COLORS.ERROR,
-              fontWeight: "bold",
+              color: Theme.colors.error,
+              fontWeight: "700",
               alignSelf: "center",
               marginBottom: 6,
             }}
@@ -816,9 +816,9 @@ export default function ChequeoGuiaCargaScreen() {
                 marginTop: 10,
                 color:
                   notasVerificadas.length === guiaSeleccionada.detalle.length
-                    ? COLORS.SUCCESS
-                    : COLORS.ERROR,
-                fontWeight: "bold",
+                    ? Theme.colors.success
+                    : Theme.colors.error,
+                fontWeight: "700",
                 alignSelf: "center",
               }}
             >
@@ -847,15 +847,15 @@ export default function ChequeoGuiaCargaScreen() {
                 contentContainerStyle={{ flexGrow: 1 }}
               >
                 <View style={{ marginBottom: 8 }}>
-                  <Text style={{ fontWeight: "bold", color: COLORS.ERROR }}>
+                  <Text style={{ fontWeight: "700", color: Theme.colors.error }}>
                     Detalle de faltantes:
                   </Text>
                   <Text
                     style={{
-                      backgroundColor: "#f2fcf6",
-                      padding: 8,
-                      borderRadius: 6,
-                      color: COLORS.SECONDARY,
+                      backgroundColor: Theme.colors.successLight,
+                      padding: Theme.spacing.sm,
+                      borderRadius: Theme.radius.sm,
+                      color: Theme.colors.dark,
                     }}
                   >
                     {detalleFaltantes}
@@ -880,7 +880,7 @@ export default function ChequeoGuiaCargaScreen() {
               textAlignVertical="top"
             />
             <TouchableOpacity style={styles.saveButton} onPress={enviarDatos}>
-              <Text style={[styles.saveButtonText, { color: COLORS.WHITE }]}>
+              <Text style={styles.saveButtonText}>
                 Enviar datos
               </Text>
             </TouchableOpacity>
@@ -890,7 +890,7 @@ export default function ChequeoGuiaCargaScreen() {
         {/* Agrega el botón para registrar guía incompleta antes del comentario */}
         {!showComentario && (
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: COLORS.WARNING }]}
+            style={[styles.saveButton, { backgroundColor: Theme.colors.warning }]}
             onPress={() => {
               // Generar detalle exacto de faltantes
               const faltantes = guiaSeleccionada.detalle
@@ -939,7 +939,7 @@ export default function ChequeoGuiaCargaScreen() {
               );
             }}
           >
-            <Text style={[styles.saveButtonText, { color: COLORS.SECONDARY }]}>
+            <Text style={[styles.saveButtonText, { color: Theme.colors.dark }]}>
               Registrar guía incompleta
             </Text>
           </TouchableOpacity>
@@ -948,10 +948,10 @@ export default function ChequeoGuiaCargaScreen() {
         {/* Mostrar el JSON generado */}
         {jsonGenerado && (
           <View style={styles.jsonBox}>
-            <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
+            <Text style={{ fontWeight: "700", marginBottom: 6 }}>
               JSON generado:
             </Text>
-            <Text style={{ fontSize: 13, color: COLORS.SECONDARY }}>
+            <Text style={{ fontSize: 13, color: Theme.colors.dark }}>
               {JSON.stringify(jsonGenerado, null, 2)}
             </Text>
           </View>
@@ -962,261 +962,6 @@ export default function ChequeoGuiaCargaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.LIGHT_BG, padding: 16 },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.PRIMARY,
-    marginBottom: 10,
-    alignSelf: "center",
-  },
-  guiaItem: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#000000ff",
-  },
-  guiaText: { fontWeight: "bold", fontSize: 17, color: "#1046e7ff" },
-  guiaSubText: {
-    color: "#175a05ff",
-    fontSize: 14,
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  empty: {
-    color: COLORS.MUTED,
-    fontStyle: "italic",
-    alignSelf: "center",
-    marginTop: 40,
-  },
-  pedidosCount: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.WHITE,
-    backgroundColor: COLORS.SUCCESS,
-    paddingVertical: 6,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    alignSelf: "center",
-    marginBottom: 8,
-    marginTop: 8,
-    elevation: 2,
-  },
-  pedidosCountNumber: {
-    color: COLORS.WHITE,
-    fontWeight: "bold",
-    fontSize: 20,
-  },
-  input: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: COLORS.PRIMARY,
-    marginBottom: 10,
-    marginTop: 5,
-  },
-  scanButton: {
-    backgroundColor: COLORS.INFO,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 8,
-    elevation: 2,
-    marginBottom: 10,
-    alignSelf: "center",
-  },
-  scanButtonText: {
-    color: COLORS.WHITE,
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    borderRadius: 10,
-    marginBottom: 18,
-    backgroundColor: COLORS.WHITE,
-    overflow: "hidden",
-    elevation: 1,
-  },
-  tableRowHeader: {
-    flexDirection: "row",
-    backgroundColor: COLORS.SUCCESS,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  tableHeaderCell: {
-    flex: 1,
-    color: COLORS.WHITE,
-    fontWeight: "bold",
-    padding: 8,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  tableRow: { flexDirection: "row", alignItems: "center", minHeight: 36 },
-  tableCell: {
-    flex: 1,
-    padding: 8,
-    fontSize: 13,
-    color: COLORS.SECONDARY,
-    textAlign: "center",
-  },
-  rowEven: { backgroundColor: "#e9f7ef" },
-  rowOdd: { backgroundColor: "#f2fcf6" },
-  rowChecked: { backgroundColor: COLORS.PRIMARY },
-  rowUno: { backgroundColor: COLORS.WARNING }, // Amarillo si solo uno escaneado
-  rowAmbos: { backgroundColor: COLORS.SUCCESS }, // Verde si ambos escaneados
-  cellFactura: { color: COLORS.INFO, fontWeight: "bold" }, // Azul para factura escaneada
-  cellNota: { color: "#FF3B30", fontWeight: "bold" }, // Rojo para nota escaneada
-  cellAmbos: { color: COLORS.WHITE, fontWeight: "bold" }, // Blanco si ambos escaneados
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: COLORS.LIGHT_BG,
-  },
-  backButton: {
-    marginTop: 24,
-    backgroundColor: COLORS.MUTED,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    elevation: 2,
-    alignSelf: "center",
-  },
-  backButtonText: {
-    color: COLORS.WHITE,
-    fontSize: 16,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  result: {
-    position: "absolute",
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    padding: 16,
-    borderRadius: 8,
-    marginHorizontal: 16,
-  },
-  comentarioBox: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 10,
-    padding: 16,
-    marginTop: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-  },
-  saveButton: {
-    backgroundColor: COLORS.SUCCESS,
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignSelf: "center",
-    marginTop: -20,
-    elevation: 1,
-    minHeight: 48,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  saveButtonText: {
-    color: COLORS.WHITE,
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  jsonBox: {
-    backgroundColor: COLORS.LIGHT_BG,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 10,
-    elevation: 1,
-    borderWidth: 1,
-    borderColor: "#bbb",
-  },
-  escobaButton: {
-    backgroundColor: "transparent",
-    padding: 4,
-    borderRadius: 20,
-    marginLeft: 8,
-    marginTop: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  labelCargadas: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.SUCCESS,
-    marginTop: 10,
-    marginBottom: 4,
-    alignSelf: "center",
-  },
-  labelPendientes: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.ERROR,
-    marginTop: 18,
-    marginBottom: 4,
-    alignSelf: "center",
-  },
-  guiaItemCargada: {
-    backgroundColor: "#e9f7ef",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: COLORS.SUCCESS,
-  },
-  guiaItemDeshabilitada: {
-    opacity: 0.5,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.ERROR,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    alignSelf: "center",
-    marginTop: 10,
-    elevation: 2,
-  },
-  deleteButtonText: {
-    color: COLORS.WHITE,
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  cameraContainer: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 12,
-    backgroundColor: "#000",
-    alignSelf: "center",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  camera: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 12,
-  },
-});
 
 function transformarNumFactura(num_factura) {
   if (num_factura === null || num_factura === undefined) return '';

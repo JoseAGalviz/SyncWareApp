@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
@@ -19,10 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { showMessage } from "react-native-flash-message";
 import COLORS from '../constants/Colors';
-
-
-// ===== CONSTANTES Y CONFIGURACIÓN =====
-const API_URL = "https://98.94.185.164.nip.io/api/gestiones";
+import styles from '../styles/VisitaScreen.styles';
+import { API_ENDPOINTS } from '../constants/Config';
+import { api } from '../services/api';
 
 const RADIO_OPTIONS = [
   { label: "Venta", value: "venta" },
@@ -450,39 +448,30 @@ export default function VisitaScreen() {
 
       const payload = { usuario, gestiones: gestionesPendientes };
 
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const data = await api.post(API_ENDPOINTS.GESTIONES, payload);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data && typeof data.insertadas === "number" && typeof data.omitidas === "number") {
-          // Marcar gestiones como enviadas
-          const gestionesActualizadas = gestiones.map(g => 
-            gestionesPendientes.some(p => p.id === g.id) ? { ...g, enviada: true } : g
-          );
-          await AsyncStorage.setItem(StorageKeys.GESTIONES, JSON.stringify(gestionesActualizadas));
-          await loadGestiones(); // <-- Agrega esta línea para refrescar el estado
+      if (data && typeof data.insertadas === "number" && typeof data.omitidas === "number") {
+        // Marcar gestiones como enviadas
+        const gestionesActualizadas = gestiones.map(g =>
+          gestionesPendientes.some(p => p.id === g.id) ? { ...g, enviada: true } : g
+        );
+        await AsyncStorage.setItem(StorageKeys.GESTIONES, JSON.stringify(gestionesActualizadas));
+        await loadGestiones();
 
-          let mensaje = "";
-          if (data.insertadas > 0 && data.omitidas === 0) {
-            mensaje = `¡${data.insertadas} gestiones insertadas exitosamente!`;
-          } else if (data.insertadas > 0 && data.omitidas > 0) {
-            mensaje = `¡${data.insertadas} gestiones nuevas insertadas!\n${data.omitidas} gestiones omitidas por estar repetidas.`;
-          } else if (data.insertadas === 0 && data.omitidas > 0) {
-            mensaje = `Todas las gestiones fueron omitidas (${data.omitidas}) porque ya existen en la base de datos.`;
-          } else {
-            mensaje = "No se procesaron gestiones.";
-          }
-          
-          Alert.alert("Gestiones cargadas", mensaje, [{ text: "OK", style: "default" }]);
+        let mensaje = "";
+        if (data.insertadas > 0 && data.omitidas === 0) {
+          mensaje = `¡${data.insertadas} gestiones insertadas exitosamente!`;
+        } else if (data.insertadas > 0 && data.omitidas > 0) {
+          mensaje = `¡${data.insertadas} gestiones nuevas insertadas!\n${data.omitidas} gestiones omitidas por estar repetidas.`;
+        } else if (data.insertadas === 0 && data.omitidas > 0) {
+          mensaje = `Todas las gestiones fueron omitidas (${data.omitidas}) porque ya existen en la base de datos.`;
         } else {
-          Alert.alert("Error", "No se pudo cargar la información.");
+          mensaje = "No se procesaron gestiones.";
         }
+
+        Alert.alert("Gestiones cargadas", mensaje, [{ text: "OK", style: "default" }]);
       } else {
-        Alert.alert("Error", "No se pudo conectar con el servidor.");
+        Alert.alert("Error", "No se pudo cargar la información.");
       }
     } catch (error) {
       console.error("Error al subir gestiones:", error); // <-- Agrega este log
@@ -1004,256 +993,4 @@ export default function VisitaScreen() {
 }
 
 // ===== ESTILOS =====
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.BACKGROUND,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: Colors.TEXT,
-    marginBottom: 10,
-    textAlign: "center",
-    letterSpacing: 1,
-  },
-  label: {
-    fontWeight: "600",
-    color: Colors.PRIMARY,
-    marginTop: 12,
-    marginBottom: 4,
-    fontSize: 15,
-  },
-  gestionesList: {
-    flex: 1,
-  },
-  gestionItem: {
-    backgroundColor: Colors.WHITE,
-    borderRadius: 10,
-    padding: 12,
-    marginHorizontal: 18,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  gestionCliente: {
-    fontWeight: "bold",
-    color: Colors.TEXT,
-    fontSize: 16,
-  },
-  gestionInfo: {
-    color: Colors.PRIMARY,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  gestionDesc: {
-    color: Colors.TEXT,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  gestionFecha: {
-    color: Colors.TEXT,
-    fontSize: 15,
-    marginTop: 2,
-    textAlign: "right",
-  },
-  fabRow: {
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    zIndex: 20,
-  },
-  roundButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 27,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 16,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
-    borderRadius: 8,
-    padding: 10,
-    backgroundColor: Colors.WHITE,
-    fontSize: 15,
-    color: Colors.TEXT,
-    marginBottom: 10, // <-- Añade margen inferior para separar los inputs
-  },
-  inputMultiline: {
-    minHeight: 80, // <-- Aumenta la altura mínima para inputs multilinea
-    textAlignVertical: "top",
-  },
-  clienteItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  clienteItemSelected: {
-    backgroundColor: Colors.PRIMARY,
-  },
-  clienteText: {
-    fontSize: 15,
-    color: Colors.TEXT,
-  },
-  selectedClienteLabel: {
-    color: Colors.SECONDARY,
-    marginBottom: 8,
-    marginTop: 8,
-    fontSize: 15,
-  },
-  radioGroup: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 10,
-    marginBottom: 18,
-  },
-  radioOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 18,
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: Colors.PRIMARY,
-    marginRight: 7,
-    backgroundColor: Colors.WHITE,
-  },
-  radioCircleSelected: {
-    backgroundColor: Colors.SECONDARY,
-    borderColor: Colors.SECONDARY,
-  },
-  radioLabel: {
-    fontSize: 15,
-    color: Colors.TEXT,
-  },
-  formButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    elevation: 2,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  actionButtonText: {
-    color: Colors.WHITE,
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-  cancelButton: {
-    backgroundColor: "#bdbdbd",
-    padding: 12,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButtonText: {
-    color: Colors.TEXT,
-    fontWeight: "bold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  modalContent: {
-    width: "100%",
-    maxHeight: "100%", // <-- Cambia de "90%" a "100%" para mejor adaptación con el teclado
-    backgroundColor: Colors.WHITE,
-    borderRadius: 14,
-    padding: 18,
-    elevation: 8,
-  },
-  inputIconRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  floatingTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: Colors.TEXT,
-    textAlign: "center",
-    letterSpacing: 1,
-    backgroundColor: Colors.BACKGROUND,
-    paddingVertical: 8,
-  },
-  floatingSubtitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.PRIMARY,
-    textAlign: "center",
-    backgroundColor: Colors.BACKGROUND,
-    paddingVertical: 4,
-  },
-  headerSticky: {
-    backgroundColor: Colors.BACKGROUND,
-    paddingTop: 18,
-    paddingBottom: 8,
-    zIndex: 10,
-  },
-  detalleCloseButton: {
-    backgroundColor: Colors.PRIMARY,
-    marginTop: 24,
-    borderRadius: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    alignSelf: "center",
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: Colors.SECONDARY,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-  },
-  detalleCloseButtonText: {
-    color: Colors.WHITE,
-    fontWeight: "bold",
-    fontSize: 18,
-    letterSpacing: 1,
-  },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: Colors.WHITE,
-    overflow: "hidden",
-    minHeight: 44,
-    justifyContent: "center",
-  },
-});
+

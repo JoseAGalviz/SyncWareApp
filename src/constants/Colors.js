@@ -1,22 +1,28 @@
-export default {
-    PRIMARY: '#0F766E',      // Deeper Teal (Main Branding)
-    SECONDARY: '#1E293B',    // Slate Dark (Headers, Neutral backgrounds)
-    ACCENT: '#3B82F6',       // Blue (Primary actions/badges)
-    SUCCESS: '#10B981',      // Emerald Green (Success, Completed)
-    WARNING: '#FBBF24',      // Amber/Yellow (Alerts, Partial)
-    ERROR: '#EF4444',        // Red (Errors, Faltantes)
-    INFO: '#0EA5E9',         // Light Blue (Information)
+// Re-exports from Theme for backward compatibility.
+// Use Theme.js directly for new code.
+import Theme from './Theme';
 
-    BACKGROUND: '#F1F5F9',   // Light Grayish Blue (Main BG)
-    WHITE: '#FFFFFF',
-    BLACK: '#000000',
+const COLORS = {
+  PRIMARY:    Theme.colors.primary,
+  SECONDARY:  Theme.colors.dark,
+  ACCENT:     Theme.colors.info,
+  SUCCESS:    Theme.colors.success,
+  WARNING:    Theme.colors.warning,
+  ERROR:      Theme.colors.error,
+  INFO:       Theme.colors.info,
 
-    BORDER: '#E2E8F0',       // Light Slate (Dividers, Borders)
-    TEXT: '#0F172A',         // Very Dark Slate (Main Text)
-    MUTED: '#64748B',        // Muted Slate (Descriptions)
-    LIGHT_TEXT: '#94A3B8',   // Light Slate (Placeholders)
+  BACKGROUND: Theme.colors.background,
+  WHITE:      Theme.colors.white,
+  BLACK:      Theme.colors.black,
 
-    CARD_BG: '#FFFFFF',
-    LIGHT_BG: '#F8FAFC',
-    OVERLAY: 'rgba(0,0,0,0.5)',
+  BORDER:     Theme.colors.border,
+  TEXT:       Theme.colors.text,
+  MUTED:      Theme.colors.muted,
+  LIGHT_TEXT: Theme.colors.light,
+
+  CARD_BG:    Theme.colors.surface,
+  LIGHT_BG:   Theme.colors.surfaceAlt,
+  OVERLAY:    Theme.colors.overlay,
 };
+
+export default COLORS;

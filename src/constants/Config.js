@@ -1,6 +1,7 @@
 export const Config = {
   API_BASE_URL: "https://98.94.185.164.nip.io",
   TIMEOUT: 60000, // 60 seconds
+  IVA: 0.16, // 16%
 };
 
 export const API_ENDPOINTS = {
@@ -12,4 +13,5 @@ export const API_ENDPOINTS = {
   TIEMPOS_PAGO: "/api/transferencias/tiempos-pago",
   CREAR_PEDIDO: "/api/pedidosApp/crear",
   OBTENER_PEDIDOS: "/api/pedidosApp/pedidos",
+  GESTIONES: "/api/gestiones",
 };

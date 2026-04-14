@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeScreenConductor from "../screens/HomeScreenConductor";
 
@@ -29,6 +30,7 @@ function DrawerMenuButton() {
 }
 
 export default function AppNavigatorConductor() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -72,7 +74,11 @@ export default function AppNavigatorConductor() {
         },
         tabBarActiveTintColor: COLORS.SUCCESS,
         tabBarInactiveTintColor: COLORS.PRIMARY,
-        tabBarStyle: { backgroundColor: "#000" },
+        tabBarStyle: { 
+          backgroundColor: "#000",
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
+        },
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreenConductor} />

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     TouchableOpacity,
     FlatList,
     TextInput,
@@ -18,7 +17,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
-import COLORS from '../constants/Colors';
+import Theme from '../constants/Theme';
+import styles from '../styles/PedidosHistorialScreen.styles';
 
 
 const ESTADO_COLORS = {
@@ -125,7 +125,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
             >
                 <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
-                        <MaterialIcons name="receipt-long" size={24} color={COLORS.PRIMARY} />
+                        <MaterialIcons name="receipt-long" size={24} color={Theme.colors.primary} />
                         <View style={styles.cardHeaderInfo}>
                             <Text style={styles.pedidoCode}>{item.codigo_pedido}</Text>
                             <Text style={styles.pedidoDate}>{formatDate(item.fecha_creacion)}</Text>
@@ -180,7 +180,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
 
                 <View style={styles.cardFooter}>
                     <Text style={styles.viewDetailText}>Ver detalles</Text>
-                    <MaterialIcons name="chevron-right" size={20} color={COLORS.PRIMARY} />
+                    <MaterialIcons name="chevron-right" size={20} color={Theme.colors.primary} />
                 </View>
             </TouchableOpacity>
         );
@@ -208,7 +208,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
                                 onPress={() => setDetailModalVisible(false)}
                                 style={styles.closeButton}
                             >
-                                <MaterialIcons name="close" size={24} color="#64748b" />
+                                <MaterialIcons name="close" size={24} color={Theme.colors.muted} />
                             </TouchableOpacity>
                         </View>
 
@@ -290,7 +290,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
     const DetailRow = ({ icon, label, value, highlight }) => (
         <View style={styles.detailRow}>
             <View style={styles.detailRowLeft}>
-                {icon && <MaterialIcons name={icon} size={16} color={COLORS.MUTED} style={styles.detailIcon} />}
+                {icon && <MaterialIcons name={icon} size={16} color={Theme.colors.muted} style={styles.detailIcon} />}
                 <Text style={styles.detailLabel}>{label}</Text>
             </View>
             <Text style={[styles.detailValue, highlight && styles.detailValueHighlight]}>
@@ -301,7 +301,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
 
     const ListEmpty = () => (
         <View style={styles.emptyContainer}>
-            <MaterialIcons name="receipt-long" size={64} color={COLORS.BORDER} />
+            <MaterialIcons name="receipt-long" size={64} color={Theme.colors.border} />
             <Text style={styles.emptyText}>
                 {searchQuery.trim()
                     ? 'No se encontraron pedidos'
@@ -317,17 +317,17 @@ const PedidosHistorialScreen = ({ navigation }) => {
             {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputWrapper}>
-                    <MaterialIcons name="search" size={20} color={COLORS.MUTED} style={styles.searchIcon} />
+                    <MaterialIcons name="search" size={20} color={Theme.colors.muted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Buscar por código, cliente..."
-                        placeholderTextColor={COLORS.MUTED}
+                        placeholderTextColor={Theme.colors.muted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <MaterialIcons name="close" size={20} color={COLORS.MUTED} />
+                            <MaterialIcons name="close" size={20} color={Theme.colors.muted} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -337,7 +337,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
             {/* Lista de Pedidos */}
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+                    <ActivityIndicator size="large" color={Theme.colors.primary} />
                     <Text style={styles.loadingText}>Cargando pedidos...</Text>
                 </View>
             ) : (
@@ -351,8 +351,8 @@ const PedidosHistorialScreen = ({ navigation }) => {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            colors={[COLORS.PRIMARY]}
-                            tintColor={COLORS.PRIMARY}
+                            colors={[Theme.colors.primary]}
+                            tintColor={Theme.colors.primary}
                         />
                     }
                 />
@@ -363,321 +363,5 @@ const PedidosHistorialScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8fafc',
-    },
-    searchContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 8,
-    },
-    searchInputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.WHITE,
-        borderWidth: 1,
-        borderColor: COLORS.BORDER,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 48,
-    },
-    searchIcon: {
-        marginRight: 8,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        color: '#1e293b',
-    },
-    listContent: {
-        padding: 16,
-        paddingBottom: 32,
-    },
-    pedidoCard: {
-        backgroundColor: COLORS.WHITE,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-    },
-    cardHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    cardHeaderInfo: {
-        marginLeft: 12,
-        flex: 1,
-    },
-    pedidoCode: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#1e293b',
-        marginBottom: 2,
-    },
-    pedidoDate: {
-        fontSize: 12,
-        color: COLORS.MUTED,
-    },
-    estadoBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    estadoText: {
-        fontSize: 11,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    cardDivider: {
-        height: 1,
-        backgroundColor: '#f1f5f9',
-        marginBottom: 12,
-    },
-    cardBody: {
-        gap: 8,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    clienteText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1e293b',
-        flex: 1,
-    },
-    infoText: {
-        fontSize: 13,
-        color: '#64748b',
-    },
-    statsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#f1f5f9',
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statDivider: {
-        width: 1,
-        height: 30,
-        backgroundColor: '#f1f5f9',
-    },
-    statLabel: {
-        fontSize: 10,
-        color: COLORS.MUTED,
-        marginBottom: 4,
-        textTransform: 'uppercase',
-    },
-    statValue: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#1e293b',
-    },
-    statValueHighlight: {
-        color: COLORS.PRIMARY,
-    },
-    cardFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        marginTop: 12,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#f1f5f9',
-    },
-    viewDetailText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: COLORS.PRIMARY,
-        marginRight: 4,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 14,
-        color: COLORS.MUTED,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 60,
-    },
-    emptyText: {
-        marginTop: 16,
-        fontSize: 15,
-        color: COLORS.MUTED,
-        textAlign: 'center',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: COLORS.WHITE,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        maxHeight: '90%',
-        paddingBottom: 34,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1e293b',
-    },
-    modalSubtitle: {
-        fontSize: 13,
-        color: '#64748b',
-        marginTop: 2,
-    },
-    closeButton: {
-        padding: 4,
-    },
-    modalBody: {
-        padding: 20,
-    },
-    detailSection: {
-        marginBottom: 24,
-    },
-    detailSectionTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#64748b',
-        textTransform: 'uppercase',
-        marginBottom: 12,
-        letterSpacing: 0.5,
-    },
-    detailCard: {
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        padding: 16,
-        gap: 12,
-    },
-    detailRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    detailRowLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    detailIcon: {
-        marginRight: 8,
-    },
-    detailLabel: {
-        fontSize: 14,
-        color: '#64748b',
-    },
-    detailValue: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1e293b',
-    },
-    detailValueHighlight: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: COLORS.PRIMARY,
-    },
-    estadoBadgeLarge: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        alignSelf: 'flex-start',
-    },
-    estadoTextLarge: {
-        fontSize: 14,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    itemsListContainer: {
-        gap: 12,
-    },
-    itemRow: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.WHITE,
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-        alignItems: 'center',
-    },
-    itemInfo: {
-        flex: 1,
-        marginRight: 12,
-    },
-    itemDescription: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1e293b',
-        marginBottom: 2,
-    },
-    itemCode: {
-        fontSize: 12,
-        color: COLORS.MUTED,
-    },
-    itemQuantityContainer: {
-        alignItems: 'center',
-        paddingLeft: 12,
-        borderLeftWidth: 1,
-        borderLeftColor: '#f1f5f9',
-        minWidth: 60,
-    },
-    itemQuantityLabel: {
-        fontSize: 10,
-        color: COLORS.MUTED,
-        fontWeight: '700',
-        marginBottom: 2,
-    },
-    itemQuantityValue: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: COLORS.PRIMARY,
-    },
-    emptyItemsText: {
-        textAlign: 'center',
-        color: COLORS.MUTED,
-        fontSize: 14,
-        fontStyle: 'italic',
-        marginTop: 8,
-    },
-});
 
 export default PedidosHistorialScreen;

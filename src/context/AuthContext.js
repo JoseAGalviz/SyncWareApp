@@ -52,9 +52,18 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (error) {
             console.error("Login call failed", error);
+            
+            let errorMessage = "Error al iniciar sesión";
+            
+            if (error.status === 401) {
+                errorMessage = "Usuario o contraseña incorrectos. Por favor, verifique sus datos.";
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
             return {
                 success: false,
-                error: error.message || "Error al iniciar sesión",
+                error: errorMessage,
             };
         } finally {
             setIsLoading(false);

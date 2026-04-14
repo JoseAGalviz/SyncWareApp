@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import COLORS from '../constants/Colors';
+import styles from '../styles/HomeScreenConductor.styles';
 
 
 export default function HomeScreenConductor() {
@@ -40,68 +41,3 @@ export default function HomeScreenConductor() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: '#eaf6fb' 
-  },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#000000ff', 
-    marginBottom: 32, 
-    letterSpacing: 1 
-  },
-  card: { 
-    backgroundColor: COLORS.WHITE, 
-    borderRadius: 18, 
-    padding: 32, 
-    elevation: 6, 
-    shadowColor: COLORS.PRIMARY, 
-    shadowOpacity: 0.15, 
-    shadowRadius: 10, 
-    shadowOffset: { width: 0, height: 4 },
-    width: 340,
-    alignItems: 'center'
-  },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: COLORS.PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 18,
-    elevation: 3,
-  },
-  avatarText: {
-    color: COLORS.WHITE,
-    fontSize: 34,
-    fontWeight: 'bold',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-    width: '100%',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-  },
-  label: { 
-    fontWeight: 'bold', 
-    color: COLORS.PRIMARY, 
-    fontSize: 17 
-  },
-  value: { 
-    color: COLORS.SECONDARY, 
-    fontSize: 17, 
-    fontWeight: '600' 
-  },
-  loading: {
-    color: COLORS.MUTED,
-    fontSize: 16,
-  },
-});
