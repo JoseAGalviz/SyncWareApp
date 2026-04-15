@@ -8,16 +8,16 @@ export const PotencialCiudadesService = {
      * @param {string} segmento - El segmento bitrix del usuario.
      * @returns {Promise<Array>} - Lista de registros por ciudad.
      */
-    getPotencialData: async (segmento) => {
+    getPotencialData: async (codProfitVendedor) => {
         try {
-            if (!segmento) {
-                throw new Error('El segmento del vendedor no está definido.');
+            if (!codProfitVendedor) {
+                throw new Error('El código de vendedor no está definido.');
             }
 
             const url = `${BASE_URL}/excel-data-potencial`;
 
             const payload = {
-                segmento_bitrix_excel: segmento
+                cod_profit_vendedor: codProfitVendedor
             };
 
             console.log('[PotencialCiudadesService] Petición POST a:', url, 'con:', payload);

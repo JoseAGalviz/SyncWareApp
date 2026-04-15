@@ -82,17 +82,17 @@ function MainAppDrawer() {
         name="ConsultaMatrix"
         component={MatrixExcelScreen}
         options={{
-          title: "Consulta Matrix",
+          title: "Zonas Potenciales",
           drawerIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} />,
         }}
       />
       <Drawer.Screen
-        name="PotencialCiudades"
+        name="ClientesPotenciales"
         component={PotencialCiudadesScreen}
         options={{
-          title: "Potencial de Ciudades",
+          title: "Clientes Potenciales",
           drawerIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" color={color} size={size} />,
-          drawerLabel: "Potencial de Ciudades",
+          drawerLabel: "Clientes Potenciales",
         }}
       />
     </Drawer.Navigator>
