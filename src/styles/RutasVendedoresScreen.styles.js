@@ -1,0 +1,218 @@
+import { StyleSheet } from 'react-native';
+import Theme from '../constants/Theme';
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Theme.colors.background,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Theme.spacing.lg,
+        paddingTop: 40,
+        paddingBottom: Theme.spacing.md,
+        backgroundColor: Theme.colors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: Theme.colors.border,
+        ...Theme.shadow.xs,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Theme.colors.text,
+        letterSpacing: -0.2,
+    },
+    backButton: {
+        padding: Theme.spacing.sm,
+    },
+    searchContainer: {
+        padding: Theme.spacing.lg,
+        backgroundColor: Theme.colors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: Theme.colors.border,
+    },
+    searchBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Theme.colors.background,
+        borderRadius: Theme.radius.lg,
+        paddingHorizontal: Theme.spacing.md,
+        height: 44,
+        borderWidth: 1,
+        borderColor: Theme.colors.border,
+    },
+    searchIcon: {
+        marginRight: Theme.spacing.sm,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: Theme.colors.text,
+    },
+    resultsCount: {
+        fontSize: 12,
+        color: Theme.colors.muted,
+        marginTop: Theme.spacing.sm,
+        fontWeight: '600',
+        letterSpacing: 0.3,
+    },
+    listContent: {
+        padding: Theme.spacing.lg,
+        paddingBottom: 30,
+    },
+    card: {
+        backgroundColor: Theme.colors.surface,
+        borderRadius: Theme.radius.xl,
+        padding: Theme.spacing.lg,
+        marginBottom: Theme.spacing.lg,
+        borderWidth: 1,
+        borderColor: Theme.colors.border,
+        ...Theme.shadow.sm,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Theme.spacing.md,
+    },
+    idBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Theme.spacing.sm,
+        paddingVertical: Theme.spacing.xs,
+        borderRadius: Theme.radius.sm,
+    },
+    idText: {
+        color: Theme.colors.white,
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+    },
+    companyName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Theme.colors.text,
+        marginBottom: Theme.spacing.xs,
+        letterSpacing: -0.2,
+    },
+    coordText: {
+        fontSize: 11,
+        color: Theme.colors.muted,
+        marginBottom: Theme.spacing.md,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: Theme.colors.border,
+        marginBottom: Theme.spacing.md,
+    },
+    diasRow: {
+        flexDirection: 'row',
+        gap: 6,
+        marginBottom: Theme.spacing.md,
+    },
+    diaBadge: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    diaText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    row: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: Theme.spacing.sm,
+    },
+    infoCol: {
+        flex: 1,
+        paddingRight: Theme.spacing.sm,
+    },
+    infoLabel: {
+        fontSize: 10,
+        color: Theme.colors.muted,
+        fontWeight: '700',
+        marginBottom: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+    },
+    infoValue: {
+        fontSize: 13,
+        color: Theme.colors.dark,
+        fontWeight: '600',
+    },
+    dayFilterRow: {
+        marginTop: Theme.spacing.sm,
+    },
+    dayFilterBtn: {
+        paddingHorizontal: Theme.spacing.md,
+        paddingVertical: 6,
+        borderRadius: Theme.radius.lg,
+        backgroundColor: Theme.colors.background,
+        borderWidth: 1,
+        borderColor: Theme.colors.border,
+        marginRight: 6,
+    },
+    dayFilterBtnActive: {
+        backgroundColor: Theme.colors.primary,
+        borderColor: Theme.colors.primary,
+    },
+    dayFilterText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Theme.colors.muted,
+    },
+    dayFilterTextActive: {
+        color: Theme.colors.white,
+    },
+    obsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: Theme.spacing.sm,
+        paddingTop: Theme.spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: Theme.colors.border,
+    },
+    obsText: {
+        fontSize: 12,
+        color: Theme.colors.muted,
+        flex: 1,
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: Theme.spacing.xl,
+    },
+    loadingText: {
+        marginTop: Theme.spacing.md,
+        color: Theme.colors.muted,
+        fontSize: 16,
+    },
+    emptyState: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: 100,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: Theme.colors.text,
+        marginTop: Theme.spacing.lg,
+        letterSpacing: -0.2,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: Theme.colors.muted,
+        textAlign: 'center',
+        marginTop: Theme.spacing.sm,
+        paddingHorizontal: 40,
+        lineHeight: 22,
+    },
+});
+
+export default styles;

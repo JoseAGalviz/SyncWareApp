@@ -18,6 +18,9 @@ import RecepcionGuiasScreen from "./src/screens/RecepcionGuiasScreen";
 import PedidosHistorialScreen from "./src/screens/PedidosHistorialScreen";
 import MatrixExcelScreen from "./src/screens/MatrixExcelScreen";
 import PotencialCiudadesScreen from "./src/screens/PotencialCiudadesScreen";
+import CoberturaVendedoresScreen from "./src/screens/CoberturaVendedoresScreen";
+import RutasVendedoresScreen from "./src/screens/RutasVendedoresScreen";
+import DocumentosScreen from "./src/screens/DocumentosScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -93,6 +96,33 @@ function MainAppDrawer() {
           title: "Clientes Potenciales",
           drawerIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" color={color} size={size} />,
           drawerLabel: "Clientes Potenciales",
+        }}
+      />
+      <Drawer.Screen
+        name="CoberturaVendedores"
+        component={CoberturaVendedoresScreen}
+        options={{
+          title: "Cobertura Vendedores",
+          drawerIcon: ({ color, size }) => <Ionicons name="map-outline" color={color} size={size} />,
+          drawerLabel: "Cobertura Vendedores",
+        }}
+      />
+      <Drawer.Screen
+        name="RutasVendedores"
+        component={RutasVendedoresScreen}
+        options={{
+          title: "Rutas Vendedores",
+          drawerIcon: ({ color, size }) => <Ionicons name="navigate-outline" color={color} size={size} />,
+          drawerLabel: "Rutas Vendedores",
+        }}
+      />
+      <Drawer.Screen
+        name="Documentos"
+        component={DocumentosScreen}
+        options={{
+          title: "Documentos",
+          drawerIcon: ({ color, size }) => <Ionicons name="folder-open-outline" color={color} size={size} />,
+          drawerLabel: "Documentos",
         }}
       />
     </Drawer.Navigator>

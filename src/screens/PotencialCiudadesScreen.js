@@ -298,7 +298,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                 <Text style={styles.vendedorLabel}>  VENDEDOR: </Text>
                 <Text style={styles.vendedorValue} numberOfLines={1}>{item.vendedor || 'N/D'}</Text>
                 <Text style={[styles.infoLabel, { marginLeft: 8 }]}>
-                    {formatDate(item.fecha_creacion)}
+                    {formatDate(item.ultima_fec_emis)}
                 </Text>
             </View>
         </View>

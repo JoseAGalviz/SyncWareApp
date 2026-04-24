@@ -32,21 +32,24 @@ export default function UserDataScreen({ navigation }) {
 
         const fetchSegmentDescriptions = async (userSegmentCodes) => {
             try {
-                const response = await fetch('https://98.94.185.164.nip.io/api/clientes/segmentos');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const allSegments = await response.json();
+                // Read from local cache first
+                const cached = await AsyncStorage.getItem('segmentos');
+                let allSegments = cached ? JSON.parse(cached) : null;
 
-                // Filtrar los segmentos que coinciden con los del usuario y obtener sus descripciones
+                if (!allSegments || allSegments.length === 0) {
+                    const response = await fetch('https://98.94.185.164.nip.io/api/clientes/segmentos');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    allSegments = await response.json();
+                }
+
                 const descriptions = allSegments
                     .filter(segment => userSegmentCodes.includes(segment.co_seg))
                     .map(segment => `${segment.co_seg} - ${segment.seg_des}`);
 
-                setSegmentDescriptions(descriptions);
+                setSegmentDescriptions(descriptions.length > 0 ? descriptions : userSegmentCodes);
             } catch (e) {
-                Alert.alert('Error', 'No se pudieron cargar las descripciones de los segmentos.');
                 console.error("Error fetching segments:", e);
+                setSegmentDescriptions(userSegmentCodes);
             }
         };
 

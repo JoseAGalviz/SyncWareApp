@@ -110,6 +110,11 @@ const MontarPedidoScreen = ({ navigation }) => {
                 c.co_cli && c.tipo !== 'bitrix'
             );
 
+            console.log(`✅ ${filteredClients.length} clientes cargados en MontarPedidoScreen.`);
+            if (filteredClients.length > 0) {
+                console.log("Ejemplo de primer cliente:", JSON.stringify(filteredClients[0], null, 2));
+            }
+
             setClients(filteredClients);
             setFilteredClients(filteredClients);
         } catch (error) {
@@ -696,7 +701,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                             <Text style={styles.clientDetailValue}>{item.co_cli}</Text>
                         </View>
 
-                        {item.login !== undefined && (
+                        {item.login != null && (
                             <View style={styles.clientDetailItem}>
                                 <Ionicons name="wallet-outline" size={14} color={COLORS.PRIMARY} />
                                 <Text style={[styles.clientDetailValue, { color: COLORS.PRIMARY, fontWeight: 'bold' }]}>
@@ -705,11 +710,11 @@ const MontarPedidoScreen = ({ navigation }) => {
                             </View>
                         )}
 
-                        {item.desc_glob !== undefined && parseFloat(item.desc_glob) > 0 && (
+                        {parseFloat(item.desc_glob || 0) > 0 && (
                             <View style={[styles.clientDetailItem, styles.clientDiscountTag]}>
                                 <MaterialIcons name="local-offer" size={12} color="#b45309" />
                                 <Text style={styles.clientDiscountText}>
-                                    {item.desc_glob}% OFF
+                                    {Math.round(parseFloat(item.desc_glob))}% DESC
                                 </Text>
                             </View>
                         )}
