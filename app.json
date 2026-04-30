@@ -23,8 +23,7 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-asset",
-      "expo-sharing"
+      "expo-asset"
     ],
     "android": {
       "adaptiveIcon": {
@@ -37,7 +36,6 @@
         "android.permission.VIBRATE",
         "android.permission.INTERNET"
       ],
-      "edgeToEdgeEnabled": true,
       "package": "ccom.josearaqueg.cristmedicals",
       "usesCleartextTraffic": true
     },

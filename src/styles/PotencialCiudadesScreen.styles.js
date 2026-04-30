@@ -53,6 +53,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Theme.colors.text,
   },
+  chipScroll: {
+    marginTop: Theme.spacing.sm,
+  },
+  chipScrollContent: {
+    paddingRight: Theme.spacing.sm,
+    gap: Theme.spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: 5,
+    borderRadius: Theme.radius.pill,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.background,
+  },
+  chipActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Theme.colors.muted,
+  },
+  chipTextActive: {
+    color: Theme.colors.white,
+  },
   resultsCount: {
     fontSize: 12,
     color: Theme.colors.muted,

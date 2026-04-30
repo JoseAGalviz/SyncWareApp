@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,6 +9,7 @@ import {
     StatusBar,
     RefreshControl,
     TextInput,
+    ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMunicipio, setSelectedMunicipio] = useState(null);
     const [generatingPdf, setGeneratingPdf] = useState(false);
 
     const fetchData = useCallback(async (isRefresh = false) => {
@@ -38,7 +40,6 @@ const PotencialCiudadesScreen = ({ navigation }) => {
             if (!isRefresh) setLoading(true);
             const result = await PotencialCiudadesService.getPotencialData(user.co_ven);
             setData(result || []);
-            setFilteredData(result || []);
         } catch (error) {
             showMessage({
                 message: 'Error de conexión',
@@ -55,24 +56,37 @@ const PotencialCiudadesScreen = ({ navigation }) => {
         fetchData();
     }, [fetchData]);
 
+    const municipios = useMemo(() => {
+        const values = data
+            .map(item => item.municipio_parroquia)
+            .filter(Boolean);
+        return [...new Set(values)].sort();
+    }, [data]);
+
+    useEffect(() => {
+        let result = data;
+        if (searchQuery) {
+            const lower = searchQuery.toLowerCase();
+            result = result.filter(item => {
+                const searchStr = `${item.nombre || ''} ${item.sicm || ''} ${item.codigo_profit || ''}`.toLowerCase();
+                return searchStr.includes(lower);
+            });
+        }
+        if (selectedMunicipio) {
+            result = result.filter(item => item.municipio_parroquia === selectedMunicipio);
+        }
+        setFilteredData(result);
+    }, [data, searchQuery, selectedMunicipio]);
+
     const onRefresh = () => {
         setRefreshing(true);
         fetchData(true);
     };
 
-    const handleSearch = (text) => {
-        setSearchQuery(text);
-        if (!text) {
-            setFilteredData(data);
-            return;
-        }
-        const lower = text.toLowerCase();
-        const filtered = data.filter(item => {
-            const searchStr = `${item.nombre || ''} ${item.rif || ''} ${item.municipio_y_parroquia || ''}`.toLowerCase();
-            return searchStr.includes(lower);
-        });
-        setFilteredData(filtered);
-    };
+    const handleSearch = (text) => setSearchQuery(text);
+
+    const handleMunicipioFilter = (municipio) =>
+        setSelectedMunicipio(prev => prev === municipio ? null : municipio);
 
     const formatDate = (val) => {
         if (!val) return 'N/D';
@@ -101,7 +115,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                 <td>${item.nombre || 'N/D'}</td>
                 <td>${item.rif || 'N/D'}</td>
                 <td>${item.sicm || 'N/D'}</td>
-                <td>${item.municipio_y_parroquia || 'N/D'}</td>
+                <td>${item.municipio_parroquia || 'N/D'}</td>
                 <td style="text-align:center;">${item.clasificacion_horar_caja || 'N/D'}</td>
                 <td style="text-align:right;">${formatNum(item.unid_mensual)}</td>
                 <td style="text-align:right;">${formatNum(item.crist_mensual)}</td>
@@ -142,7 +156,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
 <body>
   <div class="header-block">
     <h1>Clientes Potenciales</h1>
-    <p class="subtitle">Vendedor: <strong>${user?.co_ven || 'N/D'}</strong> &nbsp;|&nbsp; ${date} &nbsp;|&nbsp; ${filteredData.length} registros${searchQuery ? ` &nbsp;|&nbsp; Filtro: "${searchQuery}"` : ''}</p>
+    <p class="subtitle">Vendedor: <strong>${user?.co_ven || 'N/D'}</strong> &nbsp;|&nbsp; ${date} &nbsp;|&nbsp; ${filteredData.length} registros${searchQuery ? ` &nbsp;|&nbsp; Búsqueda: "${searchQuery}"` : ''}${selectedMunicipio ? ` &nbsp;|&nbsp; Municipio: "${selectedMunicipio}"` : ''}</p>
   </div>
   <table>
     <thead>
@@ -219,7 +233,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
             {/* Municipio y parroquia */}
             <View style={{ marginBottom: Theme.spacing.md }}>
                 <Text style={styles.infoLabel}>MUNICIPIO / PARROQUIA</Text>
-                <Text style={[styles.infoValue, { fontSize: 13 }]}>{item.municipio_y_parroquia || 'N/D'}</Text>
+                <Text style={[styles.infoValue, { fontSize: 13 }]}>{item.municipio_parroquia || 'N/D'}</Text>
             </View>
 
             {/* Unidades mensuales | Crist mensual */}
@@ -243,7 +257,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                 <View style={styles.infoCol}>
                     <Text style={styles.infoLabel}>PESO DROGUERÍA</Text>
                     <Text style={[styles.infoValue, { color: Theme.colors.warning }]}>
-                        {formatNum(item.peso_de_la_drogueria, 2)}%
+                        {formatNum(item.peso_drogueria, 2)}%
                     </Text>
                 </View>
                 <View style={styles.infoCol}>
@@ -268,24 +282,19 @@ const PotencialCiudadesScreen = ({ navigation }) => {
             <View style={styles.row}>
                 <View style={styles.infoCol}>
                     <Text style={styles.infoLabel}>ÚLTIMA COMPRA</Text>
-                    <Text style={styles.infoValue}>{formatDate(item.ultima_compra)}</Text>
+                    <Text style={styles.infoValue}>{formatDate(item.ultima_fec_emis)}</Text>
                 </View>
                 <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>ÚLT. FACT. EMITIDA</Text>
-                    <Text style={[styles.infoValue, { color: item.ultima_fec_emis ? Theme.colors.text : Theme.colors.muted }]}>
-                        {formatDate(item.ultima_fec_emis)}
-                    </Text>
+                    <Text style={styles.infoLabel}>CONTACTO</Text>
+                    <Text style={styles.infoValue}>{item.contacto_farmap || 'N/D'}</Text>
                 </View>
             </View>
 
             {/* Contacto | Número / Número 2 */}
             <View style={styles.row}>
+
                 <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>CONTACTO</Text>
-                    <Text style={styles.infoValue}>{item.contacto_farmap || 'N/D'}</Text>
-                </View>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>NÚM. / NÚM. 2</Text>
+                    <Text style={styles.infoLabel}>Numero de Contacto</Text>
                     <Text style={styles.infoValue}>
                         {[item.numero, item.numero_2].filter(Boolean).join(' / ') || 'N/D'}
                     </Text>
@@ -297,9 +306,6 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                 <Ionicons name="person-outline" size={14} color={Theme.colors.muted} />
                 <Text style={styles.vendedorLabel}>  VENDEDOR: </Text>
                 <Text style={styles.vendedorValue} numberOfLines={1}>{item.vendedor || 'N/D'}</Text>
-                <Text style={[styles.infoLabel, { marginLeft: 8 }]}>
-                    {formatDate(item.ultima_fec_emis)}
-                </Text>
             </View>
         </View>
     );
@@ -336,7 +342,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                     <Ionicons name="search" size={20} color={Theme.colors.muted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Buscar por nombre, RIF o municipio..."
+                        placeholder="Buscar por nombre, SICM o código Profit..."
                         placeholderTextColor={Theme.colors.light}
                         value={searchQuery}
                         onChangeText={handleSearch}
@@ -347,9 +353,36 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Chips de municipio */}
+                {!loading && municipios.length > 0 && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.chipScroll}
+                        contentContainerStyle={styles.chipScrollContent}
+                    >
+                        {municipios.map(municipio => {
+                            const active = selectedMunicipio === municipio;
+                            return (
+                                <TouchableOpacity
+                                    key={municipio}
+                                    style={[styles.chip, active && styles.chipActive]}
+                                    onPress={() => handleMunicipioFilter(municipio)}
+                                >
+                                    <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                                        {municipio}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                )}
+
                 {!loading && (
                     <Text style={styles.resultsCount}>
                         {filteredData.length} {filteredData.length === 1 ? 'farmacia encontrada' : 'farmacias encontradas'}
+                        {selectedMunicipio ? ` · ${selectedMunicipio}` : ''}
                     </Text>
                 )}
             </View>
