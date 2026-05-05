@@ -1024,6 +1024,7 @@ const CartModal = ({
                     <FlatList
                         data={cartItems}
                         keyExtractor={(item) => String(item.id)}
+                        style={{ flex: 1 }}
                         contentContainerStyle={styles.cartListContent}
                         renderItem={({ item }) => (
                             <View style={styles.cartItem}>

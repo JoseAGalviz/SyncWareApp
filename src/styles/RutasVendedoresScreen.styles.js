@@ -96,10 +96,16 @@ const styles = StyleSheet.create({
         marginBottom: Theme.spacing.xs,
         letterSpacing: -0.2,
     },
+    coordRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: Theme.spacing.md,
+    },
     coordText: {
         fontSize: 11,
         color: Theme.colors.muted,
-        marginBottom: Theme.spacing.md,
+        flex: 1,
     },
     divider: {
         height: 1,

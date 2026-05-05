@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: Theme.radius.xxl,
     borderTopRightRadius: Theme.radius.xxl,
     height: '90%',
-    paddingBottom: Theme.spacing.xxl,
+    flexDirection: 'column',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   },
   cartListContent: {
     padding: Theme.spacing.xxl,
-    paddingBottom: 100,
+    paddingBottom: Theme.spacing.xxl,
   },
   cartItem: {
     flexDirection: 'row',
@@ -790,10 +790,6 @@ const styles = StyleSheet.create({
     minWidth: 20,
   },
   modalFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: Theme.colors.surface,
     padding: Theme.spacing.xl,
     borderTopWidth: 1,

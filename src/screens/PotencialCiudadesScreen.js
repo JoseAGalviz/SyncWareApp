@@ -198,21 +198,22 @@ const PotencialCiudadesScreen = ({ navigation }) => {
     // ── Tarjeta individual ────────────────────────────────────────────────────
     const renderItem = ({ item, index }) => (
         <View style={styles.card}>
-            {/* Encabezado: nombre + clasificacion + índice */}
+            {/* Fila 1: nombre completo de la farmacia */}
+            <View style={[styles.badge, { backgroundColor: Theme.colors.primary, marginBottom: 6, alignSelf: 'stretch' }]}>
+                <Ionicons name="storefront-outline" size={13} color={Theme.colors.white} />
+                <Text style={[styles.badgeText, { marginLeft: 4, flexShrink: 1 }]}>
+                    {item.nombre || 'Sin nombre'}
+                </Text>
+            </View>
+            {/* Fila 2: clasificacion (compacta) + índice */}
             <View style={styles.cardHeader}>
-                <View style={[styles.badge, { backgroundColor: Theme.colors.primary, flex: 1, marginRight: 6 }]}>
-                    <Ionicons name="storefront-outline" size={13} color={Theme.colors.white} />
-                    <Text style={[styles.badgeText, { marginLeft: 4 }]} numberOfLines={1}>
-                        {item.nombre || 'Sin nombre'}
-                    </Text>
-                </View>
                 {item.clasificacion_horar_caja ? (
-                    <View style={[styles.badge, { backgroundColor: Theme.colors.info, marginRight: 6 }]}>
-                        <Text style={styles.badgeText}>{item.clasificacion_horar_caja}</Text>
+                    <View style={[styles.badgeSmall, { backgroundColor: Theme.colors.info, marginRight: 6 }]}>
+                        <Text style={styles.badgeSmallText}>{item.clasificacion_horar_caja}</Text>
                     </View>
                 ) : null}
-                <View style={[styles.badge, { backgroundColor: Theme.colors.dark }]}>
-                    <Text style={styles.badgeText}>#{index + 1}</Text>
+                <View style={[styles.badgeSmall, { backgroundColor: Theme.colors.dark }]}>
+                    <Text style={styles.badgeSmallText}>#{index + 1}</Text>
                 </View>
             </View>
 

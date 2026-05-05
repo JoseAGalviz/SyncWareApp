@@ -15,13 +15,150 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { RutasVendedoresService } from '../services/RutasVendedoresService';
 import { showMessage } from 'react-native-flash-message';
+import * as Clipboard from 'expo-clipboard';
 import { printAndSharePdf } from '../utils/pdfUtils';
 import Theme from '../constants/Theme';
 import styles from '../styles/RutasVendedoresScreen.styles';
 
+
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const DIAS_LABEL = ['L', 'M', 'X', 'J', 'V', 'S'];
 const DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+const formatNum = (val, decimals = 0) =>
+    Number(val ?? 0).toLocaleString('es-VE', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    });
+
+// ── Tarjeta individual ───────────────────────────────────────────────────
+const RutaCard = ({ item }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        await Clipboard.setStringAsync(item.coordenadas);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+
+    return (
+        <View style={styles.card}>
+            <View style={styles.cardHeader}>
+                <View style={[styles.idBadge, { backgroundColor: Theme.colors.primary, flex: 1, marginRight: 6 }]}>
+                    <Text style={styles.idText} numberOfLines={1}>{item.vendedor || 'Sin nombre'}</Text>
+                </View>
+                {item.tiempo_mas ? (
+                    <View style={[styles.idBadge, { backgroundColor: Theme.colors.info }]}>
+                        <Ionicons name="time-outline" size={11} color={Theme.colors.white} />
+                        <Text style={[styles.idText, { marginLeft: 3 }]}>{item.tiempo_mas}</Text>
+                    </View>
+                ) : null}
+            </View>
+
+            <Text style={styles.companyName}>{item.zona || 'Sin zona'}</Text>
+
+            {item.coordenadas ? (
+                <TouchableOpacity
+                    onPress={handleCopy}
+                    activeOpacity={0.7}
+                    style={styles.coordRow}
+                >
+                    <Ionicons
+                        name={copied ? 'checkmark-circle' : 'location-outline'}
+                        size={12}
+                        color={copied ? Theme.colors.success : Theme.colors.primary}
+                    />
+                    <Text style={[styles.coordText, copied && { color: Theme.colors.success }]}>
+                        {copied ? '¡Copiado!' : item.coordenadas}
+                    </Text>
+                    {!copied && (
+                        <Ionicons name="copy-outline" size={12} color={Theme.colors.muted} style={{ marginLeft: 4 }} />
+                    )}
+                </TouchableOpacity>
+            ) : null}
+
+            <View style={styles.divider} />
+
+            <View style={styles.diasRow}>
+                {DIAS.map((dia, i) => (
+                    <View
+                        key={dia}
+                        style={[
+                            styles.diaBadge,
+                            { backgroundColor: item[dia]?.toLowerCase() === 'x' ? Theme.colors.success : Theme.colors.border },
+                        ]}
+                    >
+                        <Text style={[styles.diaText, { color: item[dia]?.toLowerCase() === 'x' ? Theme.colors.white : Theme.colors.muted }]}>
+                            {DIAS_LABEL[i]}
+                        </Text>
+                    </View>
+                ))}
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.row}>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>CLIENTES MERCADO</Text>
+                    <Text style={styles.infoValue}>{formatNum(item.clientes_me)}</Text>
+                </View>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>CLIENTES CRIST.</Text>
+                    <Text style={[styles.infoValue, { color: Theme.colors.success }]}>
+                        {formatNum(item.clientes_cris)}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.row}>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>ACTIVOS CRIST.</Text>
+                    <Text style={[styles.infoValue, { color: Theme.colors.info }]}>
+                        {formatNum(item.activos_crist)}
+                    </Text>
+                </View>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>INACTIVOS</Text>
+                    <Text style={[styles.infoValue, { color: Theme.colors.error }]}>
+                        {formatNum(item.inactivos)}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.row}>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>UNID. MERCADO</Text>
+                    <Text style={styles.infoValue}>{formatNum(item.unidades_m, 2)}</Text>
+                </View>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>UNID. CRIST.</Text>
+                    <Text style={[styles.infoValue, { color: Theme.colors.primary }]}>
+                        {formatNum(item.unidades_cr, 2)}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.row}>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>PESO UNID.</Text>
+                    <Text style={styles.infoValue}>{formatNum(item.peso_unid, 4)}</Text>
+                </View>
+                <View style={styles.infoCol}>
+                    <Text style={styles.infoLabel}>PESO CLIENTE</Text>
+                    <Text style={styles.infoValue}>{formatNum(item.peso_cliente, 4)}</Text>
+                </View>
+            </View>
+
+            {item.observacion ? (
+                <View style={styles.obsRow}>
+                    <Ionicons name="information-circle-outline" size={14} color={Theme.colors.muted} />
+                    <Text style={styles.obsText}> {item.observacion}</Text>
+                </View>
+            ) : null}
+        </View>
+    );
+};
+
 
 const RutasVendedoresScreen = ({ navigation }) => {
     const { user } = useAuth();
@@ -68,7 +205,7 @@ const RutasVendedoresScreen = ({ navigation }) => {
     const applyFilters = useCallback((query, day, source) => {
         let result = source;
         if (day !== null) {
-            result = result.filter(item => item[DIAS[day]] === 'x');
+            result = result.filter(item => item[DIAS[day]]?.toLowerCase() === 'x');
         }
         if (query) {
             const lower = query.toLowerCase();
@@ -90,12 +227,6 @@ const RutasVendedoresScreen = ({ navigation }) => {
         applyFilters(searchQuery, next, data);
     };
 
-    const formatNum = (val, decimals = 0) =>
-        Number(val ?? 0).toLocaleString('es-VE', {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals,
-        });
-
     // ── PDF ──────────────────────────────────────────────────────────────────
     const handleGeneratePdf = async () => {
         if (filteredData.length === 0) {
@@ -111,7 +242,7 @@ const RutasVendedoresScreen = ({ navigation }) => {
 
             const rows = filteredData.map((item, i) => {
                 const diasCells = DIAS.map(d =>
-                    `<td style="text-align:center;">${item[d] === 'x' ? '✓' : ''}</td>`
+                    `<td style="text-align:center;">${item[d]?.toLowerCase() === 'x' ? '✓' : ''}</td>`
                 ).join('');
                 return `
                 <tr>
@@ -188,108 +319,7 @@ const RutasVendedoresScreen = ({ navigation }) => {
     };
 
     // ── Tarjeta ───────────────────────────────────────────────────────────────
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={[styles.idBadge, { backgroundColor: Theme.colors.primary, flex: 1, marginRight: 6 }]}>
-                    <Text style={styles.idText} numberOfLines={1}>{item.vendedor || 'Sin nombre'}</Text>
-                </View>
-                {item.tiempo_mas ? (
-                    <View style={[styles.idBadge, { backgroundColor: Theme.colors.info }]}>
-                        <Ionicons name="time-outline" size={11} color={Theme.colors.white} />
-                        <Text style={[styles.idText, { marginLeft: 3 }]}>{item.tiempo_mas}</Text>
-                    </View>
-                ) : null}
-            </View>
-
-            <Text style={styles.companyName}>{item.zona || 'Sin zona'}</Text>
-
-            {item.coordenadas ? (
-                <Text style={styles.coordText}>
-                    <Ionicons name="location-outline" size={12} /> {item.coordenadas}
-                </Text>
-            ) : null}
-
-            <View style={styles.divider} />
-
-            <View style={styles.diasRow}>
-                {DIAS.map((dia, i) => (
-                    <View
-                        key={dia}
-                        style={[
-                            styles.diaBadge,
-                            { backgroundColor: item[dia] === 'x' ? Theme.colors.success : Theme.colors.border },
-                        ]}
-                    >
-                        <Text style={[styles.diaText, { color: item[dia] === 'x' ? Theme.colors.white : Theme.colors.muted }]}>
-                            {DIAS_LABEL[i]}
-                        </Text>
-                    </View>
-                ))}
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>CLIENTES MERCADO</Text>
-                    <Text style={styles.infoValue}>{formatNum(item.clientes_me)}</Text>
-                </View>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>CLIENTES CRIST.</Text>
-                    <Text style={[styles.infoValue, { color: Theme.colors.success }]}>
-                        {formatNum(item.clientes_cris)}
-                    </Text>
-                </View>
-            </View>
-
-            <View style={styles.row}>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>ACTIVOS CRIST.</Text>
-                    <Text style={[styles.infoValue, { color: Theme.colors.info }]}>
-                        {formatNum(item.activos_crist)}
-                    </Text>
-                </View>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>INACTIVOS</Text>
-                    <Text style={[styles.infoValue, { color: Theme.colors.error }]}>
-                        {formatNum(item.inactivos)}
-                    </Text>
-                </View>
-            </View>
-
-            <View style={styles.row}>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>UNID. MERCADO</Text>
-                    <Text style={styles.infoValue}>{formatNum(item.unidades_m, 2)}</Text>
-                </View>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>UNID. CRIST.</Text>
-                    <Text style={[styles.infoValue, { color: Theme.colors.primary }]}>
-                        {formatNum(item.unidades_cr, 2)}
-                    </Text>
-                </View>
-            </View>
-
-            <View style={styles.row}>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>PESO UNID.</Text>
-                    <Text style={styles.infoValue}>{formatNum(item.peso_unid, 4)}</Text>
-                </View>
-                <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>PESO CLIENTE</Text>
-                    <Text style={styles.infoValue}>{formatNum(item.peso_cliente, 4)}</Text>
-                </View>
-            </View>
-
-            {item.observacion ? (
-                <View style={styles.obsRow}>
-                    <Ionicons name="information-circle-outline" size={14} color={Theme.colors.muted} />
-                    <Text style={styles.obsText}> {item.observacion}</Text>
-                </View>
-            ) : null}
-        </View>
-    );
+    const renderItem = ({ item }) => <RutaCard item={item} />;
 
     return (
         <SafeAreaView style={styles.container}>
