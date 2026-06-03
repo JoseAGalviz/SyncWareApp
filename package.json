@@ -36,7 +36,9 @@
     "react-native-worklets": "^0.5.1"
   },
   "devDependencies": {
-    "@react-native-community/cli": "^20.0.2"
+    "@react-native-community/cli": "^20.0.2",
+    "http-proxy-middleware": "^4.0.0",
+    "react-native-dotenv": "^3.4.11"
   },
   "private": true
 }

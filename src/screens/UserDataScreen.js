@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import COLORS from '../constants/Colors';
 import styles from '../styles/UserDataScreen.styles';
+import { Config } from '../constants/Config';
 
 
 export default function UserDataScreen({ navigation }) {
@@ -37,7 +38,7 @@ export default function UserDataScreen({ navigation }) {
                 let allSegments = cached ? JSON.parse(cached) : null;
 
                 if (!allSegments || allSegments.length === 0) {
-                    const response = await fetch('https://98.94.185.164.nip.io/api/clientes/segmentos');
+                    const response = await fetch(`${Config.API_BASE_URL}/api/clientes/segmentos`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     allSegments = await response.json();
                 }

@@ -37,6 +37,8 @@ export default function LoginScreen({ navigation }) {
   const navigateToMainApp = (userRole) => {
     if (userRole === "conductor") {
       navigation.navigate("MainAppDrawerConductor");
+    } else if (userRole === "despachador") {
+      navigation.navigate("MainAppDespachador");
     } else {
       navigation.navigate("MainAppDrawer");
     }

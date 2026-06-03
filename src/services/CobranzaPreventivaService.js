@@ -1,8 +1,9 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
+import { Config } from '../constants/Config';
 
-const API_URL = 'https://98.94.185.164.nip.io/api/pagina/facturas-segmento';
+const API_URL = `${Config.API_BASE_URL}/api/pagina/facturas-segmento`;
 
 /**
  * Formats a number to currency string

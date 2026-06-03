@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { API_ENDPOINTS, Config } from '../constants/Config';
+import Theme from '../constants/Theme';
 import { api } from '../services/api';
 import COLORS from '../constants/Colors';
 import styles from '../styles/MontarPedidoScreen.styles';
@@ -41,6 +42,112 @@ const getAvatarColor = (name) => {
     if (!name) return AVATAR_COLORS[0];
     const charCodeSum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return AVATAR_COLORS[charCodeSum % AVATAR_COLORS.length];
+};
+
+const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
+    if (!tiers || tiers.length === 0) return null;
+    const maxQty = tiers[tiers.length - 1].hasta;
+    const clampedQty = Math.min(currentQty, maxQty);
+    const fillPct = maxQty > 0 ? (clampedQty / maxQty) * 100 : 0;
+
+    let activeTier = null;
+    for (const tier of tiers) {
+        if (currentQty >= tier.desde && currentQty <= tier.hasta) { activeTier = tier; break; }
+    }
+    if (!activeTier && currentQty > tiers[tiers.length - 1].hasta) activeTier = tiers[tiers.length - 1];
+    const activeTierIdx = activeTier ? tiers.indexOf(activeTier) : -1;
+    const nextTier = activeTierIdx >= 0 ? tiers[activeTierIdx + 1] : tiers.find(t => currentQty < t.desde);
+    const isMaxTier = activeTier && !nextTier;
+    const barColor = activeTier ? '#10b981' : Theme.colors.primary;
+
+    if (compact) {
+        const statusText = activeTier
+            ? (nextTier
+                ? `-${activeTier.porc}% ✓ · ${nextTier.desde - currentQty} más → -${nextTier.porc}%`
+                : `-${activeTier.porc}% activo (máx.)`)
+            : (tiers[0] && currentQty < tiers[0].desde
+                ? `${tiers[0].desde - currentQty} uds → -${tiers[0].porc}%`
+                : '');
+        return (
+            <View style={{ marginTop: 5 }}>
+                <View style={{ height: 5, backgroundColor: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+                    <View style={{ height: '100%', width: `${fillPct}%`, backgroundColor: barColor, borderRadius: 3 }} />
+                    {tiers.slice(0, -1).map((tier, idx) => (
+                        <View key={idx} style={{
+                            position: 'absolute', left: `${(tier.hasta / maxQty) * 100}%`,
+                            top: 0, bottom: 0, width: 1.5, backgroundColor: '#fff', opacity: 0.8
+                        }} />
+                    ))}
+                </View>
+                <Text style={{ fontSize: 9, color: activeTier ? '#047857' : Theme.colors.muted, marginTop: 2, fontWeight: activeTier ? '700' : '500' }}>
+                    {statusText}
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={{ marginTop: 8 }}>
+            {/* Progress bar */}
+            <View style={{ height: 10, backgroundColor: '#e5e7eb', borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
+                <View style={{ height: '100%', width: `${fillPct}%`, backgroundColor: barColor, borderRadius: 5 }} />
+                {tiers.slice(0, -1).map((tier, idx) => (
+                    <View key={idx} style={{
+                        position: 'absolute', left: `${(tier.hasta / maxQty) * 100}%`,
+                        top: 0, bottom: 0, width: 2, backgroundColor: '#fff', opacity: 0.9
+                    }} />
+                ))}
+            </View>
+            {/* Tier chips */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                {tiers.map((tier, idx) => {
+                    const isActive = activeTier?.porc === tier.porc;
+                    const isReached = currentQty >= tier.desde;
+                    return (
+                        <View key={idx} style={{ alignItems: 'center', gap: 2 }}>
+                            <View style={{
+                                backgroundColor: isActive ? '#10b981' : (isReached ? barColor : '#e5e7eb'),
+                                borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3,
+                            }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: (isActive || isReached) ? '#fff' : '#9ca3af' }}>
+                                    -{tier.porc}%
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 8, color: '#9ca3af' }}>{tier.desde}–{tier.hasta}</Text>
+                        </View>
+                    );
+                })}
+            </View>
+            {/* Status chip */}
+            {activeTier ? (
+                <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    backgroundColor: '#ecfdf5', borderRadius: 8,
+                    paddingHorizontal: 10, paddingVertical: 6,
+                    borderWidth: 1, borderColor: '#a7f3d0',
+                }}>
+                    <MaterialIcons name="check-circle" size={14} color="#10b981" />
+                    <Text style={{ fontSize: 11, color: '#065f46', fontWeight: '700', flex: 1 }}>
+                        {isMaxTier
+                            ? `-${activeTier.porc}% activo · escala máxima alcanzada`
+                            : `-${activeTier.porc}% activo · faltan ${nextTier.desde - currentQty} ud${nextTier.desde - currentQty !== 1 ? 's' : ''} para -${nextTier.porc}%`}
+                    </Text>
+                </View>
+            ) : tiers[0] && currentQty < tiers[0].desde ? (
+                <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    backgroundColor: '#eff6ff', borderRadius: 8,
+                    paddingHorizontal: 10, paddingVertical: 6,
+                    borderWidth: 1, borderColor: '#bfdbfe',
+                }}>
+                    <MaterialIcons name="trending-up" size={14} color={Theme.colors.primary} />
+                    <Text style={{ fontSize: 11, color: Theme.colors.primaryDark || Theme.colors.primary, fontWeight: '600', flex: 1 }}>
+                        Agrega {tiers[0].desde - currentQty} unidades más para desbloquear -{tiers[0].porc}%
+                    </Text>
+                </View>
+            ) : null}
+        </View>
+    );
 };
 
 const MontarPedidoScreen = ({ navigation }) => {
@@ -67,6 +174,7 @@ const MontarPedidoScreen = ({ navigation }) => {
     const [cartModalVisible, setCartModalVisible] = useState(false);
     const [selectedDiscounts, setSelectedDiscounts] = useState([]);
     const [confirmingOrder, setConfirmingOrder] = useState(false);
+    const [scaleRules, setScaleRules] = useState([]);
 
     // Product Detail State
     const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
@@ -114,6 +222,10 @@ const MontarPedidoScreen = ({ navigation }) => {
             if (filteredClients.length > 0) {
                 console.log("Ejemplo de primer cliente:", JSON.stringify(filteredClients[0], null, 2));
             }
+            const conDescProv = filteredClients.filter(c => Array.isArray(c.descuento_proveedor) && c.descuento_proveedor.length > 0);
+            console.log(`🏷️ Clientes con descuento_proveedor: ${conDescProv.length}`, conDescProv.map(c => ({ co_cli: c.co_cli, descuento_proveedor: c.descuento_proveedor })));
+            const conDescGlob = filteredClients.filter(c => parseFloat(c.desc_glob || 0) > 0);
+            console.log(`🏷️ Clientes con desc_glob: ${conDescGlob.length}`);
 
             setClients(filteredClients);
             setFilteredClients(filteredClients);
@@ -138,6 +250,25 @@ const MontarPedidoScreen = ({ navigation }) => {
         }
     };
 
+    // TODO: replace mock with real API call when backend is ready
+    // const fetchScaleDiscounts = async (co_cli) => {
+    //     const response = await api.get(`${API_ENDPOINTS.DESCUENTOS_ESCALA}?co_cli=${encodeURIComponent(co_cli)}`);
+    //     if (Array.isArray(response)) setScaleRules(response);
+    // };
+
+    const getScaleTiers = (co_prov) => {
+        if (!co_prov) return [];
+        const rule = scaleRules.find(r => r.co_prov === co_prov.trim());
+        return rule ? rule.tiers : [];
+    };
+
+    const getProviderQtyInCart = (co_prov) => {
+        if (!co_prov) return 0;
+        return cart
+            .filter(item => (item.co_prov || '').trim() === co_prov.trim() && Array.isArray(item.escala) && item.escala.length > 0)
+            .reduce((sum, item) => sum + item.quantity, 0);
+    };
+
     const handleSelectClient = (client) => {
         setSelectedClient(client);
 
@@ -151,7 +282,7 @@ const MontarPedidoScreen = ({ navigation }) => {
             }
         }
 
-        fetchCatalog(priceNum, client.desc_glob || 0);
+        fetchCatalog(priceNum, client.desc_glob || 0, Array.isArray(client.descuento_proveedor) ? client.descuento_proveedor : []);
     };
 
     const handleBackToClients = () => {
@@ -159,9 +290,37 @@ const MontarPedidoScreen = ({ navigation }) => {
         setSearchQuery('');
         setProducts(originalProducts); // Reset product search
         setSelectedDiscounts([]); // Reset selected discounts
+        setScaleRules([]);
     };
 
-    const fetchCatalog = async (priceNum = 0, globalDiscount = 0) => {
+    const handleClearCart = () => {
+        Alert.alert(
+            "Limpiar carrito",
+            "¿Eliminar todos los productos del carrito?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Limpiar",
+                    style: "destructive",
+                    onPress: () => {
+                        setCart([]);
+                        const reset = (list) => list.map(p => ({ ...p, quantity: 0 }));
+                        setProducts(reset(products));
+                        setOriginalProducts(reset(originalProducts));
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleRemoveFromCart = (item) => {
+        setCart(prev => prev.filter(c => c.id !== item.id));
+        const reset = (list) => list.map(p => p.id === item.id ? { ...p, quantity: 0 } : p);
+        setProducts(reset(products));
+        setOriginalProducts(reset(originalProducts));
+    };
+
+    const fetchCatalog = async (priceNum = 0, globalDiscount = 0, providerDiscounts = []) => {
         setLoading(true);
         setProducts([]); // Clear previous products
         try {
@@ -188,12 +347,13 @@ const MontarPedidoScreen = ({ navigation }) => {
                 const basePrice = item.Precio ? parseFloat(item.Precio) : 0;
                 const catDiscount = item.descuento_por_categoria || 0;
                 const lineDiscount = item.descuento_por_linea || 0;
-                // Paso 1: aplicar descuento por categoría del producto
+                const itemCoProv = (item.co_prov || '').trim();
+                const provRule = providerDiscounts.find(d => (d.co_prov || '').trim() === itemCoProv);
+                const provDiscount = provRule ? (provRule.porc1 || 0) : 0;
                 const priceAfterCategoryDiscount = basePrice * (1 - (catDiscount / 100));
-                // Paso 2: sobre ese resultado, aplicar el descuento global del cliente
-                const finalPrice = priceAfterCategoryDiscount * (1 - (globalDiscount / 100));
+                const priceAfterGlobalDiscount = priceAfterCategoryDiscount * (1 - (globalDiscount / 100));
+                const finalPrice = priceAfterGlobalDiscount * (1 - (provDiscount / 100));
                 const priceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-
                 return {
                     id: item.imagen || index,
                     title: item.descripcion,
@@ -201,21 +361,33 @@ const MontarPedidoScreen = ({ navigation }) => {
                     stock: item.stock, // Stock total
                     stock_tachira: item.stock_tachira || 0,
                     stock_barquisimeto: item.stock_barquisimeto || 0,
-                    image: `https://imagenes.cristmedicals.com/imagenes-v3/imagenes/${(item.imagen || "").trim()}.jpg`,
+                    image: `${Config.IMAGES_BASE_URL}/imagenes-v3/imagenes/${(item.imagen || "").trim()}.jpg`,
                     expiry: item.descripcion.match(/FV\.?\s*(\d{2}\/\d{4})/)?.[1] || 'N/A',
                     quantity: 0,
                     subtotal: 0,
-                    priceNum: finalPrice, // Precio final con ambos descuentos aplicados
+                    priceNum: finalPrice,
+                    basePrice: basePrice,
                     categoryDiscount: catDiscount,
                     lineDiscount: lineDiscount,
                     category: item.linea || item.categoria || 'General',
                     co_art: item.co_art || item.imagen,
-                    marca: item.marca || 'N/A'
+                    co_prov: (item.co_prov || '').trim(),
+                    marca: item.marca || 'N/A',
+                    provDiscount: provDiscount,
+                    escala: Array.isArray(item.escala) ? item.escala : []
                 };
             });
 
             setProducts(mappedProducts);
             setOriginalProducts(mappedProducts);
+
+            const scaleRulesByProv = {};
+            mappedProducts.forEach(p => {
+                if (p.co_prov && p.escala.length > 0 && !scaleRulesByProv[p.co_prov]) {
+                    scaleRulesByProv[p.co_prov] = p.escala;
+                }
+            });
+            setScaleRules(Object.entries(scaleRulesByProv).map(([co_prov, tiers]) => ({ co_prov, tiers })));
 
             // Extract Categories (Mocking for now until field is confirmed)
             // Assuming 'linea' or similar. We will just use a hardcoded list + extracted if available later.
@@ -298,6 +470,35 @@ const MontarPedidoScreen = ({ navigation }) => {
             setCart(cart.map(c => c.id === product.id ? { ...c, quantity: c.quantity + 1 } : c));
         } else {
             setCart([...cart, { ...product, quantity: 1, priceNum: product.priceNum || parseFloat(product.price) }]);
+        }
+
+        // 3. Scale tier notifications
+        if (product.escala && product.escala.length > 0 && product.co_prov) {
+            const prevTotal = getProviderQtyInCart(product.co_prov);
+            const newTotal = prevTotal + 1;
+            const prevTier = product.escala.find(t => prevTotal >= t.desde && prevTotal <= t.hasta);
+            const newTier = product.escala.find(t => newTotal >= t.desde && newTotal <= t.hasta);
+
+            if (newTier && (!prevTier || newTier.porc !== prevTier.porc)) {
+                showMessage({
+                    message: `¡Descuento desbloqueado! -${newTier.porc}%`,
+                    description: `${newTotal} unidades del proveedor ${product.co_prov}`,
+                    type: "success",
+                    icon: "success",
+                    duration: 2500,
+                });
+            } else if (!newTier) {
+                const upcoming = product.escala.find(t => newTotal < t.desde);
+                if (upcoming && (upcoming.desde - newTotal) <= 3) {
+                    showMessage({
+                        message: `Faltan ${upcoming.desde - newTotal} unidades`,
+                        description: `para desbloquear -${upcoming.porc}% del proveedor ${product.co_prov}`,
+                        type: "info",
+                        icon: "info",
+                        duration: 2000,
+                    });
+                }
+            }
         }
     };
 
@@ -391,7 +592,7 @@ const MontarPedidoScreen = ({ navigation }) => {
         }
 
         // Calcular totales
-        const tot_bruto = cart.reduce((sum, item) => sum + (item.priceNum * item.quantity), 0);
+        const tot_bruto = cart.reduce((sum, item) => sum + ((item.basePrice || item.priceNum) * item.quantity), 0);
         const tot_neto = finalTotal;
         const descuento_total = discountAmount;
 
@@ -406,19 +607,38 @@ const MontarPedidoScreen = ({ navigation }) => {
         // Código del pedido (puede ser generado o dejarse vacío para que el backend lo genere)
         const codigo_pedido = `APP-${Date.now()}`;
 
+        // Calcular tier de escala activo por co_prov
+        const provQty = {};
+        cart.forEach(item => {
+            const prov = (item.co_prov || '').trim();
+            if (!prov || !item.escala || item.escala.length === 0) return;
+            if (!provQty[prov]) provQty[prov] = 0;
+            provQty[prov] += item.quantity;
+        });
+        const provScalePorc = {};
+        Object.entries(provQty).forEach(([co_prov, qty]) => {
+            const rule = scaleRules.find(r => r.co_prov === co_prov);
+            if (!rule || !rule.tiers.length) return;
+            const tiers = rule.tiers;
+            let activeTier = tiers.find(t => qty >= t.desde && qty <= t.hasta);
+            if (!activeTier && qty > tiers[tiers.length - 1].hasta) activeTier = tiers[tiers.length - 1];
+            provScalePorc[co_prov] = activeTier ? activeTier.porc : 0;
+        });
+
         // Procesar items del carrito
         const items = cart.map((item) => {
-            // Extraer código de artículo de la imagen
-            // La imagen es: https://imagenes.cristmedicals.com/imagenes-v3/imagenes/{co_art}.jpg
             const co_art = item.id || "";
+            const prov = (item.co_prov || '').trim();
 
             return {
                 co_art: String(co_art),
-                art_des: item.title, // Agregar descripción para el historial
+                art_des: item.title,
                 cant_sc: item.quantity,
-                precio: item.priceNum,
+                precio: item.basePrice || item.priceNum,
                 descuento: item.categoryDiscount || 0,
-                desc_especial: item.lineDiscount || 0
+                desc_especial: item.lineDiscount || 0,
+                desc_proveedor: item.provDiscount || 0,
+                desc_escala: provScalePorc[prov] || 0
             };
         });
 
@@ -590,6 +810,12 @@ const MontarPedidoScreen = ({ navigation }) => {
                                     <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS }]}>-{product.lineDiscount}%</Text>
                                 </View>
                             )}
+                            {product.provDiscount > 0 && (
+                                <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary }]}>
+                                    <MaterialIcons name="store" size={10} color={COLORS.PRIMARY} />
+                                    <Text style={[styles.imageBadgeText, { color: Theme.colors.primaryDark }]}>-{product.provDiscount}% Prov</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                     <View style={styles.productDetails}>
@@ -614,6 +840,13 @@ const MontarPedidoScreen = ({ navigation }) => {
                                 </View>
                             </View>
                         </View>
+                        {product.escala && product.escala.length > 0 && (
+                            <ScaleProgressBar
+                                tiers={product.escala}
+                                currentQty={getProviderQtyInCart(product.co_prov)}
+                                compact={true}
+                            />
+                        )}
                     </View>
                 </TouchableOpacity>
 
@@ -715,6 +948,14 @@ const MontarPedidoScreen = ({ navigation }) => {
                                 <MaterialIcons name="local-offer" size={12} color="#b45309" />
                                 <Text style={styles.clientDiscountText}>
                                     {Math.round(parseFloat(item.desc_glob))}% DESC
+                                </Text>
+                            </View>
+                        )}
+                        {Array.isArray(item.descuento_proveedor) && item.descuento_proveedor.length > 0 && (
+                            <View style={[styles.clientDetailItem, styles.clientProvDiscountTag]}>
+                                <MaterialIcons name="store" size={12} color={COLORS.PRIMARY} />
+                                <Text style={styles.clientProvDiscountText}>
+                                    {item.descuento_proveedor.length} DESC PROV
                                 </Text>
                             </View>
                         )}
@@ -844,6 +1085,9 @@ const MontarPedidoScreen = ({ navigation }) => {
                 onQuantityChange={handleQuantityChange}
                 onConfirmOrder={handleConfirmOrder}
                 confirmingOrder={confirmingOrder}
+                scaleRules={scaleRules}
+                onClearCart={handleClearCart}
+                onRemoveItem={handleRemoveFromCart}
             />
 
             <ProductDetailModal
@@ -853,6 +1097,8 @@ const MontarPedidoScreen = ({ navigation }) => {
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
                 onQuantityChange={handleQuantityChange}
+                scaleTiers={getScaleTiers(selectedProductForDetail?.co_prov)}
+                providerQtyInCart={getProviderQtyInCart(selectedProductForDetail?.co_prov)}
             />
         </SafeAreaView>
     );
@@ -906,8 +1152,50 @@ const CartModal = ({
     onDecrement,
     onQuantityChange,
     onConfirmOrder,
-    confirmingOrder
+    confirmingOrder,
+    scaleRules,
+    onClearCart,
+    onRemoveItem
 }) => {
+
+    const computeScaleDiscounts = () => {
+        const providerData = {};
+        cartItems.forEach(item => {
+            const prov = (item.co_prov || '').trim();
+            if (!prov || !item.escala || item.escala.length === 0) return;
+            if (!providerData[prov]) providerData[prov] = { subtotal: 0, qty: 0 };
+            providerData[prov].subtotal += (item.priceNum || 0) * item.quantity;
+            providerData[prov].qty += item.quantity;
+        });
+
+        let scaleDiscountTotal = 0;
+        const scaleBreakdown = [];
+        Object.entries(providerData).forEach(([co_prov, data]) => {
+            const rule = (scaleRules || []).find(r => r.co_prov === co_prov);
+            if (!rule || !rule.tiers.length) return;
+            const tiers = rule.tiers;
+            let activeTier = null;
+            for (const tier of tiers) {
+                if (data.qty >= tier.desde && data.qty <= tier.hasta) {
+                    activeTier = tier;
+                    break;
+                }
+            }
+            if (!activeTier && data.qty > tiers[tiers.length - 1].hasta) {
+                activeTier = tiers[tiers.length - 1];
+            }
+            if (activeTier && activeTier.porc > 0) {
+                const discount = data.subtotal * (activeTier.porc / 100);
+                scaleDiscountTotal += discount;
+                scaleBreakdown.push({ co_prov, qty: data.qty, porc: activeTier.porc, discount });
+            }
+        });
+
+        return { scaleDiscountTotal, scaleBreakdown };
+    };
+
+    const { scaleDiscountTotal, scaleBreakdown } = computeScaleDiscounts();
+    const totalAfterScale = total - scaleDiscountTotal;
 
     const handleToggleDiscount = (item) => {
         const isDivisaBE = item.tiempo.toUpperCase().includes('DIVISA EN B/E');
@@ -930,8 +1218,8 @@ const CartModal = ({
         }
     };
 
-    // Sequential Calculation: DIVISA EN B/E first, then others
-    let tempTotal = total;
+    // Sequential Calculation: scale first, then DIVISA EN B/E, then others
+    let tempTotal = totalAfterScale;
 
     // 1. Separate DIVISA EN B/E from others
     const divisaBEDiscount = selectedDiscounts.find(d => d.tiempo.toUpperCase().includes('DIVISA EN B/E'));
@@ -1003,10 +1291,52 @@ const CartModal = ({
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>Tu Pedido</Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <MaterialIcons name="close" size={24} color="#64748b" />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            {cartItems.length > 0 && (
+                                <TouchableOpacity
+                                    onPress={onClearCart}
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                >
+                                    <MaterialIcons name="delete-sweep" size={16} color="#ef4444" />
+                                    <Text style={{ fontSize: 12, color: '#ef4444', fontWeight: '600', marginLeft: 4 }}>Limpiar</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <MaterialIcons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
+
+                    {/* Descuentos por Escala */}
+                    {scaleBreakdown.length > 0 && (
+                        <View style={styles.cartSection}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
+                                <Text style={styles.sectionTitle}>Descuentos por Volumen</Text>
+                            </View>
+                            {scaleBreakdown.map((item, idx) => (
+                                <View key={idx} style={[styles.scaleBreakdownRow, { borderRadius: 10, marginBottom: 6, padding: 10 }]}>
+                                    <View style={{
+                                        width: 34, height: 34, borderRadius: 17,
+                                        backgroundColor: '#10b981', alignItems: 'center',
+                                        justifyContent: 'center', marginRight: 10,
+                                    }}>
+                                        <MaterialIcons name="trending-up" size={17} color="#fff" />
+                                    </View>
+                                    <View style={styles.scaleBreakdownInfo}>
+                                        <Text style={styles.scaleBreakdownProv}>Prov. {item.co_prov}</Text>
+                                        <Text style={styles.scaleBreakdownDetail}>{item.qty} unidades · tier -{item.porc}%</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={{ fontSize: 9, color: '#047857', fontWeight: '600', marginBottom: 1 }}>AHORRO</Text>
+                                        <Text style={[styles.scaleBreakdownAmount, { fontSize: 14 }]}>
+                                            -{item.discount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
 
                     {/* Descuentos Section */}
                     <View style={styles.cartSection}>
@@ -1032,7 +1362,7 @@ const CartModal = ({
                                     <Text style={styles.cartItemTitle} numberOfLines={1}>{item.title}</Text>
                                     <View style={styles.cartItemPriceRow}>
                                         <Text style={styles.cartItemPrice}>{item.price}</Text>
-                                        {(item.categoryDiscount > 0 || item.lineDiscount > 0) && (
+                                        {(item.categoryDiscount > 0 || item.lineDiscount > 0 || item.provDiscount > 0) && (
                                             <View style={styles.cartItemBadges}>
                                                 {item.categoryDiscount > 0 && (
                                                     <View style={[styles.miniBadge, styles.miniCategoryBadge]}>
@@ -1044,6 +1374,11 @@ const CartModal = ({
                                                         <Text style={styles.miniBadgeText}>-{item.lineDiscount}%</Text>
                                                     </View>
                                                 )}
+                                                {item.provDiscount > 0 && (
+                                                    <View style={[styles.miniBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary }]}>
+                                                        <Text style={[styles.miniBadgeText, { color: Theme.colors.primaryDark }]}>-{item.provDiscount}% Prov</Text>
+                                                    </View>
+                                                )}
                                             </View>
                                         )}
                                     </View>
@@ -1051,7 +1386,7 @@ const CartModal = ({
                                 <View style={styles.cartQuantitySection}>
                                     <View style={styles.quantitySelectorSm}>
                                         <TouchableOpacity onPress={() => onDecrement(item)} style={styles.quantityButtonSm}>
-                                            <MaterialIcons name={item.quantity === 1 ? "delete" : "remove"} size={14} color="#ef4444" />
+                                            <MaterialIcons name="remove" size={14} color="#ef4444" />
                                         </TouchableOpacity>
                                         <TextInput
                                             style={styles.quantityTextSm}
@@ -1067,6 +1402,12 @@ const CartModal = ({
                                     <Text style={styles.cartItemSubtotal}>
                                         {((item.priceNum || 0) * item.quantity).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                     </Text>
+                                    <TouchableOpacity
+                                        onPress={() => onRemoveItem(item)}
+                                        style={styles.cartDeleteButton}
+                                    >
+                                        <MaterialIcons name="delete" size={15} color="#ef4444" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         )}
@@ -1074,17 +1415,47 @@ const CartModal = ({
                     />
 
                     <View style={styles.modalFooter}>
+                        {/* Savings chip */}
+                        {(scaleDiscountTotal > 0 || discountAmount > 0) && (
+                            <View style={{
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                gap: 6, backgroundColor: '#ecfdf5', borderRadius: 10,
+                                paddingVertical: 8, paddingHorizontal: 12,
+                                borderWidth: 1, borderColor: '#a7f3d0', marginBottom: 10,
+                            }}>
+                                <MaterialIcons name="savings" size={16} color="#10b981" />
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#065f46' }}>
+                                    Ahorras {(scaleDiscountTotal + discountAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} en este pedido
+                                </Text>
+                            </View>
+                        )}
+
                         <View style={styles.summaryTable}>
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Subtotal Bruto</Text>
                                 <Text style={styles.summaryValue}>{total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Text>
                             </View>
 
+                            {scaleDiscountTotal > 0 && (
+                                <View style={styles.summaryRow}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                        <MaterialIcons name="trending-up" size={12} color="#047857" />
+                                        <Text style={[styles.summaryLabel, { color: '#047857' }]}>Desc. por Volumen</Text>
+                                    </View>
+                                    <Text style={[styles.summaryValue, { color: '#047857' }]}>
+                                        -{scaleDiscountTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                    </Text>
+                                </View>
+                            )}
+
                             {selectedDiscounts.length > 0 && (
                                 <View style={styles.summaryRow}>
-                                    <Text style={[styles.summaryLabel, { color: '#b45309' }]}>
-                                        Desc. Aplicados ({totalDiscountPercentageText})
-                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                        <MaterialIcons name="local-offer" size={12} color="#b45309" />
+                                        <Text style={[styles.summaryLabel, { color: '#b45309' }]}>
+                                            Desc. Pago ({totalDiscountPercentageText})
+                                        </Text>
+                                    </View>
                                     <Text style={[styles.summaryValue, { color: '#b45309' }]}>
                                         -{discountAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                     </Text>
@@ -1127,7 +1498,9 @@ const ProductDetailModal = ({
     product,
     onIncrement,
     onDecrement,
-    onQuantityChange
+    onQuantityChange,
+    scaleTiers,
+    providerQtyInCart
 }) => {
     if (!product) return null;
 
@@ -1202,6 +1575,12 @@ const ProductDetailModal = ({
                                             <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS, fontSize: 12 }]}>-{product.lineDiscount}% Línea</Text>
                                         </View>
                                     )}
+                                    {product.provDiscount > 0 && (
+                                        <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary }]}>
+                                            <MaterialIcons name="store" size={14} color={COLORS.PRIMARY} />
+                                            <Text style={[styles.imageBadgeText, { color: Theme.colors.primaryDark, fontSize: 12 }]}>-{product.provDiscount}% Prov</Text>
+                                        </View>
+                                    )}
                                 </View>
                             </View>
 
@@ -1228,6 +1607,32 @@ const ProductDetailModal = ({
                                     <Text style={styles.detailTotalValue}>{product.stock}</Text>
                                 </View>
                             </View>
+
+                            {scaleTiers && scaleTiers.length > 0 && (
+                                <View style={styles.detailScaleSection}>
+                                    <Text style={styles.detailSectionTitle}>Descuento por Volumen del Proveedor</Text>
+                                    <ScaleProgressBar
+                                        tiers={scaleTiers}
+                                        currentQty={providerQtyInCart || 0}
+                                        compact={false}
+                                    />
+                                    {scaleTiers.map((tier, idx) => {
+                                        const qty = providerQtyInCart || 0;
+                                        const isActive = qty >= tier.desde && qty <= tier.hasta || (qty > scaleTiers[scaleTiers.length - 1].hasta && idx === scaleTiers.length - 1);
+                                        return (
+                                            <View key={idx} style={[styles.scaleTableRow, isActive && styles.scaleTableRowActive]}>
+                                                <Text style={[styles.scaleTableQty, isActive && styles.scaleTableQtyActive]}>
+                                                    {tier.desde}–{tier.hasta} unidades
+                                                </Text>
+                                                <Text style={[styles.scaleTablePorc, isActive && styles.scaleTablePorcActive]}>
+                                                    -{tier.porc}%
+                                                </Text>
+                                                {isActive && <MaterialIcons name="check-circle" size={14} color="#10b981" style={{ marginLeft: 4 }} />}
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            )}
                         </View>
                     </ScrollView>
 

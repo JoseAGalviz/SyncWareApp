@@ -19,10 +19,10 @@ import * as Location from 'expo-location';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/FacturasScreen.styles';
 import COLORS from '../constants/Colors';
-
+import { Config } from '../constants/Config';
 
 // Constantes y utilidades
-const API_BASE_URL = 'https://98.94.185.164.nip.io/api';
+const API_BASE_URL = `${Config.API_BASE_URL}/api`;
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 const FACTURAS_LIMITE = 500; // Límite máximo de facturas a almacenar

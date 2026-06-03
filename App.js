@@ -12,6 +12,7 @@ import Theme from "./src/constants/Theme";
 import LoginScreen from "./src/screens/LoginScreen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AppNavigatorConductor from "./src/navigation/AppNavigatorConductor";
+import AppNavigatorDespachador from "./src/navigation/AppNavigatorDespachador";
 import CustomDrawerContent from "./src/navigation/CustomDrawerContent";
 import UserDataScreen from "./src/screens/UserDataScreen";
 import RecepcionGuiasScreen from "./src/screens/RecepcionGuiasScreen";
@@ -129,6 +130,10 @@ function MainAppDrawer() {
   );
 }
 
+function MainAppDespachador() {
+  return <AppNavigatorDespachador />;
+}
+
 function MainAppDrawerConductor() {
   return (
     <Drawer.Navigator
@@ -167,6 +172,8 @@ function AppLayout() {
           isAuthenticated
             ? userRole === "conductor"
               ? "MainAppDrawerConductor"
+              : userRole === "despachador"
+              ? "MainAppDespachador"
               : "MainAppDrawer"
             : "Login"
         }
@@ -175,6 +182,7 @@ function AppLayout() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainAppDrawer" component={MainAppDrawer} />
         <Stack.Screen name="MainAppDrawerConductor" component={MainAppDrawerConductor} />
+        <Stack.Screen name="MainAppDespachador" component={MainAppDespachador} />
       </Stack.Navigator>
       <FlashMessage
         position="top"

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import COLORS from '../constants/Colors';
 import styles from '../styles/HomeScreen.styles';
+import { Config } from '../constants/Config';
 
 // Constantes para evitar "magic strings"
 const STORAGE_KEYS = {
@@ -170,7 +171,7 @@ export default function HomeScreen({ navigation }) {
   // Abrir link de negociaciones (Redirección vía API GET)
   const handleOpenNegociaciones = useCallback(async () => {
     if (user && user.co_ven) {
-      const url = `https://98.94.185.164.nip.io/api/auth/redirect-fixed-ip?co_ven=${user.co_ven}`;
+      const url = `${Config.API_BASE_URL}/api/auth/redirect-fixed-ip?co_ven=${user.co_ven}`;
       try {
         const supported = await Linking.canOpenURL(url);
         if (supported) {
@@ -202,7 +203,7 @@ export default function HomeScreen({ navigation }) {
   // Abrir link de Cartera de Clientes (Endpoint externo)
   const handleOpenCartera = useCallback(async () => {
     if (user && user.co_ven) {
-      const url = `http://98.94.185.164:8025/vendedor?co_ven=${user.co_ven}`;
+      const url = `${Config.MAIL_BASE_URL}/vendedor?co_ven=${user.co_ven}`;
       try {
         const supported = await Linking.canOpenURL(url);
         if (supported) {
@@ -386,7 +387,7 @@ export default function HomeScreen({ navigation }) {
           {user && user.co_ven && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#7B5EA7' }]}
-              onPress={() => Linking.openURL('https://despacho.cristmedicals.com/listado/negociacion.php')}
+              onPress={() => Linking.openURL(`${Config.DESPACHO_URL}/listado/negociacion.php`)}
               accessibilityLabel="Ir a Comparador de Precios y Negociaciones"
               accessibilityHint="Abre la pantalla de Comparador de Precios y Negociaciones"
             >

@@ -18,6 +18,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import Theme from '../constants/Theme';
 import styles from '../styles/ChequeoGuiaCargaScreen.styles';
+import { Config } from '../constants/Config';
 
 
 export default function ChequeoGuiaCargaScreen() {
@@ -340,7 +341,7 @@ export default function ChequeoGuiaCargaScreen() {
     console.log("JSON enviado al endpoint:", JSON.stringify(json, null, 2));
     try {
       const response = await fetch(
-        "https://98.94.185.164.nip.io/api/guias/procesar",
+        `${Config.API_BASE_URL}/api/guias/procesar`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

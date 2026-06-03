@@ -11,6 +11,7 @@ class ApiService {
         const url = endpoint.startsWith("http")
             ? endpoint
             : `${Config.API_BASE_URL}${endpoint}`;
+        console.log('[api] URL:', url);
         const headers = {
             "Content-Type": "application/json",
             ...options.headers,
@@ -55,7 +56,7 @@ class ApiService {
 
             return data;
         } catch (error) {
-            console.error(`API Request Error [${endpoint}]:`, error);
+            console.error(`API Request Error [${endpoint}]:`, error, JSON.stringify(error));
             throw error; // Re-throw for caller to handle
         }
     }

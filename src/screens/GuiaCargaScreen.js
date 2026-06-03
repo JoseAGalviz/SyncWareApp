@@ -166,6 +166,7 @@ export default function GuiaCargaScreen({ navigation }) {
 
   // Estados de Escaneo (Local)
   const [escaneos, setEscaneos] = useState({});
+  const escaneosRef = React.useRef({});
   const [scanningEnabled, setScanningEnabled] = useState(false); // Toggle Cámara
   const [notaScan, setNotaScan] = useState("");
 
@@ -176,6 +177,8 @@ export default function GuiaCargaScreen({ navigation }) {
 
   // Polling
   const [isPolling, setIsPolling] = useState(false);
+  const isPollingRef = React.useRef(false);
+  const pollLoopRunning = React.useRef(false);
   const [activeCargaId, setActiveCargaId] = useState(null); // NEW: The ID of the currently loaded and tracked charge
 
   // Estados para Modal de Feedback
@@ -226,6 +229,7 @@ export default function GuiaCargaScreen({ navigation }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Object.keys(parsed).length > 0) {
+          escaneosRef.current = parsed;
           setEscaneos(parsed);
           console.log(`✅ Recuperados ${Object.keys(parsed).length} escaneos guardados`);
           // Mostrar notificación al usuario
@@ -265,8 +269,8 @@ export default function GuiaCargaScreen({ navigation }) {
         if (response.detalle && response.detalle.length > 0) {
           setEscaneos(prev => {
             const next = reconcileScans(response.detalle, prev);
-            // If keys were migrated, ensure they are saved to persistent storage
             if (next !== prev && num) {
+              escaneosRef.current = next;
               AsyncStorage.setItem(`${STORAGE_KEYS.ESCANEOS_PREFIX}${num}`, JSON.stringify(next))
                 .catch(e => console.error('Error saving reconciled scans:', e));
             }
@@ -279,6 +283,7 @@ export default function GuiaCargaScreen({ navigation }) {
         if (!isBackground) {
           setActiveCargaId(num); // Set this only on manual/initial search success
           await loadSavedScans(num);
+          isPollingRef.current = true;
           setIsPolling(true);
         }
       } else {
@@ -300,30 +305,33 @@ export default function GuiaCargaScreen({ navigation }) {
     }
   }, [loadSavedScans]);
 
-  // --- Polling (Refactored for Safety) ---
+  // --- Polling ---
   const pollTimerRef = React.useRef(null);
 
   const startPolling = useCallback(() => {
+    if (pollLoopRunning.current) return; // guard: un solo loop activo
+    pollLoopRunning.current = true;
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
 
     const poll = async () => {
-      // Only poll if screen is focused and we have an active ID
-      if (!activeCargaId) return;
-
+      if (!isPollingRef.current) {
+        pollLoopRunning.current = false;
+        return;
+      }
       try {
         await fetchGuia(activeCargaId, true);
       } catch (e) {
-        // Ignore background errors
+        // background errors ignored
       }
-
-      // Schedule next poll ONLY after previous one finishes
-      if (isPolling) {
+      if (isPollingRef.current) {
         pollTimerRef.current = setTimeout(poll, POLL_INTERVAL);
+      } else {
+        pollLoopRunning.current = false;
       }
     };
 
     poll();
-  }, [activeCargaId, fetchGuia, isPolling]);
+  }, [activeCargaId, fetchGuia]); // isPolling removido de deps
 
   useEffect(() => {
     if (isPolling) {
@@ -393,6 +401,7 @@ export default function GuiaCargaScreen({ navigation }) {
           text: 'Limpiar',
           style: 'destructive',
           onPress: async () => {
+            escaneosRef.current = {};
             setEscaneos({});
             if (activeCargaId) {
               await AsyncStorage.removeItem(`${STORAGE_KEYS.ESCANEOS_PREFIX}${activeCargaId}`);
@@ -419,16 +428,16 @@ export default function GuiaCargaScreen({ navigation }) {
           text: 'Guardar',
           onPress: async () => {
             try {
-              // Primero guardamos localmente
-              const saved = await guardarEscaneosLocal(escaneos);
+              const escaneosActuales = escaneosRef.current;
+              const saved = await guardarEscaneosLocal(escaneosActuales);
               if (!saved) return;
 
               // Preparar datos para guardado
               const now = new Date();
               const progresoData = {
                 numeroCarga: activeCargaId,
-                escaneos: escaneos,
-                totalEscaneados: Object.keys(escaneos).length,
+                escaneos: escaneosActuales,
+                totalEscaneados: Object.keys(escaneosActuales).length,
                 totalItems: guiaData.detalle?.length || 0,
                 horaGuardado: now.toLocaleTimeString(),
                 fechaGuardado: now.toLocaleDateString(),
@@ -453,7 +462,7 @@ export default function GuiaCargaScreen({ navigation }) {
 
               showMessage({
                 message: "✅ Progreso Guardado",
-                description: `${Object.keys(escaneos).length} items guardados localmente`,
+                description: `${Object.keys(escaneosActuales).length} items guardados localmente`,
                 type: "success",
                 duration: 3000
               });
@@ -473,8 +482,10 @@ export default function GuiaCargaScreen({ navigation }) {
     if (!guiaData) return;
 
     try {
-      // SIEMPRE guardamos localmente primero
-      const savedLocally = await guardarEscaneosLocal(escaneos);
+      // Usar escaneosRef.current (siempre tiene el valor más reciente, incluso si React
+      // aún no procesó el último setEscaneos antes de que el usuario presionara "Guardar")
+      const escaneosActuales = escaneosRef.current;
+      const savedLocally = await guardarEscaneosLocal(escaneosActuales);
       if (!savedLocally) {
         Alert.alert('Error', 'No se pudieron guardar los datos localmente. No se puede continuar.');
         return;
@@ -624,11 +635,13 @@ export default function GuiaCargaScreen({ navigation }) {
           {
             text: 'OK',
             onPress: () => {
-              // No reseteamos la pantalla completamente para que el usuario vea su trabajo finalizado
+              isPollingRef.current = false;
+              pollLoopRunning.current = false;
               setIsPolling(false);
+              if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
               setScanningEnabled(false);
-              // Forzamos refresh del header para mostrar "FINALIZADA" si cambió el status
-              fetchGuia(activeCargaId, false);
+              // Refresh en background: solo actualiza guiaData (status badge), NO toca escaneos
+              fetchGuia(activeCargaId, true);
             }
           }
         ],
@@ -646,8 +659,12 @@ export default function GuiaCargaScreen({ navigation }) {
     setGuiaData(null);
     setNumeroCarga('');
     setActiveCargaId(null);
+    escaneosRef.current = {};
     setEscaneos({});
+    isPollingRef.current = false;
+    pollLoopRunning.current = false;
     setIsPolling(false);
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     setNotaScan('');
     setScanningEnabled(false);
   };
@@ -714,6 +731,7 @@ export default function GuiaCargaScreen({ navigation }) {
     }
 
     if (result.result === 'success') {
+      escaneosRef.current = nuevoEscaneos;
       setEscaneos(nuevoEscaneos);
       guardarEscaneosLocal(nuevoEscaneos);
     }
@@ -808,10 +826,14 @@ export default function GuiaCargaScreen({ navigation }) {
     // We DON'T clear guiaData yet to avoid "reloads" during typing if undesired, 
     // but here it's a manual search, so we should.
     setGuiaData(null);
+    escaneosRef.current = {};
     setEscaneos({});
     setScanningEnabled(false);
-    setIsPolling(false); // Stop old polling
-    setActiveCargaId(null); // Reset active ID until next success fetch
+    isPollingRef.current = false;
+    pollLoopRunning.current = false;
+    setIsPolling(false);
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    setActiveCargaId(null);
     fetchGuia(numeroCarga, false);
   };
 

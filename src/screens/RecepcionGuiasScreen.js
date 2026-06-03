@@ -14,9 +14,10 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import styles from '../styles/RecepcionGuiasScreen.styles';
+import { Config } from '../constants/Config';
 
 // Constantes y configuraciones
-const API_BASE_URL = "https://98.94.185.164.nip.io/api/guias";
+const API_BASE_URL = `${Config.API_BASE_URL}/api/guias`;
 const STORAGE_KEYS = {
   USER_DATA: "userData",
   GUIAS_PENDIENTES: "guiasPendientes",

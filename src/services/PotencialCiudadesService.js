@@ -1,6 +1,7 @@
 import { api } from './api';
+import { Config } from '../constants/Config';
 
-const BASE_URL = 'https://98.94.185.164.nip.io/api/auditoria';
+const BASE_URL = `${Config.API_BASE_URL}/api/auditoria`;
 
 export const PotencialCiudadesService = {
     /**
