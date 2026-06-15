@@ -51,22 +51,21 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
     const fillPct = maxQty > 0 ? (clampedQty / maxQty) * 100 : 0;
 
     let activeTier = null;
-    for (const tier of tiers) {
-        if (currentQty >= tier.desde && currentQty <= tier.hasta) { activeTier = tier; break; }
+    for (let i = tiers.length - 1; i >= 0; i--) {
+        if (currentQty >= tiers[i].hasta) { activeTier = tiers[i]; break; }
     }
-    if (!activeTier && currentQty > tiers[tiers.length - 1].hasta) activeTier = tiers[tiers.length - 1];
     const activeTierIdx = activeTier ? tiers.indexOf(activeTier) : -1;
-    const nextTier = activeTierIdx >= 0 ? tiers[activeTierIdx + 1] : tiers.find(t => currentQty < t.desde);
+    const nextTier = activeTierIdx >= 0 ? tiers[activeTierIdx + 1] : tiers.find(t => currentQty < t.hasta);
     const isMaxTier = activeTier && !nextTier;
     const barColor = activeTier ? '#10b981' : Theme.colors.primary;
 
     if (compact) {
         const statusText = activeTier
             ? (nextTier
-                ? `-${activeTier.porc}% ✓ · ${nextTier.desde - currentQty} más → -${nextTier.porc}%`
+                ? `-${activeTier.porc}% ✓ · ${nextTier.hasta - currentQty} más → -${nextTier.porc}%`
                 : `-${activeTier.porc}% activo (máx.)`)
-            : (tiers[0] && currentQty < tiers[0].desde
-                ? `${tiers[0].desde - currentQty} uds → -${tiers[0].porc}%`
+            : (tiers[0] && currentQty < tiers[0].hasta
+                ? `${tiers[0].hasta - currentQty} uds → -${tiers[0].porc}%`
                 : '');
         return (
             <View style={{ marginTop: 5 }}>
@@ -102,7 +101,7 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
                 {tiers.map((tier, idx) => {
                     const isActive = activeTier?.porc === tier.porc;
-                    const isReached = currentQty >= tier.desde;
+                    const isReached = currentQty >= tier.hasta;
                     return (
                         <View key={idx} style={{ alignItems: 'center', gap: 2 }}>
                             <View style={{
@@ -113,7 +112,7 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
                                     -{tier.porc}%
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 8, color: '#9ca3af' }}>{tier.desde}–{tier.hasta}</Text>
+                            <Text style={{ fontSize: 8, color: '#9ca3af' }}>{'≥'}{tier.hasta}</Text>
                         </View>
                     );
                 })}
@@ -130,10 +129,10 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
                     <Text style={{ fontSize: 11, color: '#065f46', fontWeight: '700', flex: 1 }}>
                         {isMaxTier
                             ? `-${activeTier.porc}% activo · escala máxima alcanzada`
-                            : `-${activeTier.porc}% activo · faltan ${nextTier.desde - currentQty} ud${nextTier.desde - currentQty !== 1 ? 's' : ''} para -${nextTier.porc}%`}
+                            : `-${activeTier.porc}% activo · faltan ${nextTier.hasta - currentQty} ud${nextTier.hasta - currentQty !== 1 ? 's' : ''} para -${nextTier.porc}%`}
                     </Text>
                 </View>
-            ) : tiers[0] && currentQty < tiers[0].desde ? (
+            ) : tiers[0] && currentQty < tiers[0].hasta ? (
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
                     backgroundColor: '#eff6ff', borderRadius: 8,
@@ -142,7 +141,7 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
                 }}>
                     <MaterialIcons name="trending-up" size={14} color={Theme.colors.primary} />
                     <Text style={{ fontSize: 11, color: Theme.colors.primaryDark || Theme.colors.primary, fontWeight: '600', flex: 1 }}>
-                        Agrega {tiers[0].desde - currentQty} unidades más para desbloquear -{tiers[0].porc}%
+                        Agrega {tiers[0].hasta - currentQty} unidades más para desbloquear -{tiers[0].porc}%
                     </Text>
                 </View>
             ) : null}
@@ -476,8 +475,9 @@ const MontarPedidoScreen = ({ navigation }) => {
         if (product.escala && product.escala.length > 0 && product.co_prov) {
             const prevTotal = getProviderQtyInCart(product.co_prov);
             const newTotal = prevTotal + 1;
-            const prevTier = product.escala.find(t => prevTotal >= t.desde && prevTotal <= t.hasta);
-            const newTier = product.escala.find(t => newTotal >= t.desde && newTotal <= t.hasta);
+            const findTier = (qty) => { for (let i = product.escala.length - 1; i >= 0; i--) { if (qty >= product.escala[i].hasta) return product.escala[i]; } return null; };
+            const prevTier = findTier(prevTotal);
+            const newTier = findTier(newTotal);
 
             if (newTier && (!prevTier || newTier.porc !== prevTier.porc)) {
                 showMessage({
@@ -488,10 +488,10 @@ const MontarPedidoScreen = ({ navigation }) => {
                     duration: 2500,
                 });
             } else if (!newTier) {
-                const upcoming = product.escala.find(t => newTotal < t.desde);
-                if (upcoming && (upcoming.desde - newTotal) <= 3) {
+                const upcoming = product.escala.find(t => newTotal < t.hasta);
+                if (upcoming && (upcoming.hasta - newTotal) <= 3) {
                     showMessage({
-                        message: `Faltan ${upcoming.desde - newTotal} unidades`,
+                        message: `Faltan ${upcoming.hasta - newTotal} unidades`,
                         description: `para desbloquear -${upcoming.porc}% del proveedor ${product.co_prov}`,
                         type: "info",
                         icon: "info",
@@ -620,8 +620,8 @@ const MontarPedidoScreen = ({ navigation }) => {
             const rule = scaleRules.find(r => r.co_prov === co_prov);
             if (!rule || !rule.tiers.length) return;
             const tiers = rule.tiers;
-            let activeTier = tiers.find(t => qty >= t.desde && qty <= t.hasta);
-            if (!activeTier && qty > tiers[tiers.length - 1].hasta) activeTier = tiers[tiers.length - 1];
+            let activeTier = null;
+            for (let i = tiers.length - 1; i >= 0; i--) { if (qty >= tiers[i].hasta) { activeTier = tiers[i]; break; } }
             provScalePorc[co_prov] = activeTier ? activeTier.porc : 0;
         });
 
@@ -1175,14 +1175,8 @@ const CartModal = ({
             if (!rule || !rule.tiers.length) return;
             const tiers = rule.tiers;
             let activeTier = null;
-            for (const tier of tiers) {
-                if (data.qty >= tier.desde && data.qty <= tier.hasta) {
-                    activeTier = tier;
-                    break;
-                }
-            }
-            if (!activeTier && data.qty > tiers[tiers.length - 1].hasta) {
-                activeTier = tiers[tiers.length - 1];
+            for (let i = tiers.length - 1; i >= 0; i--) {
+                if (data.qty >= tiers[i].hasta) { activeTier = tiers[i]; break; }
             }
             if (activeTier && activeTier.porc > 0) {
                 const discount = data.subtotal * (activeTier.porc / 100);
@@ -1624,11 +1618,11 @@ const ProductDetailModal = ({
                                     />
                                     {scaleTiers.map((tier, idx) => {
                                         const qty = providerQtyInCart || 0;
-                                        const isActive = qty >= tier.desde && qty <= tier.hasta || (qty > scaleTiers[scaleTiers.length - 1].hasta && idx === scaleTiers.length - 1);
+                                        const isActive = qty >= tier.hasta && (idx === scaleTiers.length - 1 || qty < scaleTiers[idx + 1].hasta);
                                         return (
                                             <View key={idx} style={[styles.scaleTableRow, isActive && styles.scaleTableRowActive]}>
                                                 <Text style={[styles.scaleTableQty, isActive && styles.scaleTableQtyActive]}>
-                                                    {tier.desde}–{tier.hasta} unidades
+                                                    {'≥'}{tier.hasta} unidades
                                                 </Text>
                                                 <Text style={[styles.scaleTablePorc, isActive && styles.scaleTablePorcActive]}>
                                                     -{tier.porc}%
