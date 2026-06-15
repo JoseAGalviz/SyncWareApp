@@ -65,11 +65,13 @@ class ApiService {
         return this.request(endpoint, { method: "GET", headers });
     }
 
-    post(endpoint, body, headers = {}) {
+    post(endpoint, body, options = {}) {
+        const { headers, ...restOptions } = options;
         return this.request(endpoint, {
             method: "POST",
             body: JSON.stringify(body),
-            headers,
+            headers: headers || {},
+            ...restOptions,
         });
     }
 }

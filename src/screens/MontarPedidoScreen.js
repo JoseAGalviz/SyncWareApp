@@ -1314,27 +1314,33 @@ const CartModal = ({
                                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
                                 <Text style={styles.sectionTitle}>Descuentos por Volumen</Text>
                             </View>
-                            {scaleBreakdown.map((item, idx) => (
-                                <View key={idx} style={[styles.scaleBreakdownRow, { borderRadius: 10, marginBottom: 6, padding: 10 }]}>
-                                    <View style={{
-                                        width: 34, height: 34, borderRadius: 17,
-                                        backgroundColor: '#10b981', alignItems: 'center',
-                                        justifyContent: 'center', marginRight: 10,
-                                    }}>
-                                        <MaterialIcons name="trending-up" size={17} color="#fff" />
+                            <ScrollView
+                                style={{ maxHeight: 180 }}
+                                nestedScrollEnabled={true}
+                                showsVerticalScrollIndicator={scaleBreakdown.length > 2}
+                            >
+                                {scaleBreakdown.map((item, idx) => (
+                                    <View key={idx} style={[styles.scaleBreakdownRow, { borderRadius: 10, marginBottom: 6, padding: 10 }]}>
+                                        <View style={{
+                                            width: 34, height: 34, borderRadius: 17,
+                                            backgroundColor: '#10b981', alignItems: 'center',
+                                            justifyContent: 'center', marginRight: 10,
+                                        }}>
+                                            <MaterialIcons name="trending-up" size={17} color="#fff" />
+                                        </View>
+                                        <View style={styles.scaleBreakdownInfo}>
+                                            <Text style={styles.scaleBreakdownProv}>Prov. {item.co_prov}</Text>
+                                            <Text style={styles.scaleBreakdownDetail}>{item.qty} unidades · tier -{item.porc}%</Text>
+                                        </View>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={{ fontSize: 9, color: '#047857', fontWeight: '600', marginBottom: 1 }}>AHORRO</Text>
+                                            <Text style={[styles.scaleBreakdownAmount, { fontSize: 14 }]}>
+                                                -{item.discount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <View style={styles.scaleBreakdownInfo}>
-                                        <Text style={styles.scaleBreakdownProv}>Prov. {item.co_prov}</Text>
-                                        <Text style={styles.scaleBreakdownDetail}>{item.qty} unidades · tier -{item.porc}%</Text>
-                                    </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        <Text style={{ fontSize: 9, color: '#047857', fontWeight: '600', marginBottom: 1 }}>AHORRO</Text>
-                                        <Text style={[styles.scaleBreakdownAmount, { fontSize: 14 }]}>
-                                            -{item.discount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                                        </Text>
-                                    </View>
-                                </View>
-                            ))}
+                                ))}
+                            </ScrollView>
                         </View>
                     )}
 

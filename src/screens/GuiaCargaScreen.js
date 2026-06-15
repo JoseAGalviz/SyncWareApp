@@ -361,7 +361,7 @@ export default function GuiaCargaScreen({ navigation }) {
       setSaveStatus('error');
       // Intentar guardar en un backup key
       try {
-        await AsyncStorage.setItem(`${STORAGE_KEYS.ESCANEOS_PREFIX}${numeroCarga}_backup`, JSON.stringify(nuevosEscaneos));
+        await AsyncStorage.setItem(`${STORAGE_KEYS.ESCANEOS_PREFIX}${activeCargaId}_backup`, JSON.stringify(nuevosEscaneos));
         console.log('💾 Guardado en backup exitoso');
         return true;
       } catch (backupError) {
@@ -686,8 +686,8 @@ export default function GuiaCargaScreen({ navigation }) {
     // Optimización: No iterar si no hay input válido
     if (!valTrim) return result;
 
-    // Copia superficial para mutación controlada
-    let nuevoEscaneos = { ...escaneos };
+    // Usar ref (siempre fresco) en vez de state (puede ser stale entre renders)
+    let nuevoEscaneos = { ...escaneosRef.current };
     let matchFound = false;
 
     // Busqueda optimizada? Con 100 items un for loop es imperceptible (<1ms).
