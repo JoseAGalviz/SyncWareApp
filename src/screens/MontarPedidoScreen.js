@@ -344,14 +344,16 @@ const MontarPedidoScreen = ({ navigation }) => {
             // Mapear los datos del API al formato que usa el componente
             const mappedProducts = data.map((item, index) => {
                 const basePrice = item.Precio ? parseFloat(item.Precio) : 0;
-                const catDiscount = item.descuento_por_categoria || 0;
+                const catDiscountRaw = item.descuento_por_categoria || 0;
                 const lineDiscount = item.descuento_por_linea || 0;
                 const itemCoProv = (item.co_prov || '').trim();
                 const provRule = providerDiscounts.find(d => (d.co_prov || '').trim() === itemCoProv);
                 const provDiscount = provRule ? (provRule.porc1 || 0) : 0;
-                const priceAfterCategoryDiscount = basePrice * (1 - (catDiscount / 100));
-                const priceAfterGlobalDiscount = priceAfterCategoryDiscount * (1 - (globalDiscount / 100));
-                const finalPrice = priceAfterGlobalDiscount * (1 - (provDiscount / 100));
+                // Prioridad: proveedor > categoria > escala. Si hay descuento de proveedor, anula el de categoria.
+                const catDiscount = provDiscount > 0 ? 0 : catDiscountRaw;
+                const priorityDiscount = provDiscount > 0 ? provDiscount : catDiscount;
+                const priceAfterPriorityDiscount = basePrice * (1 - (priorityDiscount / 100));
+                const finalPrice = priceAfterPriorityDiscount * (1 - (globalDiscount / 100));
                 const priceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
                 return {
                     id: item.imagen || index,
@@ -471,8 +473,8 @@ const MontarPedidoScreen = ({ navigation }) => {
             setCart([...cart, { ...product, quantity: 1, priceNum: product.priceNum || parseFloat(product.price) }]);
         }
 
-        // 3. Scale tier notifications
-        if (product.escala && product.escala.length > 0 && product.co_prov) {
+        // 3. Scale tier notifications (no aplica si el artículo ya tiene descuento por categoría)
+        if (!product.categoryDiscount && !product.provDiscount && product.escala && product.escala.length > 0 && product.co_prov) {
             const prevTotal = getProviderQtyInCart(product.co_prov);
             const newTotal = prevTotal + 1;
             const findTier = (qty) => { for (let i = product.escala.length - 1; i >= 0; i--) { if (qty >= product.escala[i].hasta) return product.escala[i]; } return null; };
@@ -638,7 +640,8 @@ const MontarPedidoScreen = ({ navigation }) => {
                 descuento: item.categoryDiscount || 0,
                 desc_especial: item.lineDiscount || 0,
                 desc_proveedor: item.provDiscount || 0,
-                desc_escala: provScalePorc[prov] || 0
+                // Prioridad: proveedor > categoria > escala. Si el artículo ya tiene descuento por proveedor o categoría, el de escala se anula
+                desc_escala: (item.categoryDiscount > 0 || item.provDiscount > 0) ? 0 : (provScalePorc[prov] || 0)
             };
         });
 
@@ -840,7 +843,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                                 </View>
                             </View>
                         </View>
-                        {product.escala && product.escala.length > 0 && (
+                        {!product.categoryDiscount && !product.provDiscount && product.escala && product.escala.length > 0 && (
                             <ScaleProgressBar
                                 tiers={product.escala}
                                 currentQty={getProviderQtyInCart(product.co_prov)}
@@ -1135,6 +1138,15 @@ const MontarPedidoListHeader = ({
                     </Text>
                 </View>
             )}
+
+            {Array.isArray(selectedClient?.descuento_proveedor) && selectedClient.descuento_proveedor.length > 0 && (
+                <View style={styles.provDiscountBanner}>
+                    <MaterialIcons name="store" size={16} color={Theme.colors.primaryDark} />
+                    <Text style={styles.provDiscountText}>
+                        Descuento adicional por proveedor: {selectedClient.descuento_proveedor.map(d => `${d.co_prov} -${d.porc1}%`).join(', ')}
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
@@ -1164,8 +1176,11 @@ const CartModal = ({
             const prov = (item.co_prov || '').trim();
             if (!prov || !item.escala || item.escala.length === 0) return;
             if (!providerData[prov]) providerData[prov] = { subtotal: 0, qty: 0 };
-            providerData[prov].subtotal += (item.priceNum || 0) * item.quantity;
             providerData[prov].qty += item.quantity;
+            // Prioridad: proveedor > categoria > escala. Si el artículo ya tiene descuento por proveedor o categoría, no participa del descuento por escala
+            if (!item.categoryDiscount && !item.provDiscount) {
+                providerData[prov].subtotal += (item.priceNum || 0) * item.quantity;
+            }
         });
 
         let scaleDiscountTotal = 0;
@@ -1178,7 +1193,7 @@ const CartModal = ({
             for (let i = tiers.length - 1; i >= 0; i--) {
                 if (data.qty >= tiers[i].hasta) { activeTier = tiers[i]; break; }
             }
-            if (activeTier && activeTier.porc > 0) {
+            if (activeTier && activeTier.porc > 0 && data.subtotal > 0) {
                 const discount = data.subtotal * (activeTier.porc / 100);
                 scaleDiscountTotal += discount;
                 scaleBreakdown.push({ co_prov, qty: data.qty, porc: activeTier.porc, discount });
@@ -1608,7 +1623,7 @@ const ProductDetailModal = ({
                                 </View>
                             </View>
 
-                            {scaleTiers && scaleTiers.length > 0 && (
+                            {!product.categoryDiscount && !product.provDiscount && scaleTiers && scaleTiers.length > 0 && (
                                 <View style={styles.detailScaleSection}>
                                     <Text style={styles.detailSectionTitle}>Descuento por Volumen del Proveedor</Text>
                                     <ScaleProgressBar
