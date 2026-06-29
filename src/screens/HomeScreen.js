@@ -399,6 +399,19 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#E07B39' }]}
+            onPress={() => Linking.openURL('https://catalogo-cristmedicals.netlify.app/')}
+            accessibilityLabel="Ir a Catálogo Personalizado"
+            accessibilityHint="Abre el catálogo personalizado en el navegador"
+          >
+            <View style={styles.btnIconContainer}>
+              <Ionicons name="book-outline" size={22} color={COLORS.WHITE} />
+            </View>
+            <Text style={styles.actionButtonText}>Catálogo Personalizado</Text>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
+          </TouchableOpacity>
+
 
           {/* KPI Metrics Section */}
           {loadingKpi && (
