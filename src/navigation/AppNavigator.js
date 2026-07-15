@@ -9,6 +9,7 @@ import HomeScreen from "../screens/HomeScreen";
 import VisitaScreen from "../screens/VisitaScreen";
 import FacturasScreen from "../screens/FacturasScreen";
 import MontarPedidoScreen from "../screens/MontarPedidoScreen";
+import LotesScreen from "../screens/LotesScreen";
 import Theme from '../constants/Theme';
 
 
@@ -66,6 +67,8 @@ export default function AppNavigator() {
             iconName = focused ? "calendar" : "calendar-outline";
           } else if (route.name === "Facturas") {
             iconName = focused ? "receipt" : "receipt-outline";
+          } else if (route.name === "Lotes") {
+            iconName = focused ? "layers" : "layers-outline";
           } else if (route.name === "Recibir Guías de Carga") {
             iconName = focused ? "cube" : "cube-outline";
           } else if (route.name === "Montar Pedidos") {
@@ -95,6 +98,7 @@ export default function AppNavigator() {
       <Tab.Screen name="Inicio" component={HomeScreen} />
       <Tab.Screen name="Visita" component={VisitaScreen} />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
+      <Tab.Screen name="Lotes" component={LotesScreen} />
       <Tab.Screen
         name="Montar Pedidos"
         component={MontarPedidoScreen}

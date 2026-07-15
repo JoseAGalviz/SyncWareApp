@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import FacturasScreen from "../screens/FacturasScreen";
 import DespachoScreen from "../screens/DespachoScreen";
+import LotesScreen from "../screens/LotesScreen";
 import Theme from "../constants/Theme";
 
 const Tab = createBottomTabNavigator();
@@ -61,6 +62,8 @@ export default function AppNavigatorDespachador() {
             iconName = focused ? "receipt" : "receipt-outline";
           } else if (route.name === "Despacho") {
             iconName = focused ? "cube" : "cube-outline";
+          } else if (route.name === "Lotes") {
+            iconName = focused ? "layers" : "layers-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -81,6 +84,7 @@ export default function AppNavigatorDespachador() {
     >
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen name="Despacho" component={DespachoScreen} />
+      <Tab.Screen name="Lotes" component={LotesScreen} />
     </Tab.Navigator>
   );
 }

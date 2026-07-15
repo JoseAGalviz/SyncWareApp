@@ -319,15 +319,39 @@ const MontarPedidoScreen = ({ navigation }) => {
         setOriginalProducts(reset(originalProducts));
     };
 
+    const hasProductIva = (item) => {
+        if (typeof item?.tiene_iva === 'boolean') {
+            return item.tiene_iva;
+        }
+
+        if (typeof item?.tiene_iva === 'number') {
+            return item.tiene_iva === 1;
+        }
+
+        if (typeof item?.tiene_iva === 'string') {
+            const normalized = item.tiene_iva.trim().toLowerCase();
+            return normalized === '1' || normalized === 'true' || normalized === 'si' || normalized === 'sí';
+        }
+
+        if (item?.tipo_imp === 1 || item?.tipo_imp === '1' || item?.tipo_imp === true || item?.tipo_imp === 'true') {
+            return true;
+        }
+
+        if (item?.tipo_imp === 6 || item?.tipo_imp === '6' || item?.tipo_imp === false || item?.tipo_imp === 'false') {
+            return false;
+        }
+
+        return false;
+    };
+
     const fetchCatalog = async (priceNum = 0, globalDiscount = 0, providerDiscounts = []) => {
         setLoading(true);
         setProducts([]); // Clear previous products
         try {
-            console.log("Fetching catalog from:", API_ENDPOINTS.CATALOGO, "with price_num:", priceNum, "global discount:", globalDiscount);
+            const body = { precio_num: priceNum };
+            console.log("Fetching catalog from:", API_ENDPOINTS.CATALOGO, "body enviado:", body);
             // Usamos post para enviar el body con el numero de precio
-            const response = await api.post(API_ENDPOINTS.CATALOGO, {
-                precio_num: priceNum
-            });
+            const response = await api.post(API_ENDPOINTS.CATALOGO, body);
 
             // Handle response, assuming it returns the array directly or in .data
             let data = [];
@@ -343,7 +367,8 @@ const MontarPedidoScreen = ({ navigation }) => {
 
             // Mapear los datos del API al formato que usa el componente
             const mappedProducts = data.map((item, index) => {
-                const basePrice = item.Precio ? parseFloat(item.Precio) : 0;
+                const rawBasePrice = item.precio_venta ?? item.Precio ?? 0;
+                const basePrice = Number.isFinite(parseFloat(rawBasePrice)) ? parseFloat(rawBasePrice) : 0;
                 const catDiscountRaw = item.descuento_por_categoria || 0;
                 const lineDiscount = item.descuento_por_linea || 0;
                 const itemCoProv = (item.co_prov || '').trim();
@@ -354,7 +379,12 @@ const MontarPedidoScreen = ({ navigation }) => {
                 const priorityDiscount = provDiscount > 0 ? provDiscount : catDiscount;
                 const priceAfterPriorityDiscount = basePrice * (1 - (priorityDiscount / 100));
                 const finalPrice = priceAfterPriorityDiscount * (1 - (globalDiscount / 100));
-                const priceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                const hasIva = hasProductIva(item);
+                const ivaAmount = hasIva ? parseFloat((finalPrice * 0.16).toFixed(4)) : 0;
+                const priceWithIva = finalPrice + ivaAmount;
+                const priceLabel = priceWithIva.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                const basePriceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                const ivaAmountLabel = ivaAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
                 return {
                     id: item.imagen || index,
                     title: item.descripcion,
@@ -368,6 +398,10 @@ const MontarPedidoScreen = ({ navigation }) => {
                     subtotal: 0,
                     priceNum: finalPrice,
                     basePrice: basePrice,
+                    priceWithIva: priceWithIva,
+                    basePriceLabel: basePriceLabel,
+                    ivaAmount: ivaAmount,
+                    ivaAmountLabel: ivaAmountLabel,
                     categoryDiscount: catDiscount,
                     lineDiscount: lineDiscount,
                     category: item.linea || item.categoria || 'General',
@@ -375,7 +409,9 @@ const MontarPedidoScreen = ({ navigation }) => {
                     co_prov: (item.co_prov || '').trim(),
                     marca: item.marca || 'N/A',
                     provDiscount: provDiscount,
-                    escala: Array.isArray(item.escala) ? item.escala : []
+                    escala: Array.isArray(item.escala) ? item.escala : [],
+                    hasIva,
+                    ivaLabel: hasIva ? 'IVA incluido' : 'Sin IVA'
                 };
             });
 
@@ -843,6 +879,14 @@ const MontarPedidoScreen = ({ navigation }) => {
                                 </View>
                             </View>
                         </View>
+                        <View style={{ marginTop: 6, flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                            <Text style={{ fontSize: 11, color: '#6b7280' }}>Base: {product.basePriceLabel}</Text>
+                            {product.hasIva ? (
+                                <Text style={{ fontSize: 11, color: '#b45309' }}>IVA: +{product.ivaAmountLabel}</Text>
+                            ) : (
+                                <Text style={{ fontSize: 11, color: '#6b7280' }}>Sin IVA</Text>
+                            )}
+                        </View>
                         {!product.categoryDiscount && !product.provDiscount && product.escala && product.escala.length > 0 && (
                             <ScaleProgressBar
                                 tiers={product.escala}
@@ -1244,11 +1288,18 @@ const CartModal = ({
         tempTotal = tempTotal * (1 - parseFloat(d.porcentaje) / 100);
     });
 
+    const taxableRaw = cartItems.reduce((sum, item) => {
+        if (!item.hasIva) return sum;
+        return sum + ((item.priceNum || 0) * item.quantity);
+    }, 0);
     const finalTotal = tempTotal;
-    const discountAmount = total - finalTotal;
     const totalDiscountPercentageText = selectedDiscounts.length > 1
         ? `${selectedDiscounts.map(d => `${d.porcentaje}%`).join(' + ')} (Secuencial)`
         : `${selectedDiscounts[0]?.porcentaje || 0}%`;
+    const discountAmount = total - finalTotal;
+    const discountFactor = totalAfterScale > 0 ? (finalTotal / totalAfterScale) : 1;
+    const ivaTotal = taxableRaw * discountFactor * 0.16;
+    const finalTotalWithIva = finalTotal + ivaTotal;
 
     const renderDiscountCard = (item) => {
         const isSelected = selectedDiscounts.some(d => d.id === item.id);
@@ -1316,6 +1367,7 @@ const CartModal = ({
                         </View>
                     </View>
 
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Theme.spacing.xl }}>
                     {/* Descuentos por Escala */}
                     {scaleBreakdown.length > 0 && (
                         <View style={styles.cartSection}>
@@ -1366,68 +1418,71 @@ const CartModal = ({
                         <Text style={styles.sectionSubtitle}>Selecciona un tiempo de pago para aplicar descuento extra</Text>
                     </View>
 
-                    <FlatList
-                        data={cartItems}
-                        keyExtractor={(item) => String(item.id)}
-                        style={{ flex: 1 }}
-                        contentContainerStyle={styles.cartListContent}
-                        renderItem={({ item }) => (
-                            <View style={styles.cartItem}>
-                                <View style={styles.cartItemInfo}>
-                                    <Text style={styles.cartItemTitle} numberOfLines={1}>{item.title}</Text>
-                                    <View style={styles.cartItemPriceRow}>
-                                        <Text style={styles.cartItemPrice}>{item.price}</Text>
-                                        {(item.categoryDiscount > 0 || item.lineDiscount > 0 || item.provDiscount > 0) && (
-                                            <View style={styles.cartItemBadges}>
-                                                {item.categoryDiscount > 0 && (
-                                                    <View style={[styles.miniBadge, styles.miniCategoryBadge]}>
-                                                        <Text style={styles.miniBadgeText}>-{item.categoryDiscount}%</Text>
-                                                    </View>
-                                                )}
-                                                {item.lineDiscount > 0 && (
-                                                    <View style={[styles.miniBadge, styles.miniLineBadge]}>
-                                                        <Text style={styles.miniBadgeText}>-{item.lineDiscount}%</Text>
-                                                    </View>
-                                                )}
-                                                {item.provDiscount > 0 && (
-                                                    <View style={[styles.miniBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary }]}>
-                                                        <Text style={[styles.miniBadgeText, { color: Theme.colors.primaryDark }]}>-{item.provDiscount}% Prov</Text>
+                    <View style={styles.cartSection}>
+                        <Text style={styles.sectionTitle}>Artículos ({cartItems.length})</Text>
+                        <View style={styles.cartListContent}>
+                            {cartItems.length === 0 ? (
+                                <Text style={styles.emptyCartText}>Tu carrito está vacío.</Text>
+                            ) : (
+                                cartItems.map((item) => (
+                                    <View key={String(item.id)} style={styles.cartItem}>
+                                        <View style={styles.cartItemInfo}>
+                                            <Text style={styles.cartItemTitle} numberOfLines={1}>{item.title}</Text>
+                                            <View style={styles.cartItemPriceRow}>
+                                                <Text style={styles.cartItemPrice}>{item.price}</Text>
+                                                {(item.categoryDiscount > 0 || item.lineDiscount > 0 || item.provDiscount > 0) && (
+                                                    <View style={styles.cartItemBadges}>
+                                                        {item.categoryDiscount > 0 && (
+                                                            <View style={[styles.miniBadge, styles.miniCategoryBadge]}>
+                                                                <Text style={styles.miniBadgeText}>-{item.categoryDiscount}%</Text>
+                                                            </View>
+                                                        )}
+                                                        {item.lineDiscount > 0 && (
+                                                            <View style={[styles.miniBadge, styles.miniLineBadge]}>
+                                                                <Text style={styles.miniBadgeText}>-{item.lineDiscount}%</Text>
+                                                            </View>
+                                                        )}
+                                                        {item.provDiscount > 0 && (
+                                                            <View style={[styles.miniBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary }]}>
+                                                                <Text style={[styles.miniBadgeText, { color: Theme.colors.primaryDark }]}>-{item.provDiscount}% Prov</Text>
+                                                            </View>
+                                                        )}
                                                     </View>
                                                 )}
                                             </View>
-                                        )}
+                                        </View>
+                                        <View style={styles.cartQuantitySection}>
+                                            <View style={styles.quantitySelectorSm}>
+                                                <TouchableOpacity onPress={() => onDecrement(item)} style={styles.quantityButtonSm}>
+                                                    <MaterialIcons name="remove" size={14} color="#ef4444" />
+                                                </TouchableOpacity>
+                                                <TextInput
+                                                    style={styles.quantityTextSm}
+                                                    value={String(item.quantity)}
+                                                    onChangeText={(text) => onQuantityChange(item, text)}
+                                                    keyboardType="numeric"
+                                                    selectTextOnFocus={true}
+                                                />
+                                                <TouchableOpacity onPress={() => onIncrement(item)} style={[styles.quantityButtonSm, styles.quantityButtonActiveSm]}>
+                                                    <MaterialIcons name="add" size={14} color={COLORS.WHITE} />
+                                                </TouchableOpacity>
+                                            </View>
+                                            <Text style={styles.cartItemSubtotal}>
+                                                {(((item.priceWithIva ?? item.priceNum) || 0) * item.quantity).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => onRemoveItem(item)}
+                                                style={styles.cartDeleteButton}
+                                            >
+                                                <MaterialIcons name="delete" size={15} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.cartQuantitySection}>
-                                    <View style={styles.quantitySelectorSm}>
-                                        <TouchableOpacity onPress={() => onDecrement(item)} style={styles.quantityButtonSm}>
-                                            <MaterialIcons name="remove" size={14} color="#ef4444" />
-                                        </TouchableOpacity>
-                                        <TextInput
-                                            style={styles.quantityTextSm}
-                                            value={String(item.quantity)}
-                                            onChangeText={(text) => onQuantityChange(item, text)}
-                                            keyboardType="numeric"
-                                            selectTextOnFocus={true}
-                                        />
-                                        <TouchableOpacity onPress={() => onIncrement(item)} style={[styles.quantityButtonSm, styles.quantityButtonActiveSm]}>
-                                            <MaterialIcons name="add" size={14} color={COLORS.WHITE} />
-                                        </TouchableOpacity>
-                                    </View>
-                                    <Text style={styles.cartItemSubtotal}>
-                                        {((item.priceNum || 0) * item.quantity).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => onRemoveItem(item)}
-                                        style={styles.cartDeleteButton}
-                                    >
-                                        <MaterialIcons name="delete" size={15} color="#ef4444" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-                        ListEmptyComponent={<Text style={styles.emptyCartText}>Tu carrito está vacío.</Text>}
-                    />
+                                ))
+                            )}
+                        </View>
+                    </View>
+                    </ScrollView>
 
                     <View style={styles.modalFooter}>
                         {/* Savings chip */}
@@ -1477,10 +1532,15 @@ const CartModal = ({
                                 </View>
                             )}
 
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>IVA 16%</Text>
+                                <Text style={styles.summaryValue}>{ivaTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Text>
+                            </View>
+
                             <View style={[styles.summaryRow, styles.totalFinalRow]}>
-                                <Text style={styles.totalLabel}>TOTAL A PAGAR</Text>
+                                <Text style={styles.totalLabel}>TOTAL c/ IVA</Text>
                                 <Text style={styles.totalFinalValue}>
-                                    {finalTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                    {finalTotalWithIva.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                 </Text>
                             </View>
                         </View>

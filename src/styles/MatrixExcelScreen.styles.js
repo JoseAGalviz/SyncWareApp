@@ -102,8 +102,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Theme.colors.text,
-    marginBottom: Theme.spacing.md,
     letterSpacing: -0.2,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: Theme.colors.muted,
+    fontWeight: '600',
+    marginBottom: Theme.spacing.md,
   },
   divider: {
     height: 1,
@@ -131,6 +136,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Theme.colors.dark,
     fontWeight: '600',
+  },
+  footerDivider: {
+    height: 1,
+    backgroundColor: Theme.colors.border,
+    marginTop: Theme.spacing.xs,
+    marginBottom: Theme.spacing.sm,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 10,
+    color: Theme.colors.muted,
+    fontWeight: '500',
   },
   centered: {
     flex: 1,

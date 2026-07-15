@@ -18,12 +18,6 @@ import { printAndSharePdf } from '../utils/pdfUtils';
 import Theme from '../constants/Theme';
 import styles from '../styles/MatrixExcelScreen.styles';
 
-const POTENCIAL_COLORS = {
-    Alto: Theme.colors.success,
-    Medio: Theme.colors.warning,
-    Bajo: Theme.colors.error,
-};
-
 const MatrixExcelScreen = ({ navigation }) => {
     const { user } = useAuth();
     const [data, setData] = useState([]);
@@ -74,13 +68,31 @@ const MatrixExcelScreen = ({ navigation }) => {
         }
         const q = text.toLowerCase();
         const filtered = data.filter(item =>
-            `${item.ciudad || ''} ${item.potencial || ''} ${item.id || ''}`.toLowerCase().includes(q)
+            `${item.ciudad || ''} ${item.ejecutiva || ''} ${item.vendedor || ''} ${item.usuario || ''} ${item.id || ''} ${item.cod_ejecutiva || ''}`
+                .toLowerCase().includes(q)
         );
         setFilteredData(filtered);
     };
 
-    const formatNumber = (val) =>
-        Number(val || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatNumber = (val, decimals = 2) => {
+        if (val === null || val === undefined || val === '') return '0';
+        const n = Number(val);
+        if (isNaN(n)) return String(val);
+        return n.toLocaleString('es-PE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    };
+
+    const formatPeso = (val) => {
+        const n = Number(val);
+        if (isNaN(n)) return String(val ?? '0') + '%';
+        return `${Math.round(n)}%`;
+    };
+
+    const formatDate = (val) => {
+        if (!val) return 'N/D';
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return 'N/D';
+        return d.toLocaleString('es-VE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
 
     // ── Generación del PDF ────────────────────────────────────────────────────
     const handleGeneratePdf = async () => {
@@ -91,20 +103,22 @@ const MatrixExcelScreen = ({ navigation }) => {
         setGeneratingPdf(true);
         try {
             const date = new Date().toLocaleDateString('es-VE', { year: 'numeric', month: 'long', day: 'numeric' });
-            const badgeColor = { Alto: '#27ae60', Medio: '#f39c12', Bajo: '#e74c3c' };
 
             const rows = filteredData.map((item, i) => {
-                const color = badgeColor[item.potencial] || '#555';
                 return `
                   <tr>
                     <td>${i + 1}</td>
                     <td>${item.id ?? 'N/A'}</td>
                     <td>${item.ciudad || 'Sin Ciudad'}</td>
-                    <td><span style="background:${color};color:#fff;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;">${item.potencial || 'N/D'}</span></td>
+                    <td>${item.ejecutiva || 'N/D'}</td>
                     <td style="text-align:center;">${item.farmacias || '0'}</td>
+                    <td style="text-align:right;">${formatNumber(item.potencial)}</td>
                     <td style="text-align:right;">${formatNumber(item.mesual_unid)}</td>
                     <td style="text-align:right;">${formatNumber(item.mesual_crist)}</td>
-                    <td style="text-align:right;">${formatNumber(item.peso_empresa)}</td>
+                    <td style="text-align:right;">${formatPeso(item.peso_empresa)}</td>
+                    <td style="text-align:center;">${item.activos ?? 0}</td>
+                    <td style="text-align:center;">${item.perdidos ?? 0}</td>
+                    <td style="text-align:center;">${item.prospectos ?? 0}</td>
                   </tr>`;
             }).join('');
 
@@ -133,11 +147,15 @@ const MatrixExcelScreen = ({ navigation }) => {
   <table>
     <thead>
       <tr>
-        <th>#</th><th>ID</th><th>Ciudad</th><th>Potencial</th>
+        <th>#</th><th>ID</th><th>Ciudad</th><th>Ejecutiva</th>
         <th style="text-align:center;">Farmacias</th>
+        <th style="text-align:right;">Potencial</th>
         <th style="text-align:right;">Mensual Unid.</th>
         <th style="text-align:right;">Mensual Crist.</th>
         <th style="text-align:right;">Peso Empresa</th>
+        <th style="text-align:center;">Activos</th>
+        <th style="text-align:center;">Perdidos</th>
+        <th style="text-align:center;">Prospectos</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -156,20 +174,21 @@ const MatrixExcelScreen = ({ navigation }) => {
 
     // ── Tarjeta individual ────────────────────────────────────────────────────
     const renderItem = ({ item }) => {
-        const potencialColor = POTENCIAL_COLORS[item.potencial] || Theme.colors.muted;
-
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
                     <View style={[styles.idBadge, { backgroundColor: Theme.colors.dark }]}>
                         <Text style={styles.idText}>ID: {item.id ?? 'N/A'}</Text>
                     </View>
-                    <View style={[styles.idBadge, { backgroundColor: potencialColor }]}>
-                        <Text style={styles.idText}>{item.potencial || 'N/D'}</Text>
+                    <View style={[styles.idBadge, { backgroundColor: Theme.colors.primary }]}>
+                        <Text style={styles.idText}>Potencial: {formatNumber(item.potencial)}</Text>
                     </View>
                 </View>
 
                 <Text style={styles.companyName}>{item.ciudad || 'Sin Ciudad'}</Text>
+                <Text style={styles.subtitle}>
+                    {item.ejecutiva || 'Sin Ejecutiva'} {item.cod_ejecutiva ? `(#${item.cod_ejecutiva})` : ''}
+                </Text>
 
                 <View style={styles.divider} />
 
@@ -179,20 +198,42 @@ const MatrixExcelScreen = ({ navigation }) => {
                         <Text style={styles.infoValue}>{item.farmacias || '0'}</Text>
                     </View>
                     <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>MENSUAL UNID.</Text>
-                        <Text style={styles.infoValue}>{formatNumber(item.mesual_unid)}</Text>
+                        <Text style={styles.infoLabel}>PESO EMPRESA</Text>
+                        <Text style={styles.infoValue}>{formatPeso(item.peso_empresa)}</Text>
                     </View>
                 </View>
 
                 <View style={styles.row}>
                     <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>MENSUAL UNID.</Text>
+                        <Text style={styles.infoValue}>{formatNumber(item.mesual_unid)}</Text>
+                    </View>
+                    <View style={styles.infoCol}>
                         <Text style={styles.infoLabel}>MENSUAL CRIST.</Text>
                         <Text style={styles.infoValue}>{formatNumber(item.mesual_crist)}</Text>
                     </View>
+                </View>
+
+                <View style={styles.row}>
                     <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>PESO EMPRESA</Text>
-                        <Text style={styles.infoValue}>{formatNumber(item.peso_empresa)}</Text>
+                        <Text style={styles.infoLabel}>ACTIVOS</Text>
+                        <Text style={[styles.infoValue, { color: Theme.colors.success }]}>{item.activos ?? 0}</Text>
                     </View>
+                    <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>PERDIDOS</Text>
+                        <Text style={[styles.infoValue, { color: Theme.colors.error }]}>{item.perdidos ?? 0}</Text>
+                    </View>
+                    <View style={styles.infoCol}>
+                        <Text style={styles.infoLabel}>PROSPECTOS</Text>
+                        <Text style={[styles.infoValue, { color: Theme.colors.warning }]}>{item.prospectos ?? 0}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.footerDivider} />
+
+                <View style={styles.cardFooter}>
+                    <Text style={styles.footerText}>Vendedor: {item.vendedor || 'N/D'} ({item.usuario || 'N/D'})</Text>
+                    <Text style={styles.footerText}>{formatDate(item.created_at)}</Text>
                 </View>
             </View>
         );

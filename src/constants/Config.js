@@ -22,4 +22,5 @@ export const API_ENDPOINTS = {
   DESCUENTOS_ESCALA: "/api/pedidosApp/descuentos-escala",
   GESTIONES: "/api/gestiones",
   REPORTE_DESPACHO: "/api/gestiones/reporteDespacho",
+  LOTES: "/api/lotes",
 };
