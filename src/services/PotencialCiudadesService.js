@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, getAuthHeader } from './api';
 import { Config } from '../constants/Config';
 
 const BASE_URL = `${Config.API_BASE_URL}/api/auditoria`;
@@ -28,6 +28,7 @@ export const PotencialCiudadesService = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
+                    ...(await getAuthHeader()),
                 },
                 body: JSON.stringify(payload)
             });

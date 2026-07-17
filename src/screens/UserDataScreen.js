@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import COLORS from '../constants/Colors';
 import styles from '../styles/UserDataScreen.styles';
 import { Config } from '../constants/Config';
+import { getAuthHeader } from '../services/api';
 
 
 export default function UserDataScreen({ navigation }) {
@@ -38,7 +39,9 @@ export default function UserDataScreen({ navigation }) {
                 let allSegments = cached ? JSON.parse(cached) : null;
 
                 if (!allSegments || allSegments.length === 0) {
-                    const response = await fetch(`${Config.API_BASE_URL}/api/clientes/segmentos`);
+                    const response = await fetch(`${Config.API_BASE_URL}/api/clientes/segmentos`, {
+                        headers: await getAuthHeader(),
+                    });
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     allSegments = await response.json();
                 }

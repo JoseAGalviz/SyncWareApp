@@ -15,6 +15,7 @@ import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import styles from '../styles/RecepcionGuiasScreen.styles';
 import { Config } from '../constants/Config';
+import { getAuthHeader } from '../services/api';
 
 // Constantes y configuraciones
 const API_BASE_URL = `${Config.API_BASE_URL}/api/guias`;
@@ -175,7 +176,7 @@ const useApi = () => {
   const fetchApi = useCallback(async (endpoint, options = {}) => {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
         ...options,
       });
 
@@ -453,7 +454,7 @@ export default function RecepcionGuiasScreen() {
       // Cambia la llamada para capturar el error del backend
       const response = await fetch(`${API_BASE_URL}/recibir-guia`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
         body: JSON.stringify(jsonToSend),
       });
 

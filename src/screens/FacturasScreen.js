@@ -20,6 +20,7 @@ import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/FacturasScreen.styles';
 import COLORS from '../constants/Colors';
 import { Config } from '../constants/Config';
+import { getAuthHeader } from '../services/api';
 
 // Constantes y utilidades
 const API_BASE_URL = `${Config.API_BASE_URL}/api`;
@@ -358,7 +359,7 @@ export default function FacturasScreen() {
       const payload = { num_factura: numFactura };
       const response = await fetch(`${API_BASE_URL}/facturas/scan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
         body: JSON.stringify(payload),
       });
 
@@ -460,6 +461,7 @@ export default function FacturasScreen() {
   // Enviar factura al servidor
   const enviarFactura = useCallback(async (facturaData, comentario) => {
     try {
+      const authHeader = await getAuthHeader();
       const payloadUpdate = {
         fact_num: [String(facturaData.fact_num)],
         fec_venc_despues: [facturaData.fec_venc_despues],
@@ -467,7 +469,7 @@ export default function FacturasScreen() {
 
       const responseUpdate = await fetch(`${API_BASE_URL}/facturas/update`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify(payloadUpdate),
       });
 
@@ -496,7 +498,7 @@ export default function FacturasScreen() {
 
       const responseLocales = await fetch(`${API_BASE_URL}/facturas_locales`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ facturas: facturaPayload }),
       });
 

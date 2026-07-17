@@ -1,4 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Config } from "../constants/Config";
+
+export const AUTH_TOKEN_KEY = "authToken";
 
 class ApiService {
     /**
@@ -12,8 +15,10 @@ class ApiService {
             ? endpoint
             : `${Config.API_BASE_URL}${endpoint}`;
         console.log('[api] URL:', url);
+        const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
         const headers = {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...options.headers,
         };
 
@@ -77,3 +82,12 @@ class ApiService {
 }
 
 export const api = new ApiService();
+
+export async function getAuthToken() {
+    return AsyncStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export async function getAuthHeader() {
+    const token = await getAuthToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}

@@ -19,6 +19,7 @@ import { useIsFocused } from '@react-navigation/native';
 import createStyles from '../styles/LotesScreen.styles';
 import Theme from '../constants/Theme';
 import { Config, API_ENDPOINTS } from '../constants/Config';
+import { getAuthHeader } from '../services/api';
 
 const API_BASE_URL = `${Config.API_BASE_URL}/api`;
 const STORAGE_KEY = 'lotes';
@@ -205,7 +206,7 @@ export default function LotesScreen() {
     const payload = { num_factura: numFactura };
     const response = await fetch(`${API_BASE_URL}/lotes/scan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
       body: JSON.stringify(payload),
     });
 
@@ -369,7 +370,7 @@ export default function LotesScreen() {
 
       const response = await fetch(`${Config.API_BASE_URL}${API_ENDPOINTS.LOTES}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
         body: JSON.stringify(payload),
       });
 

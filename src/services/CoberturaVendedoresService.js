@@ -1,4 +1,5 @@
 import { Config } from '../constants/Config';
+import { getAuthHeader } from './api';
 const BASE_URL = `${Config.API_BASE_URL}/api/auditoria`;
 
 export const CoberturaVendedoresService = {
@@ -11,7 +12,7 @@ export const CoberturaVendedoresService = {
 
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' },
+            headers: { 'Accept': 'application/json', ...(await getAuthHeader()) },
         });
 
         if (!response.ok) throw new Error('Error al consultar cobertura de vendedores.');

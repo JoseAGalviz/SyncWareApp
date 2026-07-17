@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "../services/api";
+import { api, AUTH_TOKEN_KEY } from "../services/api";
 import { API_ENDPOINTS } from "../constants/Config";
 
 const AuthContext = createContext();
@@ -43,6 +43,9 @@ export const AuthProvider = ({ children }) => {
                 const userInfo = response.user;
                 setUser(userInfo);
                 await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userInfo));
+                if (response.token) {
+                    await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
+                }
                 return { success: true };
             } else {
                 return {
@@ -74,6 +77,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoading(true);
         try {
             await AsyncStorage.removeItem(USER_DATA_KEY);
+            await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
             setUser(null);
         } catch (e) {
             console.error("Logout failed", e);

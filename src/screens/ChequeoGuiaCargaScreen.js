@@ -19,6 +19,7 @@ import * as Location from "expo-location";
 import Theme from '../constants/Theme';
 import styles from '../styles/ChequeoGuiaCargaScreen.styles';
 import { Config } from '../constants/Config';
+import { getAuthHeader } from '../services/api';
 
 
 export default function ChequeoGuiaCargaScreen() {
@@ -344,7 +345,7 @@ export default function ChequeoGuiaCargaScreen() {
         `${Config.API_BASE_URL}/api/guias/procesar`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
           body: JSON.stringify(json),
         }
       );

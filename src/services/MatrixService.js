@@ -1,4 +1,5 @@
 import { Config } from '../constants/Config';
+import { getAuthHeader } from './api';
 const MATRIX_BASE_URL = `${Config.API_BASE_URL}/api/auditoria`;
 
 export const MatrixService = {
@@ -21,7 +22,7 @@ export const MatrixService = {
 
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
                 body: JSON.stringify({ usuario }),
             });
 

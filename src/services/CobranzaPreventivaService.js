@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Config } from '../constants/Config';
+import { getAuthHeader } from './api';
 
 const API_URL = `${Config.API_BASE_URL}/api/pagina/facturas-segmento`;
 
@@ -53,6 +54,7 @@ export const generateCobranzaPDF = async (user, discountPercent = 0) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...(await getAuthHeader()),
             },
             body: JSON.stringify({
                 co_ven: user.co_ven,
