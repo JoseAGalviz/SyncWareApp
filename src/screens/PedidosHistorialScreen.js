@@ -45,15 +45,52 @@ const PedidosHistorialScreen = ({ navigation }) => {
         filterPedidos();
     }, [searchQuery, pedidos]);
 
-    const fetchPedidos = async () => {
+    const fetchPedidos = useCallback(async (opts = {}) => {
+        const { forzarServidor = false } = opts;
         try {
             // Cargar desde el historial local (caché)
             const historialJson = await AsyncStorage.getItem('PEDIDOS_CACHE');
-            let data = [];
-
-            if (historialJson) {
-                data = JSON.parse(historialJson);
+            let data = historialJson ? JSON.parse(historialJson) : [];
+            if (data.length) {
                 console.log(`📦 Historial cargado desde caché: ${data.length} pedidos.`);
+            }
+
+            // Solo se consulta al servidor si la caché vino vacía (posible pérdida tras
+            // reinstalar/actualizar la app) o en un refresh manual explícito — nunca en
+            // cada apertura normal de la pantalla, para no cargar la API de más.
+            if (data.length === 0 || forzarServidor) {
+                try {
+                    const userDataStr = await AsyncStorage.getItem('userData');
+                    const userData = userDataStr ? JSON.parse(userDataStr) : null;
+                    if (userData?.co_ven) {
+                        const remotos = await api.get(
+                            `${API_ENDPOINTS.OBTENER_PEDIDOS}?co_ven=${encodeURIComponent(userData.co_ven)}`
+                        );
+                        if (Array.isArray(remotos) && remotos.length) {
+                            const porCodigo = new Map(data.map(p => [p.codigo_pedido, p]));
+                            for (const r of remotos) {
+                                if (porCodigo.has(r.codigo_pedido)) continue;
+                                porCodigo.set(r.codigo_pedido, {
+                                    id: r.fact_num,
+                                    codigo_pedido: r.codigo_pedido,
+                                    fact_num: r.fact_num,
+                                    nombre_cliente: r.cod_cliente,
+                                    fecha_creacion: r.fecha,
+                                    items_count: null,
+                                    estado: 'pendiente',
+                                    tot_neto: r.tot_neto,
+                                    descrip: r.descrip,
+                                });
+                            }
+                            data = Array.from(porCodigo.values());
+                            await AsyncStorage.setItem('PEDIDOS_CACHE', JSON.stringify(data));
+                            console.log(`☁️ Historial repuesto/actualizado desde el servidor: ${remotos.length} pedido(s).`);
+                        }
+                    }
+                } catch (remoteErr) {
+                    console.error('No se pudo recuperar historial remoto:', remoteErr);
+                    // Se sigue con lo que haya en caché local — no bloquea la pantalla.
+                }
             }
 
             // Ordenar por fecha más reciente primero
@@ -67,11 +104,11 @@ const PedidosHistorialScreen = ({ navigation }) => {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchPedidos();
+        fetchPedidos({ forzarServidor: true });
     }, []);
 
     const filterPedidos = () => {

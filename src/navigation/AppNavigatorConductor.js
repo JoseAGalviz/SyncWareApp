@@ -11,6 +11,7 @@ import HomeScreenConductor from "../screens/HomeScreenConductor";
 import GuiaCargaScreen from "../screens/GuiaCargaScreen";
 import ChequeoGuiaCargaScreen from "../screens/ChequeoGuiaCargaScreen";
 import FacturasScreen from '../screens/FacturasScreen';
+import RutagramaScreen from '../screens/RutagramaScreen';
 import COLORS from '../constants/Colors';
 
 // import CargarRutaScreen from "../screens/CargarRutaScreen"; // Eliminado (Unificado)
@@ -69,6 +70,8 @@ export default function AppNavigatorConductor() {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Facturas") {
             iconName = focused ? "document-text" : "document-text-outline";
+          } else if (route.name === "Rutagrama") {
+            iconName = focused ? "map" : "map-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -89,6 +92,7 @@ export default function AppNavigatorConductor() {
         component={ChequeoGuiaCargaScreen}
       />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
+      <Tab.Screen name="Rutagrama" component={RutagramaScreen} />
     </Tab.Navigator>
   );
 }

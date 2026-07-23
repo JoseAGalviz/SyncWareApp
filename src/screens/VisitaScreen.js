@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { showMessage } from "react-native-flash-message";
@@ -284,6 +285,49 @@ export default function VisitaScreen() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [gestionSeleccionada, setGestionSeleccionada] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-sync silencioso de gestiones pendientes: dispara solo al recuperar señal
+  // (evento de NetInfo, no polling) y solo si hay pendientes — mismo patrón que
+  // iniciarAutoSync en facturasSync.js. Sin esto, una gestión quedaba local hasta
+  // que el vendedor se acordara de presionar "Cargar" a mano; si la app se
+  // reinstalaba/actualizaba antes de eso, se perdía sin haber llegado al servidor.
+  const gestionesRef = useRef(gestiones);
+  useEffect(() => { gestionesRef.current = gestiones; }, [gestiones]);
+  const loadGestionesRef = useRef(loadGestiones);
+  useEffect(() => { loadGestionesRef.current = loadGestiones; });
+
+  useEffect(() => {
+    let sincronizando = false;
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      if (sincronizando) return;
+      if (!state.isConnected || state.isInternetReachable === false) return;
+
+      const pendientes = gestionesRef.current.filter(g => !g.enviada);
+      if (pendientes.length === 0) return;
+
+      sincronizando = true;
+      try {
+        const userDataStr = await AsyncStorage.getItem(StorageKeys.USER_DATA);
+        const usuario = userDataStr ? JSON.parse(userDataStr) : null;
+        const data = await api.post(API_ENDPOINTS.GESTIONES, { usuario, gestiones: pendientes });
+        if (data && typeof data.insertadas === "number") {
+          const actualizadas = gestionesRef.current.map(g =>
+            pendientes.some(p => p.id === g.id) ? { ...g, enviada: true } : g
+          );
+          await AsyncStorage.setItem(StorageKeys.GESTIONES, JSON.stringify(actualizadas));
+          await loadGestionesRef.current();
+          console.log(`[gestiones] auto-sync: ${data.insertadas} insertada(s), ${data.omitidas} omitida(s).`);
+        }
+      } catch (error) {
+        // Silencioso a propósito: es un intento en segundo plano al reconectar.
+        // Si falla, las gestiones quedan pendientes y el botón manual sigue disponible.
+        console.error("[gestiones] auto-sync falló (se reintenta en la próxima reconexión):", error);
+      } finally {
+        sincronizando = false;
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const limpiarFormulario = useCallback(() => {
     setSelectedCliente("");

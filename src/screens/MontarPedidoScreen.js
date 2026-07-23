@@ -38,6 +38,34 @@ const AVATAR_COLORS = [
     '#3b82f6', // blue-500
 ];
 
+// Cache del catálogo crudo (antes de aplicar precios/descuentos por cliente) — el catálogo
+// es el mismo para todos los clientes con el mismo precio_num, así que cambiar de cliente
+// no debería volver a pedirlo por red. Vive a nivel de módulo: sobrevive a que el usuario
+// entre y salga de la pantalla, se pierde solo si se cierra la app.
+const catalogCache = new Map(); // precio_num -> { data, expires }
+const CATALOG_CACHE_TTL_MS = 3 * 60 * 1000;
+
+const getCachedCatalog = (precioNum) => {
+    const entry = catalogCache.get(precioNum);
+    if (!entry) return null;
+    if (Date.now() > entry.expires) { catalogCache.delete(precioNum); return null; }
+    return entry.data;
+};
+
+const setCachedCatalog = (precioNum, data) => {
+    catalogCache.set(precioNum, { data, expires: Date.now() + CATALOG_CACHE_TTL_MS });
+};
+
+// Formateador de moneda rápido — reemplaza toLocaleString('en-US', {style:'currency',...}),
+// que reconstruye un Intl.NumberFormat en cada llamada. Se usa ~3 veces por producto en el
+// mapeo masivo del catálogo (hasta ~4700 items), donde Intl es el cuello de botella real.
+const formatUSD = (n) => {
+    const num = Number(n) || 0;
+    const [intPart, decPart] = num.toFixed(2).split('.');
+    const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `$${withCommas}.${decPart}`;
+};
+
 const getAvatarColor = (name) => {
     if (!name) return AVATAR_COLORS[0];
     const charCodeSum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -348,22 +376,28 @@ const MontarPedidoScreen = ({ navigation }) => {
         setLoading(true);
         setProducts([]); // Clear previous products
         try {
-            const body = { precio_num: priceNum };
-            console.log("Fetching catalog from:", API_ENDPOINTS.CATALOGO, "body enviado:", body);
-            // Usamos post para enviar el body con el numero de precio
-            const response = await api.post(API_ENDPOINTS.CATALOGO, body);
+            let data = getCachedCatalog(priceNum);
 
-            // Handle response, assuming it returns the array directly or in .data
-            let data = [];
-            if (Array.isArray(response)) {
-                data = response;
-            } else if (response && response.data && Array.isArray(response.data)) {
-                data = response.data;
+            if (data) {
+                console.log(`✅ Catálogo (caché): ${data.length} productos, precio_num=${priceNum}.`);
             } else {
-                throw new Error("La respuesta del catálogo no es un array");
-            }
+                const body = { precio_num: priceNum };
+                console.log("Fetching catalog from:", API_ENDPOINTS.CATALOGO, "body enviado:", body);
+                // Usamos post para enviar el body con el numero de precio
+                const response = await api.post(API_ENDPOINTS.CATALOGO, body);
 
-            console.log(`✅ Catálogo cargado: ${data.length} productos.`);
+                // Handle response, assuming it returns the array directly or in .data
+                if (Array.isArray(response)) {
+                    data = response;
+                } else if (response && response.data && Array.isArray(response.data)) {
+                    data = response.data;
+                } else {
+                    throw new Error("La respuesta del catálogo no es un array");
+                }
+
+                console.log(`✅ Catálogo cargado: ${data.length} productos.`);
+                setCachedCatalog(priceNum, data);
+            }
 
             // Mapear los datos del API al formato que usa el componente
             const mappedProducts = data.map((item, index) => {
@@ -382,9 +416,9 @@ const MontarPedidoScreen = ({ navigation }) => {
                 const hasIva = hasProductIva(item);
                 const ivaAmount = hasIva ? parseFloat((finalPrice * 0.16).toFixed(4)) : 0;
                 const priceWithIva = finalPrice + ivaAmount;
-                const priceLabel = priceWithIva.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-                const basePriceLabel = finalPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-                const ivaAmountLabel = ivaAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                const priceLabel = formatUSD(priceWithIva);
+                const basePriceLabel = formatUSD(finalPrice);
+                const ivaAmountLabel = formatUSD(ivaAmount);
                 return {
                     id: item.imagen || index,
                     title: item.descripcion,
@@ -462,7 +496,11 @@ const MontarPedidoScreen = ({ navigation }) => {
             filtered = filtered.filter(p => (p.category || 'General') === category);
         }
         if (text) {
-            filtered = filtered.filter(p => p.title.toLowerCase().includes(text.toLowerCase()));
+            const q = text.toLowerCase().trim();
+            filtered = filtered.filter(p =>
+                p.title.toLowerCase().includes(q) ||
+                (p.co_art || '').toLowerCase().includes(q)
+            );
         }
         setProducts(filtered);
     };
@@ -1166,7 +1204,7 @@ const MontarPedidoListHeader = ({
                     <MaterialIcons name="inventory-2" size={20} color={COLORS.MUTED} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Buscar producto por nombre..."
+                        placeholder="Buscar por nombre o código..."
                         placeholderTextColor={COLORS.MUTED}
                         value={searchQuery}
                         onChangeText={onSearch}

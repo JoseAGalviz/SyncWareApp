@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.xl,
     borderRadius: Theme.radius.md,
+    alignItems: 'center',
     ...Platform.select({
       ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
       android: { elevation: 2 },
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   sendButton:       { backgroundColor: Theme.colors.info },
   saveButton:       { backgroundColor: Theme.colors.success },
   closeButton:      { backgroundColor: Theme.colors.muted },
-  cleanButton:      { backgroundColor: Theme.colors.error, marginTop: Theme.spacing.md },
+  cleanButton:      { backgroundColor: Theme.colors.error },
   modalButtonText: {
     color: Theme.colors.white,
     fontWeight: '700',
@@ -199,7 +200,8 @@ const styles = StyleSheet.create({
     marginTop: Theme.spacing.lg,
     marginBottom: Theme.spacing.lg,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    gap: Theme.spacing.md,
   },
   cameraContainer: {
     width: '100%',
@@ -297,6 +299,114 @@ const styles = StyleSheet.create({
     color: Theme.colors.white,
     fontWeight: '700',
     fontSize: 15,
+  },
+
+  // --- Confirmación de número escaneado/tipeado ---
+  confirmSubtext: {
+    fontSize: isSmallDevice ? 14 : 16,
+    color: Theme.colors.dark,
+    textAlign: 'center',
+    marginTop: Theme.spacing.sm,
+    marginBottom: 4,
+  },
+  confirmBigNumber: {
+    fontSize: isSmallDevice ? 32 : 40,
+    fontWeight: '800',
+    color: Theme.colors.primary,
+    textAlign: 'center',
+    marginVertical: Theme.spacing.sm,
+    letterSpacing: 1,
+  },
+  confirmInput: {
+    borderWidth: 2,
+    borderColor: Theme.colors.primary,
+    borderRadius: Theme.radius.md,
+    padding: Theme.spacing.md,
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: Theme.colors.text,
+    backgroundColor: Theme.colors.surface,
+    marginBottom: Theme.spacing.md,
+  },
+
+  // --- Aviso grande de sin conexión ---
+  offlineCard: {
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Theme.colors.error,
+  },
+  offlineIcono: {
+    fontSize: 56,
+    marginBottom: Theme.spacing.sm,
+  },
+  offlineTitulo: {
+    fontSize: isSmallDevice ? 24 : 28,
+    fontWeight: '800',
+    color: Theme.colors.error,
+    letterSpacing: 1,
+    marginBottom: Theme.spacing.sm,
+  },
+  offlineNumero: {
+    fontSize: isSmallDevice ? 20 : 24,
+    fontWeight: '700',
+    color: Theme.colors.dark,
+    marginBottom: Theme.spacing.sm,
+  },
+  offlineTexto: {
+    fontSize: isSmallDevice ? 15 : 17,
+    color: Theme.colors.dark,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Theme.spacing.lg,
+  },
+
+  // --- Resultado de sincronización ---
+  syncCard: {
+    alignItems: 'center',
+  },
+  syncIconoGrande: {
+    fontSize: 48,
+    marginBottom: Theme.spacing.sm,
+  },
+  syncTitulo: {
+    fontSize: isSmallDevice ? 20 : 22,
+    fontWeight: '800',
+    color: Theme.colors.primary,
+    marginBottom: Theme.spacing.md,
+    textAlign: 'center',
+  },
+  syncTexto: {
+    fontSize: isSmallDevice ? 14 : 16,
+    color: Theme.colors.dark,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.md,
+  },
+  resultadoLista: {
+    width: '100%',
+    marginBottom: Theme.spacing.md,
+  },
+  resultadoFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
+  },
+  resultadoIcono: {
+    fontSize: 20,
+    marginRight: Theme.spacing.sm,
+  },
+  resultadoEtiqueta: {
+    flex: 1,
+    fontSize: isSmallDevice ? 13 : 15,
+    fontWeight: '600',
+  },
+  resultadoCantidad: {
+    fontSize: isSmallDevice ? 16 : 18,
+    fontWeight: '800',
+    minWidth: 28,
+    textAlign: 'right',
   },
 });
 

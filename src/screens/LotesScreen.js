@@ -356,6 +356,7 @@ export default function LotesScreen() {
     setEnviandoId(lote.localId);
     try {
       const payload = {
+        id_local: lote.localId,
         co_ven: lote.co_ven,
         fecha_creacion: lote.fecha_creacion,
         fecha_cierre: lote.fecha_cierre,

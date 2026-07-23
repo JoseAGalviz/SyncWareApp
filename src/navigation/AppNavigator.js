@@ -10,6 +10,7 @@ import VisitaScreen from "../screens/VisitaScreen";
 import FacturasScreen from "../screens/FacturasScreen";
 import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 import LotesScreen from "../screens/LotesScreen";
+import RutagramaScreen from "../screens/RutagramaScreen";
 import Theme from '../constants/Theme';
 
 
@@ -77,6 +78,8 @@ export default function AppNavigator() {
             iconName = focused ? "clipboard" : "clipboard-outline";
           } else if (route.name === "Consulta Matrix") {
             iconName = focused ? "grid" : "grid-outline";
+          } else if (route.name === "Rutagrama") {
+            iconName = focused ? "map" : "map-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -99,6 +102,7 @@ export default function AppNavigator() {
       <Tab.Screen name="Visita" component={VisitaScreen} />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen name="Lotes" component={LotesScreen} />
+      <Tab.Screen name="Rutagrama" component={RutagramaScreen} />
       <Tab.Screen
         name="Montar Pedidos"
         component={MontarPedidoScreen}
