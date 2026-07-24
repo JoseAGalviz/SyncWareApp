@@ -168,6 +168,7 @@ function AppLayout() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        key={isAuthenticated ? "app" : "auth"}
         initialRouteName={
           isAuthenticated
             ? userRole === "conductor"

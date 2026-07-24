@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth, USER_DATA_KEY } from "../context/AuthContext";
 import COLORS from "../constants/Colors";
 import styles from '../styles/LoginScreen.styles';
@@ -110,10 +111,11 @@ export default function LoginScreen({ navigation }) {
               activeOpacity={0.7}
               disabled={isLoading} // Deshabilitar durante la carga
             >
-              {/* Icono de visibilidad. Se puede usar un componente de iconos para mejor UX. */}
-              <Text style={styles.showPasswordText}>
-                {isPasswordVisible ? "👁️" : "👁️"}
-              </Text>
+              <Ionicons
+                name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                size={22}
+                color={COLORS.MUTED}
+              />
             </TouchableOpacity>
           </View>
 

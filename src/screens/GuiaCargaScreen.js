@@ -958,7 +958,7 @@ export default function GuiaCargaScreen({ navigation }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name="save" size={20} color="#fff" style={{ marginRight: 8 }} />
                     <Text style={styles.btnText}>
-                      💾 Guardar Progreso ({Object.keys(escaneos).length} items)
+                      Guardar Progreso ({Object.keys(escaneos).length} items)
                     </Text>
                   </View>
                 </TouchableOpacity>

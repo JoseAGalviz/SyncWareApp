@@ -48,6 +48,47 @@ function generarNombreRuta() {
 
 const ESTATUS_LABEL = { abierto: 'ABIERTO', cerrado: 'CERRADO' };
 
+// Mismo criterio que detectarTipoCodigo en rutagramas.controller.js (server): factura es
+// letra A/B + 7 dígitos (antes de transformarNumFactura), nota/caja es solo números. Si no
+// matchea ninguno, el server lo va a rechazar igual — mejor avisar acá antes de mandarlo.
+const FORMATO_CODIGO_OK = /^([AB]\d{7}|\d+)$/;
+
+const ConfirmarCodigoModal = ({ visible, valor, onChangeValor, onConfirmar, onCancelar }) => {
+  const formatoInvalido = !!valor && !FORMATO_CODIGO_OK.test(valor);
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancelar}>
+      <View style={styles.modalBackground}>
+        <View style={styles.card}>
+          <Text style={styles.listaTitulo}>Confirmar código escaneado</Text>
+          <Text style={[styles.historialFecha, formatoInvalido && { color: COLORS.ERROR, fontWeight: '700' }]}>
+            {valor}
+          </Text>
+          {formatoInvalido && (
+            <Text style={{ color: COLORS.ERROR, textAlign: 'center', marginBottom: 8 }}>
+              Formato no reconocido — revisá antes de guardar (factura: letra + 7 dígitos, nota: solo números).
+            </Text>
+          )}
+          <Text style={styles.label}>Si no es correcto, corregilo aquí:</Text>
+          <TextInput
+            style={[styles.input, formatoInvalido && { borderColor: COLORS.ERROR }]}
+            value={valor}
+            onChangeText={onChangeValor}
+            keyboardType="default"
+            autoCapitalize="characters"
+            selectTextOnFocus
+          />
+          <TouchableOpacity style={styles.primaryButton} onPress={onConfirmar} activeOpacity={0.85}>
+            <Text style={styles.primaryButtonText}>Sí, es correcto — Guardar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.finalizarButton} onPress={onCancelar} activeOpacity={0.85}>
+            <Text style={styles.finalizarButtonText}>Volver a escanear</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const HistorialItem = ({ item, onPress }) => {
   const cerrado = item.estatus === 'cerrado';
   return (
@@ -108,6 +149,7 @@ export default function RutagramaScreen() {
   const [detalleHistorial, setDetalleHistorial] = useState(null); // { ruta, estatus, comentario, escaneos } | null
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
+  const [confirmacion, setConfirmacion] = useState(null); // { valor } | null
 
   const isFocused = useIsFocused();
   const scanCooldown = useRef(false);
@@ -209,18 +251,33 @@ export default function RutagramaScreen() {
     }
   }, [rutagrama]);
 
-  const handleBarCodeScanned = useCallback(async ({ data }) => {
+  // Libera cámara/cooldown (se llama al confirmar o cancelar el modal).
+  const liberarEscaneo = useCallback(() => {
+    scanCooldown.current = false;
+    setScanned(false);
+  }, []);
+
+  // Escaneo abre confirmación, no guarda todavía — mismo motivo que en FacturasScreen:
+  // un mal escaneo (dígito corrido) antes se comprometía directo al server sin ninguna
+  // chance de que el vendedor lo notara o corrigiera. Espacios internos se limpian solos.
+  const handleBarCodeScanned = useCallback(({ data }) => {
     if (scanCooldown.current) return;
     scanCooldown.current = true;
     setScanned(true);
+    setConfirmacion({ valor: (data || '').replace(/\s+/g, '') });
+  }, []);
 
-    await registrarCodigo(data);
+  const confirmarCodigo = useCallback(async () => {
+    const codigo = (confirmacion?.valor || '').trim();
+    setConfirmacion(null);
+    if (codigo) await registrarCodigo(codigo);
+    liberarEscaneo();
+  }, [confirmacion, registrarCodigo, liberarEscaneo]);
 
-    setTimeout(() => {
-      scanCooldown.current = false;
-      setScanned(false);
-    }, 1000);
-  }, [registrarCodigo]);
+  const cancelarConfirmacion = useCallback(() => {
+    setConfirmacion(null);
+    liberarEscaneo();
+  }, [liberarEscaneo]);
 
   const confirmarFinalizar = useCallback(async () => {
     setCerrando(true);
@@ -498,6 +555,14 @@ export default function RutagramaScreen() {
           </View>
         </View>
       </Modal>
+
+      <ConfirmarCodigoModal
+        visible={!!confirmacion}
+        valor={confirmacion?.valor || ''}
+        onChangeValor={(v) => setConfirmacion({ valor: v })}
+        onConfirmar={confirmarCodigo}
+        onCancelar={cancelarConfirmacion}
+      />
     </ScrollView>
   );
 }

@@ -3,6 +3,15 @@ import { Config } from "../constants/Config";
 
 export const AUTH_TOKEN_KEY = "authToken";
 
+// Registrado por AuthContext al montar. Se dispara ante un 401 en una request que SÍ
+// llevaba token (token guardado pero rechazado por el server — firma inválida por
+// rotación de JWT_SECRET, token corrupto, etc). Login sin token de por medio no cuenta:
+// ese 401 es "credenciales incorrectas", lo maneja la pantalla de login normalmente.
+let unauthorizedHandler = null;
+export function setUnauthorizedHandler(fn) {
+    unauthorizedHandler = fn;
+}
+
 class ApiService {
     /**
      * Generic fetch wrapper with timeout and error handling
@@ -51,6 +60,9 @@ class ApiService {
             }
 
             if (!response.ok) {
+                if (response.status === 401 && token && unauthorizedHandler) {
+                    unauthorizedHandler();
+                }
                 // Handle HTTP errors
                 throw {
                     status: response.status,

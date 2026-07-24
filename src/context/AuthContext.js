@@ -1,6 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api, AUTH_TOKEN_KEY } from "../services/api";
+import { showMessage } from "react-native-flash-message";
+import { api, AUTH_TOKEN_KEY, setUnauthorizedHandler } from "../services/api";
 import { API_ENDPOINTS } from "../constants/Config";
 
 const AuthContext = createContext();
@@ -85,6 +86,23 @@ export const AuthProvider = ({ children }) => {
             setIsLoading(false);
         }
     };
+
+    // Handler registrado una sola vez: usa la ref para no quedar atado al `logout`
+    // de la primera render (closure vieja) mientras el componente vive re-renderizando.
+    const logoutRef = useRef(logout);
+    logoutRef.current = logout;
+
+    useEffect(() => {
+        setUnauthorizedHandler(() => {
+            showMessage({
+                message: "Sesión expirada",
+                description: "Tu sesión ya no es válida. Inicia sesión de nuevo.",
+                type: "warning",
+            });
+            logoutRef.current();
+        });
+        return () => setUnauthorizedHandler(null);
+    }, []);
 
     return (
         <AuthContext.Provider

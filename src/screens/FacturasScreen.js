@@ -12,6 +12,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useIsFocused } from '@react-navigation/native';
@@ -32,6 +33,9 @@ const ESTADO_LABEL = {
   pendiente: 'Pendiente de sincronizar',
   no_encontrada: 'Aún no disponible en el sistema — se reintentará',
   error: 'Error al sincronizar — se reintentará',
+  invalido: 'Número de factura inválido — corregir y volver a escanear',
+  fallido: 'No se pudo sincronizar tras varios intentos — revisar manualmente',
+  ambiguo: 'Número ambiguo (coincide con serie A y B) — reingresar con la letra o escanear',
   duplicada: 'Ya estaba registrada (descartada)',
   sincronizada: 'Sincronizada',
 };
@@ -41,6 +45,7 @@ const ESTADO_LABEL = {
 const MOTIVO_FECHA_LABEL = {
   fuera_de_rango: 'sin cambios — factura fuera de rango de días desde su emisión',
   sin_dias_credito: 'sin cambios — cliente sin días de crédito configurados',
+  cliente_no_encontrado: 'sin cambios — cliente de la factura no encontrado en el sistema',
 };
 
 // Componente para mostrar filas en el modal
@@ -76,7 +81,7 @@ const FacturaItem = ({ factura }) => (
         Aviso: {factura.ultimoError}
       </Text>
     )}
-    {factura.status === 'error' && factura.ultimoError && (
+    {(factura.status === 'error' || factura.status === 'invalido' || factura.status === 'fallido' || factura.status === 'ambiguo') && factura.ultimoError && (
       <Text style={[styles.facturaDetalle, { color: COLORS.ERROR }]}>
         {factura.ultimoError}
       </Text>
@@ -139,7 +144,19 @@ const FacturasModal = ({ visible, onClose, facturasLocales }) => {
 // Cartel de confirmación del número leído. Editable — el usuario puede corregir
 // antes de guardar (el escaneo/tipeo pueden fallar y esto es lo único que se
 // puede validar sin conexión, ya que el resto lo resuelve el servidor).
-const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCancelar }) => (
+// El número de factura real es letra (A/B) + 7 dígitos (ver transformarNumFactura en el
+// server) — un valor que no matchea es casi siempre un mal escaneo, no un caso válido nuevo.
+// FORMATO_SOLO_DIGITOS cubre la entrada manual: el campo "Ingresar factura manualmente"
+// tiene teclado numérico (sin letras), así que ahí el vendedor solo puede escribir los 7
+// dígitos — la letra la resuelve el server contra Profit (/facturas/scan, /facturas/batch-scan),
+// nunca hace falta que el vendedor la sepa ni la tipee.
+const FORMATO_CON_LETRA = /^[AB]\d{7}$/i;
+const FORMATO_SOLO_DIGITOS = /^\d{7}$/;
+const formatoFacturaValido = (valor) => FORMATO_CON_LETRA.test(valor) || FORMATO_SOLO_DIGITOS.test(valor);
+
+const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCancelar }) => {
+  const formatoInvalido = valor && !formatoFacturaValido(valor);
+  return (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancelar}>
     <View style={styles.modalBackground}>
       <View style={styles.modalContent}>
@@ -147,14 +164,20 @@ const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCa
         <View style={styles.modalDivider} />
 
         <Text style={styles.confirmSubtext}>¿Está seguro que el número de factura es?</Text>
-        <Text style={styles.confirmBigNumber}>{valor}</Text>
+        <Text style={[styles.confirmBigNumber, formatoInvalido && { color: COLORS.ERROR }]}>{valor}</Text>
+        {formatoInvalido && (
+          <Text style={{ color: COLORS.ERROR, textAlign: 'center', marginBottom: 8 }}>
+            Formato no reconocido — revisa antes de guardar (debería ser 7 dígitos, con o sin la letra al inicio, ej. 0392208 o A0392208).
+          </Text>
+        )}
 
         <Text style={styles.confirmSubtext}>Si no es correcto, corrígelo aquí:</Text>
         <TextInput
-          style={styles.confirmInput}
+          style={[styles.confirmInput, formatoInvalido && { borderColor: COLORS.ERROR }]}
           value={valor}
           onChangeText={onChangeValor}
-          keyboardType="numeric"
+          keyboardType="default"
+          autoCapitalize="characters"
           autoFocus={false}
           selectTextOnFocus
         />
@@ -177,7 +200,8 @@ const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCa
       </View>
     </View>
   </Modal>
-);
+  );
+};
 
 // Muestra los datos reales de la factura (consulta solo-lectura) para que el vendedor
 // corrobore antes de guardar — se usa cuando hay conexión al momento de escanear.
@@ -187,13 +211,21 @@ const CorroborarFacturaModal = ({ visible, datos, onConfirmar, onCancelar }) => 
     if (!v) return 'N/D';
     try { return new Date(v).toLocaleDateString(); } catch { return v; }
   };
+  const fmtMonto = (v) => {
+    if (v == null) return 'N/D';
+    const n = Number(v);
+    return Number.isNaN(n) ? 'N/D' : n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancelar}>
       <View style={styles.modalBackground}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Factura #{datos.fact_num}</Text>
           <View style={styles.modalDivider} />
+          <Text style={styles.confirmSubtext}>Compará estos datos contra la factura física antes de guardar:</Text>
           <ModalRow label="Cliente" value={datos.cli_des || 'N/D'} />
+          <ModalRow label="Código Cliente" value={datos.co_cli || 'N/D'} />
+          <ModalRow label="Monto" value={fmtMonto(datos.saldo)} />
           <ModalRow label="Emisión" value={fmtFecha(datos.fec_emis)} />
           <ModalRow label="Vence actual" value={fmtFecha(datos.fec_venc_antes)} />
           <ModalRow label="Vence nuevo" value={datos.fec_venc_despues || 'N/D'} />
@@ -202,6 +234,9 @@ const CorroborarFacturaModal = ({ visible, datos, onConfirmar, onCancelar }) => 
           <ModalRow label="Segmento" value={datos.seg_des || 'N/D'} />
           {datos.estado_rango ? (
             <ModalRow label="Rango" value={datos.estado_rango} />
+          ) : null}
+          {datos.letra_resuelta ? (
+            <ModalRow label="Número completo" value={datos.num_factura_completo} />
           ) : null}
 
           <Text style={styles.confirmSubtext}>¿Corresponde a la factura escaneada?</Text>
@@ -233,7 +268,7 @@ const AvisoOfflineModal = ({ visible, factNum, onCerrar }) => (
   <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
     <View style={styles.modalBackground}>
       <View style={[styles.modalContent, styles.offlineCard]}>
-        <Text style={styles.offlineIcono}>📴</Text>
+        <Ionicons name="cloud-offline-outline" size={56} color={COLORS.ERROR} style={{ marginBottom: 8 }} />
         <Text style={styles.offlineTitulo}>SIN CONEXIÓN</Text>
         <Text style={styles.offlineNumero}>Factura #{factNum}</Text>
         <Text style={styles.offlineTexto}>
@@ -253,9 +288,9 @@ const AvisoOfflineModal = ({ visible, factNum, onCerrar }) => (
 
 // Fila de resultado de sincronización — un ícono/color por tipo, solo se muestran
 // las categorías con conteo > 0 (nada de ceros aburridos en pantalla).
-const FilaResultado = ({ icono, color, etiqueta, cantidad }) => (
+const FilaResultado = ({ iconName, color, etiqueta, cantidad }) => (
   <View style={styles.resultadoFila}>
-    <Text style={styles.resultadoIcono}>{icono}</Text>
+    <Ionicons name={iconName} size={20} color={color} style={{ marginRight: 8 }} />
     <Text style={[styles.resultadoEtiqueta, { color }]}>{etiqueta}</Text>
     <Text style={[styles.resultadoCantidad, { color }]}>{cantidad}</Text>
   </View>
@@ -263,7 +298,7 @@ const FilaResultado = ({ icono, color, etiqueta, cantidad }) => (
 
 const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
   if (!resumen) return null;
-  const { ok, duplicadas, no_encontradas, errores, sinConexion, enviados } = resumen;
+  const { ok, duplicadas, no_encontradas, invalidas, fallidas, ambiguas, errores, sinConexion, enviados } = resumen;
   const todoBien = enviados > 0 && ok === enviados;
   const sinPendientes = enviados === 0;
 
@@ -271,9 +306,12 @@ const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
       <View style={styles.modalBackground}>
         <View style={[styles.modalContent, styles.syncCard]}>
-          <Text style={styles.syncIconoGrande}>
-            {sinPendientes ? '📭' : todoBien ? '✅' : '⚠️'}
-          </Text>
+          <Ionicons
+            name={sinPendientes ? 'checkmark-done-circle-outline' : todoBien ? 'checkmark-circle' : 'alert-circle'}
+            size={48}
+            color={sinPendientes ? COLORS.MUTED : todoBien ? COLORS.SUCCESS : COLORS.WARNING}
+            style={{ marginBottom: 8 }}
+          />
           <Text style={styles.syncTitulo}>
             {sinPendientes ? 'Todo al día' : 'Sincronización completa'}
           </Text>
@@ -283,19 +321,28 @@ const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
           ) : (
             <View style={styles.resultadoLista}>
               {ok > 0 && (
-                <FilaResultado icono="✅" color={COLORS.SUCCESS} etiqueta="Sincronizadas" cantidad={ok} />
+                <FilaResultado iconName="checkmark-circle" color={COLORS.SUCCESS} etiqueta="Sincronizadas" cantidad={ok} />
               )}
               {duplicadas > 0 && (
-                <FilaResultado icono="ℹ️" color={COLORS.INFO} etiqueta="Ya estaban registradas" cantidad={duplicadas} />
+                <FilaResultado iconName="information-circle" color={COLORS.INFO} etiqueta="Ya estaban registradas" cantidad={duplicadas} />
               )}
               {no_encontradas > 0 && (
-                <FilaResultado icono="⏳" color={COLORS.WARNING} etiqueta="Aún no disponibles (se reintentan)" cantidad={no_encontradas} />
+                <FilaResultado iconName="time-outline" color={COLORS.WARNING} etiqueta="Aún no disponibles (se reintentan)" cantidad={no_encontradas} />
               )}
               {errores > 0 && (
-                <FilaResultado icono="❌" color={COLORS.ERROR} etiqueta="Con error (se reintentan)" cantidad={errores} />
+                <FilaResultado iconName="close-circle" color={COLORS.ERROR} etiqueta="Con error (se reintentan)" cantidad={errores} />
+              )}
+              {invalidas > 0 && (
+                <FilaResultado iconName="ban-outline" color={COLORS.ERROR} etiqueta="Número inválido (revisar manualmente)" cantidad={invalidas} />
+              )}
+              {fallidas > 0 && (
+                <FilaResultado iconName="stop-circle-outline" color={COLORS.ERROR} etiqueta="Fallidas tras varios intentos (revisar manualmente)" cantidad={fallidas} />
+              )}
+              {ambiguas > 0 && (
+                <FilaResultado iconName="help-circle-outline" color={COLORS.ERROR} etiqueta="Ambiguas — reingresar con la letra o escanear (revisar manualmente)" cantidad={ambiguas} />
               )}
               {sinConexion > 0 && (
-                <FilaResultado icono="📴" color={COLORS.MUTED} etiqueta="Sin conexión durante el envío" cantidad={sinConexion} />
+                <FilaResultado iconName="cloud-offline-outline" color={COLORS.MUTED} etiqueta="Sin conexión durante el envío" cantidad={sinConexion} />
               )}
             </View>
           )}
@@ -347,8 +394,14 @@ export default function FacturasScreen() {
   }, []);
 
   const cargarRegistros = useCallback(async () => {
-    const lista = await obtenerFacturas();
-    setRegistros(lista);
+    try {
+      const lista = await obtenerFacturas();
+      setRegistros(lista);
+    } catch (err) {
+      // No se pisa `registros` con [] — si el storage falló, mejor mostrar lo último
+      // conocido en memoria que hacer parecer que el backlog de pendientes desapareció.
+      Alert.alert('Error de almacenamiento', err.message || 'No se pudo leer el historial local de facturas.');
+    }
   }, []);
 
   useEffect(() => {
@@ -389,7 +442,17 @@ export default function FacturasScreen() {
 
   const registrarEscaneo = useCallback(async (fact_num) => {
     const coords = await obtenerCoordenadas();
-    const resultado = await encolarFactura({ fact_num, coordenadas: coords, co_ven: currentUserCoVend });
+
+    let resultado;
+    try {
+      resultado = await encolarFactura({ fact_num, coordenadas: coords, co_ven: currentUserCoVend });
+    } catch (err) {
+      // Distinto de "sin conexión": acá el escaneo NO quedó guardado ni siquiera en el
+      // teléfono — hay que decírselo claro al vendedor para que vuelva a intentar, no
+      // dejarlo pensando que ya está en cola.
+      Alert.alert('No se pudo guardar el escaneo', err.message || 'Intenta de nuevo.');
+      return;
+    }
 
     if (!resultado.ok) {
       setAviso(`Factura ${fact_num} ya estaba en la lista.`);
@@ -406,8 +469,10 @@ export default function FacturasScreen() {
 
     // Con conexión: intenta sincronizar ya mismo — mismo efecto "tiempo real" que antes.
     // Si falla igual (señal débil / timeout), se trata como offline: queda pendiente y se avisa.
+    // Solo este ítem, no el backlog entero: con varios pendientes atascados, cada escaneo
+    // nuevo antes reintentaba TODOS de nuevo (amplifica errores en vez de aislarlos).
     try {
-      await sincronizarPendientes();
+      await sincronizarPendientes({ soloIdLocal: resultado.item.id_local });
       const actualizados = await obtenerFacturas();
       setRegistros(actualizados);
       const item = actualizados.find(f => f.fact_num === String(fact_num));
@@ -424,11 +489,13 @@ export default function FacturasScreen() {
   }, [obtenerCoordenadas, currentUserCoVend, cargarRegistros]);
 
   // Escaneo de código de barras — abre confirmación, no guarda todavía.
+  // Espacios internos (ej. "A 392416") son casi siempre ruido del lector, nunca parte
+  // real del número — se limpian antes de mostrarle el dato al vendedor.
   const handleBarCodeScanned = useCallback(({ data }) => {
     if (scanCooldown.current) return;
     scanCooldown.current = true;
     setScanned(true);
-    setConfirmacion({ valor: data });
+    setConfirmacion({ valor: (data || '').replace(/\s+/g, '') });
   }, []);
 
   const abrirConfirmacionManual = useCallback(() => {
@@ -451,13 +518,33 @@ export default function FacturasScreen() {
       return;
     }
 
+    // Formato inválido: se corta acá, nunca se guarda ni se manda al server. Antes esto
+    // solo mostraba un aviso en rojo pero dejaba seguir — si el vendedor no lo notaba,
+    // el ítem terminaba en el historial marcado 'invalido' hasta que alguien lo borrara
+    // a mano. Ahora directamente no se registra: alerta y vuelve a la cámara.
+    if (!formatoFacturaValido(numero)) {
+      Alert.alert(
+        'Código no reconocido',
+        `"${numero}" no tiene el formato de una factura (7 dígitos, con o sin la letra al inicio). Volvé a escanear.`
+      );
+      liberarEscaneo();
+      return;
+    }
+
+    const sinLetra = FORMATO_SOLO_DIGITOS.test(numero);
+
     // Con conexión: corroborar datos reales antes de comprometer el escaneo (marca en Profit).
-    // Cualquier falla que no sea "ya escaneada" cae al flujo normal — nunca se bloquea ni se
-    // pierde el escaneo por un problema de la consulta previa.
+    // Si "numero" llegó sin letra (entrada manual), el server prueba las series A y B contra
+    // Profit y devuelve cuál de las dos es — de acá en adelante se usa esa versión completa
+    // (con letra) para que el resto del flujo (encolar, batch-scan) sea igual que un escaneo
+    // normal y nunca tenga que volver a resolver nada.
+    // Cualquier falla que no sea "ya escaneada"/"ambiguo" cae al flujo normal — nunca se
+    // bloquea ni se pierde el escaneo por un problema de la consulta previa.
     if (await hayConexion()) {
       try {
         const datos = await consultarFactura(numero);
-        setCorroborar({ numero, datos });
+        const numeroResuelto = sinLetra && datos?.num_factura_completo ? datos.num_factura_completo : numero;
+        setCorroborar({ numero: numeroResuelto, datos });
         return; // espera decisión del usuario en el modal; no libera cámara todavía
       } catch (err) {
         if (err?.status === 400) {
@@ -467,6 +554,17 @@ export default function FacturasScreen() {
         }
         if (err?.status === 404) {
           Alert.alert('Aún no disponible', 'La factura no se encontró todavía. Se guardó para reintentar automáticamente.');
+        }
+        if (err?.status === 409) {
+          // Ambiguo de verdad (calza con una factura en la serie A y otra en la B a la vez).
+          // No se puede adivinar ni guardar así — el vendedor tiene que escanear el código
+          // de barras o escribir el número completo con la letra en este mismo cartel.
+          Alert.alert(
+            'Número ambiguo',
+            err?.data?.error || `"${numero}" coincide con más de una factura. Escaneá el código de barras o escribí la letra (A o B) al inicio del número.`
+          );
+          liberarEscaneo();
+          return;
         }
         // 500 / timeout / etc.: seguir al flujo normal (guardar y sincronizar como siempre).
       }
@@ -538,6 +636,7 @@ export default function FacturasScreen() {
         {isFocused && permission?.granted ? (
           <CameraView
             onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['code39'] }}
             style={styles.cameraBox}
             facing="back"
           />
@@ -593,13 +692,13 @@ export default function FacturasScreen() {
           )}
         </TouchableOpacity>
 
-        {registros.some(f => f.status === 'sincronizada' || f.status === 'duplicada') && (
+        {registros.some(f => ['sincronizada', 'duplicada', 'invalido', 'fallido', 'ambiguo'].includes(f.status)) && (
           <TouchableOpacity
             style={[styles.tableButton, styles.cleanButton]}
             onPress={async () => {
               Alert.alert(
                 'Limpiar historial',
-                'Se eliminará el historial de facturas ya sincronizadas. Las pendientes de sincronizar se conservan.',
+                'Se eliminará el historial de facturas ya resueltas (sincronizadas, duplicadas, inválidas, ambiguas o fallidas). Las pendientes de sincronizar se conservan.',
                 [
                   { text: 'Cancelar', style: 'cancel' },
                   {
@@ -660,7 +759,7 @@ export default function FacturasScreen() {
         <View style={styles.manualInputRow}>
           <TextInput
             style={styles.manualInput}
-            placeholder="Número de factura"
+            placeholder="Solo los 7 dígitos, sin la letra"
             value={manualFactura}
             onChangeText={setManualFactura}
             keyboardType="numeric"

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import Theme from '../constants/Theme';
@@ -703,8 +704,7 @@ export default function ChequeoGuiaCargaScreen() {
             onPress={limpiarEscaneos}
             activeOpacity={0.8}
           >
-            {/* Icono de escoba unicode, puedes cambiar por un icono de vector si usas react-native-vector-icons */}
-            <Text style={{ fontSize: 24 }}>🧹</Text>
+            <Ionicons name="trash-outline" size={24} color={Theme.colors.dark} />
           </TouchableOpacity>
         </View>
 

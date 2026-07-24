@@ -23,7 +23,16 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "android": {
       "adaptiveIcon": {
@@ -36,8 +45,7 @@
         "android.permission.VIBRATE",
         "android.permission.INTERNET"
       ],
-      "package": "ccom.josearaqueg.cristmedicals",
-      "usesCleartextTraffic": true
+      "package": "ccom.josearaqueg.cristmedicals"
     },
     "web": {
       "favicon": "./assets/logoNew.png"
