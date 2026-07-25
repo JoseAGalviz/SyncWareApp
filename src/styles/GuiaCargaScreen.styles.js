@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 13,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   rowEven:  { backgroundColor: Theme.colors.rowEven },
   rowOdd:   { backgroundColor: Theme.colors.rowOdd },
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginVertical: Theme.spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 13,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   modalOverlay: {
     flex: 1,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   feedbackTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginTop: Theme.spacing.md,
     textAlign: 'center',
   },
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   statusIndicatorText: {
     fontSize: 12,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontWeight: '500',
   },
   connectionDot: {

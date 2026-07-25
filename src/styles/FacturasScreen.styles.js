@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   facturaDescripcion: {
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontSize: 13,
     marginTop: 2,
   },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   modalRowLabel: {
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     minWidth: 100,
     fontSize: isSmallDevice ? 13 : 15,
   },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   // --- Confirmación de número escaneado/tipeado ---
   confirmSubtext: {
     fontSize: isSmallDevice ? 14 : 16,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
     marginTop: Theme.spacing.sm,
     marginBottom: 4,
@@ -350,12 +350,12 @@ const styles = StyleSheet.create({
   offlineNumero: {
     fontSize: isSmallDevice ? 20 : 24,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: Theme.spacing.sm,
   },
   offlineTexto: {
     fontSize: isSmallDevice ? 15 : 17,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: Theme.spacing.lg,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   },
   syncTexto: {
     fontSize: isSmallDevice ? 14 : 16,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
     marginBottom: Theme.spacing.md,
   },

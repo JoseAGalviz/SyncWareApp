@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 22,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontWeight: '700',
     marginBottom: 4,
     letterSpacing: -0.3,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: Theme.spacing.sm,
   },
   modalSubtitle: {
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   kpiNewSectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginLeft: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.8,

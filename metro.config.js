@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
@@ -21,4 +22,4 @@ config.server = {
   },
 };
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });

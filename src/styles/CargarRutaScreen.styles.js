@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: Theme.spacing.sm,
     fontSize: 13,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
   },
   rowEven: { backgroundColor: Theme.colors.rowEven },

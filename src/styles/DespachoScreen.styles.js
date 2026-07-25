@@ -9,7 +9,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: Theme.spacing.md,
     textAlign: 'center',
     letterSpacing: -0.2,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   floatingTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
     letterSpacing: -0.2,
     backgroundColor: Theme.colors.background,
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   reporteCliente: {
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontSize: 15,
     marginBottom: 2,
   },

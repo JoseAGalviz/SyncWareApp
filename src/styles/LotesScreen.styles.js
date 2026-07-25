@@ -94,7 +94,7 @@ export default function createStyles(width) {
     emptyTitle: {
       fontSize: isSmall ? 15 : 17,
       fontWeight: '700',
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       textAlign: 'center',
       marginBottom: 6,
     },
@@ -146,7 +146,7 @@ export default function createStyles(width) {
       minHeight: 46,
     },
     secondaryButtonText: {
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       fontSize: 13,
       fontWeight: '700',
       marginLeft: 6,
@@ -220,7 +220,7 @@ export default function createStyles(width) {
     sectionHeaderText: {
       fontSize: 13.5,
       fontWeight: '700',
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       marginLeft: 6,
     },
     sectionHint: {
@@ -355,7 +355,7 @@ export default function createStyles(width) {
     previewHeaderText: {
       fontSize: isSmall ? 15 : 17,
       fontWeight: '700',
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       marginLeft: 6,
     },
     previewRow: {
@@ -370,7 +370,7 @@ export default function createStyles(width) {
       fontSize: 13,
     },
     previewValue: {
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       fontWeight: '700',
       fontSize: 13,
       flexShrink: 1,
@@ -419,7 +419,7 @@ export default function createStyles(width) {
       marginLeft: 6,
     },
     previewButtonTextDark: {
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       fontWeight: '700',
       fontSize: 14,
       marginLeft: 6,
@@ -458,7 +458,7 @@ export default function createStyles(width) {
     facturaRowTitle: {
       fontSize: 13.5,
       fontWeight: '700',
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
     },
     facturaRowSub: {
       fontSize: 11.5,
@@ -581,7 +581,7 @@ export default function createStyles(width) {
     },
     loteItemTitle: {
       fontWeight: '700',
-      color: Theme.colors.dark,
+      color: Theme.colors.text,
       fontSize: 14,
     },
     loteBadge: {

@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     },
     infoValue: {
         fontSize: 13,
-        color: Theme.colors.dark,
+        color: Theme.colors.text,
         fontWeight: '600',
     },
     dayFilterRow: {

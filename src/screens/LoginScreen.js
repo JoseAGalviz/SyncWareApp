@@ -3,27 +3,20 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   Alert,
   ImageBackground,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, USER_DATA_KEY } from "../context/AuthContext";
-import COLORS from "../constants/Colors";
-import styles from '../styles/LoginScreen.styles';
 
-/**
- * Componente principal de la pantalla de inicio de sesión.
- * @param {object} props - Propiedades del componente, incluyendo 'navigation' de React Navigation.
- */
 export default function LoginScreen({ navigation }) {
-  // --- Estados del componente (Uso de nombres descriptivos) ---
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false); // Controla la visibilidad de la contraseña
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const { login, isLoading } = useAuth();
 
@@ -59,79 +52,75 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-
-
   return (
     <ImageBackground
       source={require("../../assets/back.png")}
-      style={styles.background}
+      className="flex-1 w-full h-full"
       resizeMode="cover"
     >
-      <View style={styles.container}>
-        <View style={styles.card}>
-          {/* Logo */}
+      <View className="flex-1 justify-center items-center p-5 bg-surface-base/90">
+        <View className="w-full max-w-[360px] bg-surface-card rounded-2xl py-8 px-6 items-center border border-surface-border">
           <Image
             source={require("../../assets/logo.png")}
-            style={styles.logo}
+            className="w-[120px] h-[60px] mb-5"
             resizeMode="contain"
           />
 
-          {/* Título de la pantalla */}
-          <Text style={styles.title}>Iniciar Sesión</Text>
+          <Text className="text-2xl font-bold text-primary mb-6 tracking-wide">
+            Iniciar Sesión
+          </Text>
 
-          {/* Campo de Usuario */}
           <TextInput
-            style={styles.input}
+            className="w-full py-3 px-4 border border-surface-border rounded-lg mb-4 bg-surface-raised text-[15px] text-ink"
             placeholder="Usuario"
-            placeholderTextColor={COLORS.MUTED}
+            placeholderTextColor="#64748B"
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
-            // Mejora: añadir hints para teclado
             keyboardType="email-address"
             textContentType="username"
-            editable={!isLoading} // Deshabilitar durante la carga
+            editable={!isLoading}
           />
 
-          {/* Contenedor de Contraseña y botón de visibilidad */}
-          <View style={styles.passwordContainer}>
+          <View className="w-full flex-row items-center mb-4 relative">
             <TextInput
-              style={[styles.input, styles.passwordInputBase]}
+              className="flex-1 py-3 px-4 border border-surface-border rounded-lg bg-surface-raised text-[15px] text-ink"
               placeholder="Contraseña"
-              placeholderTextColor={COLORS.MUTED}
+              placeholderTextColor="#64748B"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!isPasswordVisible} // Oculta/Muestra según el estado
+              secureTextEntry={!isPasswordVisible}
               textContentType="password"
-              editable={!isLoading} // Deshabilitar durante la carga
+              editable={!isLoading}
             />
             <TouchableOpacity
-              style={styles.showPasswordButton}
+              className="absolute right-4 p-1.5 justify-center items-center"
               onPress={() => setIsPasswordVisible((prev) => !prev)}
               activeOpacity={0.7}
-              disabled={isLoading} // Deshabilitar durante la carga
+              disabled={isLoading}
             >
               <Ionicons
                 name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
                 size={22}
-                color={COLORS.MUTED}
+                color="#64748B"
               />
             </TouchableOpacity>
           </View>
 
-          {/* Botón de Ingresar */}
-          <View style={styles.buttonWrapper}>
-            <Button
-              title={isLoading ? "Ingresando..." : "Ingresar"}
-              onPress={handleLogin}
-              disabled={isLoading}
-              color={COLORS.SUCCESS}
-            />
-          </View>
+          <TouchableOpacity
+            className="w-full mt-1 rounded-lg bg-primary py-3.5 items-center justify-center active:bg-primary-dark"
+            onPress={handleLogin}
+            disabled={isLoading}
+            activeOpacity={0.85}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#0B1120" />
+            ) : (
+              <Text className="text-surface-base font-bold text-base">Ingresar</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
   );
 }
-
-

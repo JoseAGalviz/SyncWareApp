@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logoNew.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/logoNew.png",
       "resizeMode": "cover",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B1120"
     },
     "ios": {
       "supportsTablet": true

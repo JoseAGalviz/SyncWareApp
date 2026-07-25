@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   value: {
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontSize: 14,
     flex: 1,
     textAlign: 'right',

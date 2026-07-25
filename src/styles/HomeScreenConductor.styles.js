@@ -11,7 +11,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: Theme.spacing.xxxl,
     letterSpacing: -0.2,
   },
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   value: {
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontSize: 15,
     fontWeight: '600',
   },

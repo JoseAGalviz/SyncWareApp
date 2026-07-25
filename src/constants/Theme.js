@@ -1,51 +1,53 @@
 // ─── SyncWare Design System ──────────────────────────────────────────────────
-// Corporate minimalist theme. Import this file for all style tokens.
+// Dark theme, acento verde. Import this file for all style tokens.
+// Mismos nombres de clave que la versión clara — pantallas que ya leen
+// Theme.colors.X / COLORS.X (ver src/constants/Colors.js) se re-temáticas solas.
 
 const Theme = {
   // ── Colors ────────────────────────────────────────────────────────────────
   colors: {
-    // Brand
-    primary:       '#0F766E',  // Deep teal – primary actions, highlights
-    primaryDark:   '#0A5750',  // Hover / pressed state
-    primaryLight:  '#E6F3F2',  // Tinted background
+    // Brand — mismo verde que ya existía como "success", ahora protagonista
+    primary:       '#10B981',  // Emerald – primary actions, highlights
+    primaryDark:   '#059669',  // Hover / pressed state
+    primaryLight:  'rgba(16,185,129,0.16)',  // Tinted background sobre superficie oscura
 
-    // Neutrals – navigation & text
-    dark:          '#1E293B',  // Darkest – nav bars, headings
-    text:          '#0F172A',  // Body text
-    muted:         '#64748B',  // Secondary text, labels
-    light:         '#94A3B8',  // Placeholders, disabled text
+    // Neutrales — navegación y texto
+    dark:          '#060B14',  // Más oscuro – nav bars, headers
+    text:          '#E5E7EB',  // Texto principal (claro sobre fondo oscuro)
+    muted:         '#94A3B8',  // Texto secundario, labels
+    light:         '#64748B',  // Placeholders, texto deshabilitado
 
-    // Semantic
+    // Semantic — mismos matices, calibrados para contraste sobre fondo oscuro
     success:       '#10B981',
-    successLight:  '#ECFDF5',
+    successLight:  'rgba(16,185,129,0.16)',
     successDark:   '#047857',
     warning:       '#F59E0B',
-    warningLight:  '#FFFBEB',
-    error:         '#EF4444',
-    errorLight:    '#FEF2F2',
-    info:          '#0EA5E9',
-    infoLight:     '#F0F9FF',
+    warningLight:  'rgba(245,158,11,0.16)',
+    error:         '#F87171',
+    errorLight:    'rgba(248,113,113,0.16)',
+    info:          '#38BDF8',
+    infoLight:     'rgba(56,189,248,0.16)',
 
     // Surfaces
-    background:    '#F1F5F9',  // Page background
-    surface:       '#FFFFFF',  // Cards, inputs
-    surfaceAlt:    '#F8FAFC',  // Alternate row, subtle bg
+    background:    '#0B1120',  // Page background
+    surface:       '#111827',  // Cards, inputs
+    surfaceAlt:    '#1A2333',  // Alternate row, subtle bg
 
     // Borders
-    border:        '#E2E8F0',
-    borderStrong:  '#CBD5E1',
+    border:        '#2A3446',
+    borderStrong:  '#3B4759',
 
     // Utility
-    overlay:       'rgba(0,0,0,0.5)',
-    overlayLight:  'rgba(0,0,0,0.35)',
+    overlay:       'rgba(0,0,0,0.65)',
+    overlayLight:  'rgba(0,0,0,0.45)',
     white:         '#FFFFFF',
     black:         '#000000',
 
-    // Table rows (semantic, minimalist)
-    rowEven:       '#F8FAFC',
-    rowOdd:        '#FFFFFF',
-    rowWarning:    '#FFFBEB',  // rowUno  – only one doc
-    rowSuccess:    '#ECFDF5',  // rowAmbos – both docs
+    // Table rows (semantic)
+    rowEven:       '#111827',
+    rowOdd:        '#0E1524',
+    rowWarning:    'rgba(245,158,11,0.12)',  // rowUno  – only one doc
+    rowSuccess:    'rgba(16,185,129,0.12)',  // rowAmbos – both docs
   },
 
   // ── Typography ────────────────────────────────────────────────────────────

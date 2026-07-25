@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   counterValue: {
     ...Theme.typography.subheading,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
 
   cameraContainer: {
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
 
   listaTitulo: {
     ...Theme.typography.subheading,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: Theme.spacing.sm,
   },
   escaneoItem: {

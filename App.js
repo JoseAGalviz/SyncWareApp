@@ -1,3 +1,4 @@
+import "./global.css";
 import React from "react";
 import { StatusBar, Platform, Image } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";

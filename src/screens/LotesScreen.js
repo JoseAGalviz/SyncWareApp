@@ -484,7 +484,7 @@ export default function LotesScreen() {
             {!facturaPreview && (
               <>
                 <View style={styles.sectionHeaderRow}>
-                  <Ionicons name="scan-outline" size={16} color={Theme.colors.dark} />
+                  <Ionicons name="scan-outline" size={16} color={Theme.colors.text} />
                   <Text style={styles.sectionHeaderText}>Escanear factura</Text>
                 </View>
                 <Text style={styles.sectionHint}>
@@ -593,7 +593,7 @@ export default function LotesScreen() {
                     onPress={cancelarPreview}
                     activeOpacity={0.85}
                   >
-                    <Ionicons name="close-outline" size={18} color={Theme.colors.dark} />
+                    <Ionicons name="close-outline" size={18} color={Theme.colors.text} />
                     <Text style={styles.previewButtonTextDark}>Cancelar</Text>
                   </TouchableOpacity>
                 </View>
@@ -602,7 +602,7 @@ export default function LotesScreen() {
 
             {/* Facturas ya agregadas */}
             <View style={styles.sectionHeaderRow}>
-              <Ionicons name="list-outline" size={16} color={Theme.colors.dark} />
+              <Ionicons name="list-outline" size={16} color={Theme.colors.text} />
               <Text style={styles.sectionHeaderText}>
                 Facturas en este lote ({loteActual.facturas.length})
               </Text>
@@ -667,7 +667,7 @@ export default function LotesScreen() {
 
         <View style={styles.secondaryButtonsRow}>
           <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowModal(true)} activeOpacity={0.85}>
-            <Ionicons name="albums-outline" size={16} color={Theme.colors.dark} />
+            <Ionicons name="albums-outline" size={16} color={Theme.colors.text} />
             <Text style={styles.secondaryButtonText}>Lotes guardados ({lotes.length})</Text>
           </TouchableOpacity>
 

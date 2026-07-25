@@ -704,7 +704,7 @@ export default function ChequeoGuiaCargaScreen() {
             onPress={limpiarEscaneos}
             activeOpacity={0.8}
           >
-            <Ionicons name="trash-outline" size={24} color={Theme.colors.dark} />
+            <Ionicons name="trash-outline" size={24} color={Theme.colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -857,7 +857,7 @@ export default function ChequeoGuiaCargaScreen() {
                       backgroundColor: Theme.colors.successLight,
                       padding: Theme.spacing.sm,
                       borderRadius: Theme.radius.sm,
-                      color: Theme.colors.dark,
+                      color: Theme.colors.text,
                     }}
                   >
                     {detalleFaltantes}
@@ -941,7 +941,7 @@ export default function ChequeoGuiaCargaScreen() {
               );
             }}
           >
-            <Text style={[styles.saveButtonText, { color: Theme.colors.dark }]}>
+            <Text style={[styles.saveButtonText, { color: Theme.colors.text }]}>
               Registrar guía incompleta
             </Text>
           </TouchableOpacity>
@@ -953,7 +953,7 @@ export default function ChequeoGuiaCargaScreen() {
             <Text style={{ fontWeight: "700", marginBottom: 6 }}>
               JSON generado:
             </Text>
-            <Text style={{ fontSize: 13, color: Theme.colors.dark }}>
+            <Text style={{ fontSize: 13, color: Theme.colors.text }}>
               {JSON.stringify(jsonGenerado, null, 2)}
             </Text>
           </View>

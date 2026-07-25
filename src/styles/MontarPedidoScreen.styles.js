@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     lineHeight: 18,
   },
   headerSubtitle: {
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   productTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     lineHeight: 18,
     marginBottom: 4,
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   subtotalValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   footerNoteContainerFixed: {
     paddingHorizontal: Theme.spacing.xxl,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   closeButton: {
     padding: 4,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   detailTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     lineHeight: 28,
   },
   detailMetaData: {
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   detailMetaValue: {
     fontSize: 13,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     fontWeight: '700',
   },
   detailPriceSection: {
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   detailTotalValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   detailActionFooter: {
     padding: Theme.spacing.xxl,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   detailSubtotalWrapper: {
     flex: 1,
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
   cartItemTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     marginBottom: 3,
     lineHeight: 17,
   },
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   miniBadgeText: {
     fontSize: 9,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   cartQuantitySection: {
     alignItems: 'flex-end',
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     paddingHorizontal: 8,
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     textAlign: 'center',
     minWidth: 28,
   },
@@ -805,9 +805,9 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: Theme.colors.errorLight,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: Theme.colors.error,
   },
   modalFooter: {
     backgroundColor: Theme.colors.surface,
@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
   },
   totalFinalRow: {
     marginTop: Theme.spacing.sm,
@@ -920,7 +920,7 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 15,
     fontWeight: '700',
-    color: Theme.colors.dark,
+    color: Theme.colors.text,
     flex: 1,
     marginRight: Theme.spacing.sm,
   },
