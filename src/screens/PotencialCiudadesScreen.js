@@ -63,19 +63,23 @@ const PotencialCiudadesScreen = ({ navigation }) => {
         return [...new Set(values)].sort();
     }, [data]);
 
+    // Debounce: filtrar en cada tecla trababa la UI con listas grandes.
     useEffect(() => {
-        let result = data;
-        if (searchQuery) {
-            const lower = searchQuery.toLowerCase();
-            result = result.filter(item => {
-                const searchStr = `${item.nombre || ''} ${item.sicm || ''} ${item.codigo_profit || ''}`.toLowerCase();
-                return searchStr.includes(lower);
-            });
-        }
-        if (selectedMunicipio) {
-            result = result.filter(item => item.municipio_parroquia === selectedMunicipio);
-        }
-        setFilteredData(result);
+        const timer = setTimeout(() => {
+            let result = data;
+            if (searchQuery) {
+                const lower = searchQuery.toLowerCase();
+                result = result.filter(item => {
+                    const searchStr = `${item.nombre || ''} ${item.sicm || ''} ${item.codigo_profit || ''}`.toLowerCase();
+                    return searchStr.includes(lower);
+                });
+            }
+            if (selectedMunicipio) {
+                result = result.filter(item => item.municipio_parroquia === selectedMunicipio);
+            }
+            setFilteredData(result);
+        }, 300);
+        return () => clearTimeout(timer);
     }, [data, searchQuery, selectedMunicipio]);
 
     const onRefresh = () => {
@@ -420,6 +424,10 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                             </Text>
                         </View>
                     }
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={10}
+                    removeClippedSubviews={true}
                 />
             )}
         </SafeAreaView>

@@ -114,9 +114,9 @@ export default function LoginScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {isLoading ? (
-              <ActivityIndicator color="#0B1120" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text className="text-surface-base font-bold text-base">Ingresar</Text>
+              <Text className="text-white font-bold text-base">Ingresar</Text>
             )}
           </TouchableOpacity>
         </View>

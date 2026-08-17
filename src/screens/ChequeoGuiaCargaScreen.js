@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,24 @@ import styles from '../styles/ChequeoGuiaCargaScreen.styles';
 import { Config } from '../constants/Config';
 import { getAuthHeader } from '../services/api';
 
+
+const GuiaCargadaRow = React.memo(({ item, onEliminar }) => (
+  <View style={styles.guiaItemCargada}>
+    <Text style={styles.guiaText}>Guía #{item.numeroCarga}</Text>
+    <Text style={styles.guiaSubText}>
+      Registrada el {item.fechaGuardado} a las {item.horaGuardado}
+    </Text>
+    <Text style={styles.guiaSubText}>
+      Comentario: {item.comentario ?? "Sin comentario"}
+    </Text>
+    <TouchableOpacity
+      style={styles.deleteButton}
+      onPress={() => onEliminar(item.numeroCarga)}
+    >
+      <Text style={styles.deleteButtonText}>Eliminar</Text>
+    </TouchableOpacity>
+  </View>
+));
 
 export default function ChequeoGuiaCargaScreen() {
   // Estados
@@ -389,13 +407,15 @@ export default function ChequeoGuiaCargaScreen() {
         );
         return;
       }
-      const location = await Location.getCurrentPositionAsync({
+      const locationPromise = Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 10000));
+      const location = await Promise.race([locationPromise, timeoutPromise]);
       if (!location || !location.coords) {
         Alert.alert(
           "Ubicación no disponible",
-          "Activa el GPS y verifica tu señal."
+          "Activa el GPS, verifica tu señal y vuelve a intentar."
         );
         return;
       }
@@ -489,7 +509,7 @@ export default function ChequeoGuiaCargaScreen() {
   }
 
   // Eliminar guía cargada
-  async function eliminarGuiaCargada(numeroCarga) {
+  const eliminarGuiaCargada = useCallback(async (numeroCarga) => {
     try {
       const guiasCargadas = await AsyncStorage.getItem("guiasCargadas");
       let nuevasGuiasCargadas = [];
@@ -506,7 +526,7 @@ export default function ChequeoGuiaCargaScreen() {
     } catch (e) {
       Alert.alert("Error", "No se pudo eliminar la guía cargada.");
     }
-  }
+  }, []);
 
   // Render principal
   if (!guiaSeleccionada) {
@@ -540,21 +560,7 @@ export default function ChequeoGuiaCargaScreen() {
                 <Text style={styles.empty}>No hay guías cargadas.</Text>
               }
               renderItem={({ item }) => (
-                <View style={styles.guiaItemCargada}>
-                  <Text style={styles.guiaText}>Guía #{item.numeroCarga}</Text>
-                  <Text style={styles.guiaSubText}>
-                    Registrada el {item.fechaGuardado} a las {item.horaGuardado}
-                  </Text>
-                  <Text style={styles.guiaSubText}>
-                    Comentario: {item.comentario ?? "Sin comentario"}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => eliminarGuiaCargada(item.numeroCarga)}
-                  >
-                    <Text style={styles.deleteButtonText}>Eliminar</Text>
-                  </TouchableOpacity>
-                </View>
+                <GuiaCargadaRow item={item} onEliminar={eliminarGuiaCargada} />
               )}
             />
           )}

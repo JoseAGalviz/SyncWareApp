@@ -115,13 +115,16 @@ const useReportes = () => {
 };
 
 // ===== UTILIDADES =====
+// Igual que en VisitaScreen: la ubicación no debe bloquear el reporte. Si falla
+// por GPS lento/apagado o timeout, se guarda sin coordenadas en vez de trabar al
+// despachador con un Alert cuando el formulario ya está listo para enviar.
 const obtenerUbicacion = async () => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permiso de ubicación requerido",
-        "Debes otorgar permisos de ubicación para registrar un reporte.",
+        "Puedes otorgar el permiso desde Configuración para que el reporte incluya ubicación. El reporte se guardará igual sin ella.",
         [
           {
             text: "Ir a configuración",
@@ -131,16 +134,24 @@ const obtenerUbicacion = async () => {
                 : Linking.openSettings();
             },
           },
-          { text: "Cancelar", style: "cancel" },
+          { text: "Ahora no", style: "cancel" },
         ]
       );
       return null;
     }
-    return await Location.getCurrentPositionAsync({
+
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    if (!servicesEnabled) return null;
+
+    const last = await Location.getLastKnownPositionAsync();
+    if (last) return last;
+
+    const locationPromise = Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 7000));
+    return await Promise.race([locationPromise, timeoutPromise]);
   } catch {
-    Alert.alert("Error", "No se pudo obtener la ubicación.");
     return null;
   }
 };
@@ -272,12 +283,9 @@ export default function DespachoScreen() {
       });
 
       const location = await obtenerUbicacion();
-      if (!location) {
-        setIsSubmitting(false);
-        return;
-      }
-
-      const coordenadas = `${location.coords.latitude},${location.coords.longitude}`;
+      const coordenadas = location
+        ? `${location.coords.latitude},${location.coords.longitude}`
+        : null;
 
       const nuevoReporte = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),

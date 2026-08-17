@@ -31,6 +31,16 @@ const styles = StyleSheet.create({
     color: Theme.colors.muted,
     marginTop: Theme.spacing.xs,
   },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Theme.colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: Theme.spacing.lg,
+    marginTop: Theme.spacing.lg,
+    marginBottom: Theme.spacing.xs,
+  },
   logoutButton: {
     marginTop: Theme.spacing.xl,
     borderRadius: Theme.radius.md,

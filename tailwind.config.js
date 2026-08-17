@@ -6,31 +6,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Marca — mismo verde que ya usaba el theme claro (Theme.js primary), ahora
-        // como acento sobre fondo oscuro en vez de fondo claro con texto oscuro.
+        // Marca — mismo verde usado en Theme.js
         primary: {
           DEFAULT: '#10B981',
           dark: '#059669',
           light: '#34D399',
-          muted: '#064E3B',
+          muted: '#ECFDF5',
         },
-        // Superficies oscuras — escala única, de fondo de página a card elevada.
+        // Superficies claras — de fondo de página a card elevada.
         surface: {
-          base: '#0B1120',
-          raised: '#111827',
-          card: '#1A2333',
-          border: '#2A3446',
+          base: '#F1F5F9',
+          raised: '#F8FAFC',
+          card: '#FFFFFF',
+          border: '#E2E8F0',
         },
-        // Texto sobre fondo oscuro
+        // Texto sobre fondo claro
         ink: {
-          DEFAULT: '#E5E7EB',
-          muted: '#94A3B8',
-          faint: '#64748B',
+          DEFAULT: '#0F172A',
+          muted: '#64748B',
+          faint: '#94A3B8',
         },
-        // Semánticos (mismos valores que Theme.js para no romper significado de color)
+        // Semánticos (mismos valores que Theme.js)
         warning: '#F59E0B',
         danger: '#EF4444',
-        info: '#38BDF8',
+        info: '#0EA5E9',
       },
     },
   },

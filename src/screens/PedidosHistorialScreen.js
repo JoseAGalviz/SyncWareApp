@@ -41,8 +41,12 @@ const PedidosHistorialScreen = ({ navigation }) => {
         fetchPedidos();
     }, []);
 
+    // Debounce: filtrar en cada tecla trababa la UI con listas grandes.
     useEffect(() => {
-        filterPedidos();
+        const timer = setTimeout(() => {
+            filterPedidos();
+        }, 300);
+        return () => clearTimeout(timer);
     }, [searchQuery, pedidos]);
 
     const fetchPedidos = useCallback(async (opts = {}) => {
@@ -392,6 +396,10 @@ const PedidosHistorialScreen = ({ navigation }) => {
                             tintColor={Theme.colors.primary}
                         />
                     }
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={10}
+                    removeClippedSubviews={true}
                 />
             )}
 

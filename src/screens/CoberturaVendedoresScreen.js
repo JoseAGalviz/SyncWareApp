@@ -57,18 +57,21 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
         fetchData(true);
     };
 
-    const handleSearch = (text) => {
-        setSearchQuery(text);
-        if (!text) {
-            setFilteredData(data);
-            return;
-        }
-        const lower = text.toLowerCase();
-        const filtered = data.filter(item =>
-            `${item.vendedor || ''} ${item.ruta || ''} ${item.co_ven || ''}`.toLowerCase().includes(lower)
-        );
-        setFilteredData(filtered);
-    };
+    // Filtrado con debounce: filtrar en cada tecla trababa la UI con listas grandes.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const lower = searchQuery.trim().toLowerCase();
+            if (!lower) {
+                setFilteredData(data);
+                return;
+            }
+            const filtered = data.filter(item =>
+                `${item.vendedor || ''} ${item.ruta || ''} ${item.co_ven || ''}`.toLowerCase().includes(lower)
+            );
+            setFilteredData(filtered);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, data]);
 
     const formatNum = (val, decimals = 0) =>
         Number(val ?? 0).toLocaleString('es-VE', {
@@ -139,7 +142,7 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
                         placeholder="Buscar por vendedor o ruta..."
                         placeholderTextColor={Theme.colors.muted}
                         value={searchQuery}
-                        onChangeText={handleSearch}
+                        onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => handleSearch('')}>
@@ -184,6 +187,10 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
                             </Text>
                         </View>
                     }
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={10}
+                    removeClippedSubviews={true}
                 />
             )}
         </SafeAreaView>

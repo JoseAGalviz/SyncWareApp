@@ -233,13 +233,20 @@ const useGestiones = () => {
 };
 
 // ===== UTILIDADES =====
+// La ubicación es metadata opcional de la gestión (ver `ubicacion: location ? {...} : null`
+// más abajo) — nunca debe bloquear el guardado. Por eso acá solo se intenta obtenerla
+// con un timeout corto y, si falla por cualquier razón (GPS lento, sin señal, servicios
+// de ubicación apagados), se devuelve null en silencio en vez de tirar un Alert que
+// interrumpe al vendedor con el formulario ya lleno.
 const obtenerUbicacion = async () => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
+      // Único caso accionable: el vendedor puede ir a Configuración y arreglarlo.
+      // GPS lento/apagado o timeout no lo son — por eso esos casos fallan en silencio.
       Alert.alert(
         "Permiso de ubicación requerido",
-        "Debes otorgar permisos de ubicación para registrar una gestión.",
+        "Puedes otorgar el permiso desde Configuración para que la gestión incluya ubicación. La gestión se guardará igual sin ella.",
         [
           {
             text: "Ir a configuración",
@@ -251,17 +258,24 @@ const obtenerUbicacion = async () => {
               }
             },
           },
-          { text: "Cancelar", style: "cancel" },
+          { text: "Ahora no", style: "cancel" },
         ]
       );
       return null;
     }
-    
-    return await Location.getCurrentPositionAsync({
+
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    if (!servicesEnabled) return null;
+
+    const last = await Location.getLastKnownPositionAsync();
+    if (last) return last;
+
+    const locationPromise = Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced, // Mejor balance entre precisión y consumo
     });
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 7000));
+    return await Promise.race([locationPromise, timeoutPromise]);
   } catch (error) {
-    Alert.alert("No se pudo obtener la ubicación");
     return null;
   }
 };
@@ -410,14 +424,6 @@ export default function VisitaScreen() {
       });
 
       const location = await obtenerUbicacion();
-
-      // Ocultar el mensaje de ubicación (si usas react-native-flash-message, se oculta solo al pasar el tiempo)
-      // Si quieres ocultarlo manualmente, puedes usar hideMessage() aquí
-
-      if (!location) {
-        setIsSubmitting(false);
-        return;
-      }
 
       const clienteObj = clientes.find(c => c.co_cli === selectedCliente);
 

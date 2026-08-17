@@ -32,7 +32,7 @@ const formatNum = (val, decimals = 0) =>
     });
 
 // ── Tarjeta individual ───────────────────────────────────────────────────
-const RutaCard = ({ item }) => {
+const RutaCard = React.memo(({ item }) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -157,7 +157,7 @@ const RutaCard = ({ item }) => {
             ) : null}
         </View>
     );
-};
+});
 
 
 const RutasVendedoresScreen = ({ navigation }) => {
@@ -218,8 +218,16 @@ const RutasVendedoresScreen = ({ navigation }) => {
 
     const handleSearch = (text) => {
         setSearchQuery(text);
-        applyFilters(text, selectedDay, data);
     };
+
+    // Debounce solo del texto: filtrar en cada tecla trababa la UI con listas grandes.
+    // El filtro por día (abajo) sigue siendo inmediato porque es un tap, no tecleo.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            applyFilters(searchQuery, selectedDay, data);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, selectedDay, data, applyFilters]);
 
     const handleDayFilter = (dayIndex) => {
         const next = selectedDay === dayIndex ? null : dayIndex;
@@ -426,6 +434,10 @@ const RutasVendedoresScreen = ({ navigation }) => {
                             </Text>
                         </View>
                     }
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={10}
+                    removeClippedSubviews={true}
                 />
             )}
         </SafeAreaView>

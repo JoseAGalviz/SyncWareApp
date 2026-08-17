@@ -1,7 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { Image, TouchableOpacity } from "react-native";
+import { Image, TouchableOpacity, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -9,7 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import FacturasScreen from "../screens/FacturasScreen";
 import DespachoScreen from "../screens/DespachoScreen";
 import LotesScreen from "../screens/LotesScreen";
-import RutagramaScreen from "../screens/RutagramaScreen";
+import DespachoNavigator from "./DespachoNavigator";
 import Theme from "../constants/Theme";
 
 const Tab = createBottomTabNavigator();
@@ -18,9 +18,22 @@ export default function AppNavigatorDespachador() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("userData");
-    navigation.replace("Login");
+  const handleLogout = () => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Seguro que deseas cerrar sesión?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Cerrar sesión",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.removeItem("userData");
+            navigation.replace("Login");
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -88,7 +101,7 @@ export default function AppNavigatorDespachador() {
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen name="Despacho" component={DespachoScreen} />
       <Tab.Screen name="Lotes" component={LotesScreen} />
-      <Tab.Screen name="Rutagrama" component={RutagramaScreen} />
+      <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
     </Tab.Navigator>
   );
 }

@@ -25,5 +25,5 @@ export const API_ENDPOINTS = {
   LOTES: "/api/lotes",
   FACTURAS_SCAN: "/api/facturas/scan",
   FACTURAS_BATCH_SCAN: "/api/facturas/batch-scan",
-  RUTAGRAMAS: "/api/rutagramas",
+  DESPACHO: "/api/despacho",
 };

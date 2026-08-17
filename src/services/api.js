@@ -91,6 +91,10 @@ class ApiService {
             ...restOptions,
         });
     }
+
+    delete(endpoint, headers = {}) {
+        return this.request(endpoint, { method: "DELETE", headers });
+    }
 }
 
 export const api = new ApiService();

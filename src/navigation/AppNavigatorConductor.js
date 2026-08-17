@@ -7,14 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeScreenConductor from "../screens/HomeScreenConductor";
 
-// Debes crear estos dos screens:
 import GuiaCargaScreen from "../screens/GuiaCargaScreen";
 import ChequeoGuiaCargaScreen from "../screens/ChequeoGuiaCargaScreen";
 import FacturasScreen from '../screens/FacturasScreen';
-import RutagramaScreen from '../screens/RutagramaScreen';
+import DespachoNavigator from './DespachoNavigator';
 import COLORS from '../constants/Colors';
-
-// import CargarRutaScreen from "../screens/CargarRutaScreen"; // Eliminado (Unificado)
+import Theme from '../constants/Theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -37,7 +35,7 @@ export default function AppNavigatorConductor() {
       screenOptions={({ route }) => ({
         headerTitle: "Cristmedicals",
         headerTitleAlign: "center",
-        headerStyle: { backgroundColor: "#000" },
+        headerStyle: { backgroundColor: Theme.colors.dark },
         headerTitleStyle: { color: COLORS.WHITE },
         headerTintColor: COLORS.WHITE,
         headerLeft: () => <DrawerMenuButton />,
@@ -58,11 +56,7 @@ export default function AppNavigatorConductor() {
           let iconName;
           if (route.name === "Guia de Carga") {
             iconName = focused ? "cube" : "cube-outline";
-          }
-          /* else if (route.name === "Cargar Ruta") {
-            iconName = focused ? "car" : "car-outline"; 
-          } */
-          else if (route.name === "Chequeo de Guia de Carga") {
+          } else if (route.name === "Chequeo de Guia de Carga") {
             iconName = focused
               ? "checkmark-circle"
               : "checkmark-circle-outline";
@@ -76,9 +70,9 @@ export default function AppNavigatorConductor() {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: COLORS.SUCCESS,
-        tabBarInactiveTintColor: COLORS.PRIMARY,
-        tabBarStyle: { 
-          backgroundColor: "#000",
+        tabBarInactiveTintColor: COLORS.MUTED,
+        tabBarStyle: {
+          backgroundColor: Theme.colors.dark,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
         },
@@ -86,13 +80,12 @@ export default function AppNavigatorConductor() {
     >
       <Tab.Screen name="Inicio" component={HomeScreenConductor} />
       <Tab.Screen name="Guia de Carga" component={GuiaCargaScreen} />
-      {/* <Tab.Screen name="Cargar Ruta" component={CargarRutaScreen} /> (Unificado) */}
       <Tab.Screen
         name="Chequeo de Guia de Carga"
         component={ChequeoGuiaCargaScreen}
       />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
-      <Tab.Screen name="Rutagrama" component={RutagramaScreen} />
+      <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
     </Tab.Navigator>
   );
 }

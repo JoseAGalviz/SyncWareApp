@@ -60,19 +60,22 @@ const MatrixExcelScreen = ({ navigation }) => {
         fetchData(true);
     };
 
-    const handleSearch = (text) => {
-        setSearchQuery(text);
-        if (!text) {
-            setFilteredData(data);
-            return;
-        }
-        const q = text.toLowerCase();
-        const filtered = data.filter(item =>
-            `${item.ciudad || ''} ${item.ejecutiva || ''} ${item.vendedor || ''} ${item.usuario || ''} ${item.id || ''} ${item.cod_ejecutiva || ''}`
-                .toLowerCase().includes(q)
-        );
-        setFilteredData(filtered);
-    };
+    // Filtrado con debounce: filtrar en cada tecla trababa la UI con listas grandes.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const q = searchQuery.trim().toLowerCase();
+            if (!q) {
+                setFilteredData(data);
+                return;
+            }
+            const filtered = data.filter(item =>
+                `${item.ciudad || ''} ${item.ejecutiva || ''} ${item.vendedor || ''} ${item.usuario || ''} ${item.id || ''} ${item.cod_ejecutiva || ''}`
+                    .toLowerCase().includes(q)
+            );
+            setFilteredData(filtered);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, data]);
 
     const formatNumber = (val, decimals = 2) => {
         if (val === null || val === undefined || val === '') return '0';
@@ -269,7 +272,7 @@ const MatrixExcelScreen = ({ navigation }) => {
                         style={styles.searchInput}
                         placeholder="Buscar por ciudad o potencial..."
                         value={searchQuery}
-                        onChangeText={handleSearch}
+                        onChangeText={setSearchQuery}
                     />
                 </View>
                 {!loading && (
@@ -304,6 +307,10 @@ const MatrixExcelScreen = ({ navigation }) => {
                             </Text>
                         </View>
                     }
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={10}
+                    removeClippedSubviews={true}
                 />
             )}
         </SafeAreaView>

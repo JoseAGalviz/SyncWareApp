@@ -54,6 +54,57 @@ const EstadoBadge = ({ estado, enviado, styles }) => {
   );
 };
 
+const LoteRow = React.memo(({ item, onEnviar, enviandoId, styles }) => {
+  const info = estadoInfo(item.estado, item.enviado);
+  return (
+    <View style={[styles.loteItem, { borderLeftColor: info.color }]}>
+      <View style={styles.loteItemHeader}>
+        <Text style={styles.loteItemTitle}>Lote #{item.localId.slice(-6)}</Text>
+        <EstadoBadge estado={item.estado} enviado={item.enviado} styles={styles} />
+      </View>
+      <Text style={styles.loteItemDetalle}>Creado: {item.fecha_creacion}</Text>
+      {!!item.fecha_cierre && (
+        <Text style={styles.loteItemDetalle}>Cerrado: {item.fecha_cierre}</Text>
+      )}
+      <Text style={styles.loteItemDetalle}>
+        {item.facturas.length} factura(s) · Vendedor: {item.co_ven || 'N/D'}
+      </Text>
+      {item.estado === 'cerrado' && !item.enviado && (
+        <TouchableOpacity
+          style={styles.loteEnviarButton}
+          onPress={() => onEnviar(item)}
+          disabled={enviandoId === item.localId}
+          activeOpacity={0.85}
+        >
+          {enviandoId === item.localId ? (
+            <ActivityIndicator size="small" color={Theme.colors.white} />
+          ) : (
+            <>
+              <Ionicons name="cloud-upload-outline" size={14} color={Theme.colors.white} />
+              <Text style={styles.loteEnviarButtonText}>Enviar lote</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+});
+
+const LoteFacturaRow = React.memo(({ item, styles }) => (
+  <View style={styles.facturaRow}>
+    <View style={styles.facturaRowIcon}>
+      <Ionicons name="receipt-outline" size={16} color={Theme.colors.primary} />
+    </View>
+    <View style={styles.facturaRowBody}>
+      <Text style={styles.facturaRowTitle}>#{item.fact_num}</Text>
+      <Text style={styles.facturaRowSub} numberOfLines={1}>
+        {item.cli_des || item.co_cli}
+      </Text>
+    </View>
+    <Text style={styles.facturaRowTime}>{horaCorta(item.fecha_escaneo)}</Text>
+  </View>
+));
+
 // Modal con historial de lotes guardados localmente
 const LotesModal = ({ visible, onClose, lotes, onEnviar, enviandoId, styles }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -73,41 +124,13 @@ const LotesModal = ({ visible, onClose, lotes, onEnviar, enviandoId, styles }) =
               data={lotes}
               keyExtractor={(item) => item.localId}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const info = estadoInfo(item.estado, item.enviado);
-                return (
-                  <View style={[styles.loteItem, { borderLeftColor: info.color }]}>
-                    <View style={styles.loteItemHeader}>
-                      <Text style={styles.loteItemTitle}>Lote #{item.localId.slice(-6)}</Text>
-                      <EstadoBadge estado={item.estado} enviado={item.enviado} styles={styles} />
-                    </View>
-                    <Text style={styles.loteItemDetalle}>Creado: {item.fecha_creacion}</Text>
-                    {!!item.fecha_cierre && (
-                      <Text style={styles.loteItemDetalle}>Cerrado: {item.fecha_cierre}</Text>
-                    )}
-                    <Text style={styles.loteItemDetalle}>
-                      {item.facturas.length} factura(s) · Vendedor: {item.co_ven || 'N/D'}
-                    </Text>
-                    {item.estado === 'cerrado' && !item.enviado && (
-                      <TouchableOpacity
-                        style={styles.loteEnviarButton}
-                        onPress={() => onEnviar(item)}
-                        disabled={enviandoId === item.localId}
-                        activeOpacity={0.85}
-                      >
-                        {enviandoId === item.localId ? (
-                          <ActivityIndicator size="small" color={Theme.colors.white} />
-                        ) : (
-                          <>
-                            <Ionicons name="cloud-upload-outline" size={14} color={Theme.colors.white} />
-                            <Text style={styles.loteEnviarButtonText}>Enviar lote</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              }}
+              renderItem={({ item }) => (
+                <LoteRow item={item} onEnviar={onEnviar} enviandoId={enviandoId} styles={styles} />
+              )}
+              initialNumToRender={10}
+              maxToRenderPerBatch={5}
+              windowSize={10}
+              removeClippedSubviews={true}
             />
           </View>
         )}
@@ -619,20 +642,11 @@ export default function LotesScreen() {
                   keyExtractor={(item) => item.fact_num}
                   scrollEnabled={loteActual.facturas.length > 5}
                   style={{ maxHeight: 260 }}
-                  renderItem={({ item }) => (
-                    <View style={styles.facturaRow}>
-                      <View style={styles.facturaRowIcon}>
-                        <Ionicons name="receipt-outline" size={16} color={Theme.colors.primary} />
-                      </View>
-                      <View style={styles.facturaRowBody}>
-                        <Text style={styles.facturaRowTitle}>#{item.fact_num}</Text>
-                        <Text style={styles.facturaRowSub} numberOfLines={1}>
-                          {item.cli_des || item.co_cli}
-                        </Text>
-                      </View>
-                      <Text style={styles.facturaRowTime}>{horaCorta(item.fecha_escaneo)}</Text>
-                    </View>
-                  )}
+                  renderItem={({ item }) => <LoteFacturaRow item={item} styles={styles} />}
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={5}
+                  windowSize={10}
+                  removeClippedSubviews={true}
                 />
               )}
             </View>
