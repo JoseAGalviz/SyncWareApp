@@ -210,6 +210,18 @@ const styles = StyleSheet.create({
     borderRadius: Theme.radius.lg,
     padding: Theme.spacing.xl,
   },
+
+  // --- Detalle de renglón (modal) ---
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.border,
+  },
+  detailLabel: { ...Theme.typography.small, color: Theme.colors.muted, flex: 1 },
+  detailValue: { ...Theme.typography.body, color: Theme.colors.text, fontWeight: '600', flex: 1, textAlign: 'right' },
+  itemChevron: { ...Theme.typography.heading, color: Theme.colors.light, marginLeft: Theme.spacing.sm },
 });
 
 export default styles;

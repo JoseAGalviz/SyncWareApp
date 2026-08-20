@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
+import { useSalidaConfirmada } from '../hooks/useSalidaConfirmada';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 
-const PendienteItem = React.memo(({ item }) => (
-  <View style={styles.itemRow}>
+const PendienteItem = React.memo(({ item, onPress }) => (
+  <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
     <View style={styles.itemInfo}>
-      <Text style={styles.itemNota}>{item.fact_num}</Text>
+      <Text style={styles.itemNota}>Factura {item.fact_num}</Text>
       <Text style={styles.itemDetalle}>{item.cli_des}</Text>
     </View>
     <View style={[styles.statusPill, item.ya_escaneada ? styles.statusVerificada : styles.statusPendiente]}>
@@ -17,20 +18,68 @@ const PendienteItem = React.memo(({ item }) => (
         {item.ya_escaneada ? 'ESCANEADA' : 'PENDIENTE'}
       </Text>
     </View>
-  </View>
+  </TouchableOpacity>
 ));
 
-const EscaneadoItem = React.memo(({ item, onDescartar }) => (
+const EscaneadoItem = React.memo(({ item, onPress, onDescartar }) => (
   <View style={styles.itemRow}>
-    <View style={styles.itemInfo}>
+    <TouchableOpacity style={styles.itemInfo} onPress={() => onPress(item)} activeOpacity={0.6}>
       <Text style={styles.itemNota}>{item.nota} — {item.escaneados}/{item.paquetes}</Text>
       <Text style={styles.itemDetalle}>{item.descrip}</Text>
-    </View>
+    </TouchableOpacity>
     <TouchableOpacity style={styles.itemAccion} onPress={() => onDescartar(item.id)}>
       <Text style={{ color: Theme.colors.error, fontWeight: '700' }}>Quitar</Text>
     </TouchableOpacity>
   </View>
 ));
+
+// Etiquetas legibles para los campos que puede traer cada renglón — cualquier
+// campo no listado igual se muestra, con el nombre de la clave formateado.
+const ETIQUETAS_CAMPO = {
+  fact_num: 'Factura',
+  cli_des: 'Cliente',
+  co_cli: 'Código cliente',
+  ya_escaneada: 'Escaneada',
+  nota: 'Nota',
+  descrip: 'Descripción',
+  escaneados: 'Cajas escaneadas',
+  paquetes: 'Total de cajas',
+  peso: 'Peso',
+  id: 'ID',
+};
+const CAMPOS_OCULTOS = new Set(['id']);
+
+const formatearEtiqueta = (clave) =>
+  ETIQUETAS_CAMPO[clave] || clave.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+
+const formatearValor = (valor) => {
+  if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
+  if (valor == null || valor === '') return 'N/D';
+  return String(valor);
+};
+
+const DetalleRenglonModal = ({ item, onClose }) => (
+  <Modal visible={!!item} transparent animationType="fade" onRequestClose={onClose}>
+    <View style={styles.modalBackground}>
+      <View style={styles.modalCard}>
+        <Text style={styles.listaTitulo}>Detalle</Text>
+        <ScrollView>
+          {item && Object.entries(item)
+            .filter(([clave]) => !CAMPOS_OCULTOS.has(clave))
+            .map(([clave, valor]) => (
+              <View key={clave} style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{formatearEtiqueta(clave)}</Text>
+                <Text style={styles.detailValue}>{formatearValor(valor)}</Text>
+              </View>
+            ))}
+        </ScrollView>
+        <TouchableOpacity style={styles.secondaryButton} onPress={onClose} activeOpacity={0.85}>
+          <Text style={styles.secondaryButtonText}>Cerrar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
 
 export default function DespachoEscanearScreen({ route, navigation }) {
   const { rutagramaId, usuarioId, rutaDesc } = route.params;
@@ -43,6 +92,9 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const [scanned, setScanned] = useState(false);
   const [confirmacion, setConfirmacion] = useState(null); // { nota, caja } | null
   const [guardando, setGuardando] = useState(false);
+  const [detalleRenglon, setDetalleRenglon] = useState(null);
+
+  useSalidaConfirmada(navigation);
 
   const cargarTodo = useCallback(async () => {
     try {
@@ -70,6 +122,11 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const cerrarConfirmacion = useCallback(() => {
     setConfirmacion(null);
     setScanned(false);
+  }, []);
+
+  const escribirManualmente = useCallback(() => {
+    setScanned(true);
+    setConfirmacion({ nota: '', caja: '1' });
   }, []);
 
   const confirmarEscaneo = useCallback(async () => {
@@ -141,6 +198,10 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         ) : null}
       </View>
 
+      <TouchableOpacity style={styles.secondaryButton} onPress={escribirManualmente} activeOpacity={0.85}>
+        <Text style={styles.secondaryButtonText}>Escribir nota/caja manualmente</Text>
+      </TouchableOpacity>
+
       <Text style={styles.listaTitulo}>Cargadas en este rutagrama ({detalle.items.length})</Text>
       {cargando ? (
         <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
@@ -150,7 +211,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         <FlatList
           data={detalle.items}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <EscaneadoItem item={item} onDescartar={descartarRenglon} />}
+          renderItem={({ item }) => <EscaneadoItem item={item} onPress={setDetalleRenglon} onDescartar={descartarRenglon} />}
           scrollEnabled={false}
         />
       )}
@@ -162,7 +223,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         <FlatList
           data={pendientes}
           keyExtractor={(item) => String(item.fact_num)}
-          renderItem={({ item }) => <PendienteItem item={item} />}
+          renderItem={({ item }) => <PendienteItem item={item} onPress={setDetalleRenglon} />}
           scrollEnabled={false}
           style={{ maxHeight: 260 }}
         />
@@ -210,6 +271,8 @@ export default function DespachoEscanearScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+
+      <DetalleRenglonModal item={detalleRenglon} onClose={() => setDetalleRenglon(null)} />
     </ScrollView>
   );
 }

@@ -25,8 +25,8 @@ export const DespachoService = {
   descartarDetalle: (rutagramaId, detalleId) =>
     api.delete(`${BASE}/${rutagramaId}/detalle/${detalleId}`),
 
-  verificarFactura: (rutagramaId, { usuario_id, factura, solo_factura }) =>
-    api.post(`${BASE}/${rutagramaId}/verificar-factura`, { usuario_id, factura, solo_factura: !!solo_factura }),
+  verificarFactura: (rutagramaId, { usuario_id, factura, nota, solo_factura }) =>
+    api.post(`${BASE}/${rutagramaId}/verificar-factura`, { usuario_id, factura, nota, solo_factura: !!solo_factura }),
 
   resumenCierre: (rutagramaId, usuarioId) =>
     api.get(`${BASE}/${rutagramaId}/resumen-cierre?usuario_id=${encodeURIComponent(usuarioId)}`),

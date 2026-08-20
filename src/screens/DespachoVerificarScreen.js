@@ -8,6 +8,7 @@ import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 import DespachoFinalizarModal from '../components/DespachoFinalizarModal';
 import { STORAGE_KEY_DESPACHO_ACTIVO } from './DespachoIniciarScreen';
+import { useSalidaConfirmada } from '../hooks/useSalidaConfirmada';
 
 const ESTADOS_VERIFICADO = new Set(['***', '****', 'FAT*', 'NCR', 'NDB', 'REFR', 'REP*']);
 
@@ -38,10 +39,14 @@ export default function DespachoVerificarScreen({ route, navigation }) {
   const [cargando, setCargando] = useState(true);
   const [scanned, setScanned] = useState(false);
   const [soloFactura, setSoloFactura] = useState(false);
-  const [confirmacion, setConfirmacion] = useState(null); // { factura } | null
+  const [pasoEscaneo, setPasoEscaneo] = useState('factura'); // 'factura' | 'nota' — solo aplica sin soloFactura
+  const [facturaEscaneada, setFacturaEscaneada] = useState('');
+  const [confirmacion, setConfirmacion] = useState(null); // { factura, nota } | null
   const [guardando, setGuardando] = useState(false);
   const [mostrarFinalizar, setMostrarFinalizar] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
+
+  useSalidaConfirmada(navigation);
 
   const cargarTodo = useCallback(async () => {
     try {
@@ -62,26 +67,63 @@ export default function DespachoVerificarScreen({ route, navigation }) {
 
   const handleBarCodeScanned = useCallback(({ data }) => {
     if (scanned) return;
+    const codigo = (data || '').replace(/\s+/g, '');
+
+    if (soloFactura) {
+      setScanned(true);
+      setConfirmacion({ factura: codigo, nota: '' });
+      return;
+    }
+
+    if (pasoEscaneo === 'factura') {
+      setFacturaEscaneada(codigo);
+      setPasoEscaneo('nota');
+      return;
+    }
+
+    // Mismo código de factura todavía en el encuadre de la cámara — esperar
+    // a que aparezca el código real de la nota antes de confirmar.
+    if (codigo === facturaEscaneada) return;
+
     setScanned(true);
-    setConfirmacion({ factura: (data || '').replace(/\s+/g, '') });
-  }, [scanned]);
+    setConfirmacion({ factura: facturaEscaneada, nota: codigo });
+  }, [scanned, soloFactura, pasoEscaneo, facturaEscaneada]);
 
   const cerrarConfirmacion = useCallback(() => {
     setConfirmacion(null);
     setScanned(false);
+    setPasoEscaneo('factura');
+    setFacturaEscaneada('');
   }, []);
+
+  const reiniciarEscaneo = useCallback(() => {
+    setPasoEscaneo('factura');
+    setFacturaEscaneada('');
+  }, []);
+
+  const escribirManualmente = useCallback(() => {
+    setScanned(true);
+    setConfirmacion({ factura: facturaEscaneada, nota: '' });
+  }, [facturaEscaneada]);
 
   const confirmarVerificacion = useCallback(async () => {
     if (!confirmacion?.factura) return;
+    if (!soloFactura && !confirmacion?.nota) {
+      Alert.alert('Falta la nota', 'Escaneá o escribí también la nota antes de verificar.');
+      return;
+    }
     setGuardando(true);
     try {
       await DespachoService.verificarFactura(rutagramaId, {
         usuario_id: usuarioId,
         factura: confirmacion.factura,
+        nota: confirmacion.nota || undefined,
         solo_factura: soloFactura,
       });
       setConfirmacion(null);
       setScanned(false);
+      setPasoEscaneo('factura');
+      setFacturaEscaneada('');
       await cargarTodo();
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo verificar la factura.';
@@ -154,15 +196,37 @@ export default function DespachoVerificarScreen({ route, navigation }) {
       )}
 
       <View style={styles.toggleRow}>
-        <Switch value={soloFactura} onValueChange={setSoloFactura} trackColor={{ true: Theme.colors.primary }} />
-        <Text style={styles.toggleLabel}>Solo factura (sin nota previa)</Text>
+        <Switch
+          value={soloFactura}
+          onValueChange={(v) => { setSoloFactura(v); reiniciarEscaneo(); }}
+          trackColor={{ true: Theme.colors.primary }}
+        />
+        <Text style={styles.toggleLabel}>Solo factura (sin nota previa, ej. N/CR, N/DB)</Text>
       </View>
+
+      {!soloFactura && (
+        <Text style={styles.toggleLabel}>
+          {pasoEscaneo === 'factura'
+            ? 'Paso 1 de 2: escaneá la factura'
+            : `Paso 2 de 2: escaneá la nota (factura ${facturaEscaneada})`}
+        </Text>
+      )}
 
       <View style={styles.cameraContainer}>
         {isFocused ? (
           <CameraView onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.cameraBox} facing="back" />
         ) : null}
       </View>
+
+      {!soloFactura && pasoEscaneo === 'nota' && (
+        <TouchableOpacity style={styles.secondaryButton} onPress={reiniciarEscaneo} activeOpacity={0.85}>
+          <Text style={styles.secondaryButtonText}>Reiniciar escaneo (empezar de nuevo por factura)</Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity style={styles.secondaryButton} onPress={escribirManualmente} activeOpacity={0.85}>
+        <Text style={styles.secondaryButtonText}>Escribir factura/nota manualmente</Text>
+      </TouchableOpacity>
 
       <Text style={styles.listaTitulo}>Renglones ({detalle.items.length})</Text>
       {cargando ? (
@@ -194,7 +258,15 @@ export default function DespachoVerificarScreen({ route, navigation }) {
             <TextInput
               style={styles.input}
               value={confirmacion?.factura || ''}
-              onChangeText={(v) => setConfirmacion({ factura: v })}
+              onChangeText={(v) => setConfirmacion(prev => ({ ...prev, factura: v }))}
+              autoCapitalize="characters"
+              selectTextOnFocus
+            />
+            <Text style={styles.label}>{soloFactura ? 'Nº Nota (opcional)' : 'Nº Nota'}</Text>
+            <TextInput
+              style={styles.input}
+              value={confirmacion?.nota || ''}
+              onChangeText={(v) => setConfirmacion(prev => ({ ...prev, nota: v }))}
               autoCapitalize="characters"
               selectTextOnFocus
             />
