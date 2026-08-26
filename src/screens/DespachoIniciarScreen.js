@@ -10,10 +10,35 @@ import { agruparRutas, REGIONES_AGRUPABLES, codigoRegion } from '../constants/ru
 const ROLES_PERMITIDOS = ['despachador', 'conductor', 'vendedor'];
 export const STORAGE_KEY_DESPACHO_ACTIVO = 'despachoActivo';
 
+// Lista de rutagramas abiertos en paralelo (antes solo se recordaba uno, y
+// arrancar otra ruta pisaba el puntero al anterior aunque siguiera abierto en
+// el servidor). Dedupe por rutagramaId: reabrir la misma ruta actualiza su
+// entrada en vez de duplicarla.
+export async function leerActivos() {
+  const str = await AsyncStorage.getItem(STORAGE_KEY_DESPACHO_ACTIVO);
+  if (!str) return [];
+  const parsed = JSON.parse(str);
+  return Array.isArray(parsed) ? parsed : [parsed]; // compat con formato viejo (objeto suelto)
+}
+
+export async function agregarActivo(entry) {
+  const activos = await leerActivos();
+  const nuevos = [...activos.filter(a => a.rutagramaId !== entry.rutagramaId), entry];
+  await AsyncStorage.setItem(STORAGE_KEY_DESPACHO_ACTIVO, JSON.stringify(nuevos));
+  return nuevos;
+}
+
+export async function quitarActivo(rutagramaId) {
+  const activos = await leerActivos();
+  const nuevos = activos.filter(a => a.rutagramaId !== rutagramaId);
+  await AsyncStorage.setItem(STORAGE_KEY_DESPACHO_ACTIVO, JSON.stringify(nuevos));
+  return nuevos;
+}
+
 export default function DespachoIniciarScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
   const [iniciando, setIniciando] = useState(false);
-  const [activo, setActivo] = useState(null); // { rutagramaId, rutaCodigo, rutaDesc } | null
+  const [activos, setActivos] = useState([]); // [{ rutagramaId, rutaCodigo, rutaDesc }]
   const [cargandoActivo, setCargandoActivo] = useState(true);
   const [segmentos, setSegmentos] = useState([]);
   const [cargandoSegmentos, setCargandoSegmentos] = useState(false);
@@ -24,9 +49,7 @@ export default function DespachoIniciarScreen({ navigation }) {
       try {
         const userDataStr = await AsyncStorage.getItem('userData');
         if (userDataStr) setUserData(JSON.parse(userDataStr));
-
-        const activoStr = await AsyncStorage.getItem(STORAGE_KEY_DESPACHO_ACTIVO);
-        if (activoStr) setActivo(JSON.parse(activoStr));
+        setActivos(await leerActivos());
       } catch (e) {
         console.error('Error cargando datos de despacho', e);
       } finally {
@@ -57,17 +80,16 @@ export default function DespachoIniciarScreen({ navigation }) {
   const gruposRuta = agruparRutas(segmentos);
   const totalOpciones = gruposRuta.reduce((acc, g) => acc + g.opciones.length, 0);
 
-  const continuarActivo = useCallback(() => {
+  const continuarActivo = useCallback((item) => {
     navigation.navigate('DespachoEscanear', {
-      rutagramaId: activo.rutagramaId,
+      rutagramaId: item.rutagramaId,
       usuarioId: userData.id,
-      rutaDesc: activo.rutaDesc,
+      rutaDesc: item.rutaDesc,
     });
-  }, [activo, userData, navigation]);
+  }, [userData, navigation]);
 
-  const descartarActivo = useCallback(async () => {
-    await AsyncStorage.removeItem(STORAGE_KEY_DESPACHO_ACTIVO);
-    setActivo(null);
+  const descartarActivo = useCallback(async (rutagramaId) => {
+    setActivos(await quitarActivo(rutagramaId));
   }, []);
 
   const iniciarConCodigo = useCallback(async (rutaCodigo) => {
@@ -84,7 +106,7 @@ export default function DespachoIniciarScreen({ navigation }) {
         rutaCodigo: resultado.ruta_codigo,
         rutaDesc: resultado.ruta_desc,
       };
-      await AsyncStorage.setItem(STORAGE_KEY_DESPACHO_ACTIVO, JSON.stringify(nuevoActivo));
+      await agregarActivo(nuevoActivo);
       navigation.navigate('DespachoEscanear', {
         rutagramaId: nuevoActivo.rutagramaId,
         usuarioId: userData.id,
@@ -110,21 +132,27 @@ export default function DespachoIniciarScreen({ navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Text style={styles.title}>Despacho de rutas</Text>
 
-      {activo ? (
+      {activos.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.listaTitulo}>Ya tenés una ruta abierta</Text>
-          <Text style={styles.subtitle}>{activo.rutaDesc}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={continuarActivo} activeOpacity={0.85}>
-            <Text style={styles.primaryButtonText}>Continuar despacho</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={descartarActivo} activeOpacity={0.85}>
-            <Text style={styles.secondaryButtonText}>Elegir otra ruta</Text>
-          </TouchableOpacity>
+          <Text style={styles.listaTitulo}>
+            {activos.length === 1 ? 'Ya tenés una ruta abierta' : `Tenés ${activos.length} rutas abiertas`}
+          </Text>
+          {activos.map(item => (
+            <View key={item.rutagramaId} style={{ marginTop: Theme.spacing.sm }}>
+              <Text style={styles.subtitle}>{item.rutaDesc}</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => continuarActivo(item)} activeOpacity={0.85}>
+                <Text style={styles.primaryButtonText}>Continuar despacho</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => descartarActivo(item.rutagramaId)} activeOpacity={0.85}>
+                <Text style={styles.secondaryButtonText}>Quitar de la lista</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
-      ) : (
-        <>
-          <Text style={styles.subtitle}>Elegí la ruta que vas a despachar.</Text>
-          <View style={styles.card}>
+      )}
+
+      <Text style={styles.subtitle}>Elegí la ruta que vas a despachar.</Text>
+      <View style={styles.card}>
             {cargandoSegmentos ? (
               <ActivityIndicator size="small" color={Theme.colors.primary} />
             ) : totalOpciones === 0 ? (
@@ -167,10 +195,8 @@ export default function DespachoIniciarScreen({ navigation }) {
                 );
               })
             )}
-            {iniciando && <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginTop: Theme.spacing.sm }} />}
-          </View>
-        </>
-      )}
+        {iniciando && <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginTop: Theme.spacing.sm }} />}
+      </View>
 
       <TouchableOpacity
         style={styles.secondaryButton}

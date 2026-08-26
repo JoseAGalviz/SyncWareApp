@@ -2,13 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 import DespachoFinalizarModal from '../components/DespachoFinalizarModal';
-import { STORAGE_KEY_DESPACHO_ACTIVO } from './DespachoIniciarScreen';
+import { quitarActivo } from './DespachoIniciarScreen';
 import { useSalidaConfirmada } from '../hooks/useSalidaConfirmada';
 
 const ESTADOS_VERIFICADO = new Set(['***', '****', 'FAT*', 'NCR', 'NDB', 'REFR', 'REP*']);
@@ -195,7 +194,7 @@ export default function DespachoVerificarScreen({ route, navigation }) {
     setFinalizando(true);
     try {
       const resultado = await DespachoService.finalizar(rutagramaId, { usuario_id: usuarioId, chofer, carro, ayudantes, responsable });
-      await AsyncStorage.removeItem(STORAGE_KEY_DESPACHO_ACTIVO);
+      await quitarActivo(rutagramaId);
       setMostrarFinalizar(false);
       const generados = resultado?.rutagramas_generados || 1;
       const numeros = (resultado?.rutagramas || []).map(r => `#${r.cargado_id}`).join(', ');
@@ -211,7 +210,7 @@ export default function DespachoVerificarScreen({ route, navigation }) {
       if (/ya está cerrado/i.test(msg)) {
         // Backend ya lo cerró en un intento previo (ej. respuesta perdida por conexión lenta/USB);
         // el estado deseado ya existe, no es un fallo real. Tratar como cierre exitoso.
-        await AsyncStorage.removeItem(STORAGE_KEY_DESPACHO_ACTIVO);
+        await quitarActivo(rutagramaId);
         setMostrarFinalizar(false);
         Alert.alert('Ruta ya cerrada', `El rutagrama #${rutagramaId} ya se había cerrado (probablemente por un intento anterior). No hace falta repetirlo.`, [
           { text: 'Ver historial', onPress: () => navigation.navigate('DespachoHistorial') },
