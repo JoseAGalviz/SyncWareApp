@@ -1023,7 +1023,7 @@ export default function VisitaScreen() {
                     <Text style={[styles.label, { color: Colors.LIGHT_TEXT }]}>Ubicación:</Text>
                     <Text style={{ color: Colors.TEXT }}>Latitud: {gestionSeleccionada.ubicacion.lat.toFixed(6)}</Text>
                     <Text style={{ color: Colors.TEXT }}>Longitud: {gestionSeleccionada.ubicacion.lng.toFixed(6)}</Text>
-                    <Text style={{ color: Colors.TEXT }}>Precisión: {gestionSeleccionada.ubicacion.accuracy.toFixed(2)} metros</Text>
+                    <Text style={{ color: Colors.TEXT }}>Precisión: {gestionSeleccionada.ubicacion.accuracy != null ? `${gestionSeleccionada.ubicacion.accuracy.toFixed(2)} metros` : 'N/D'}</Text>
                   </>
                 )}
               </ScrollView>

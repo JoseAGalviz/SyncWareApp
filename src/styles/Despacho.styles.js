@@ -83,6 +83,18 @@ const styles = StyleSheet.create({
   dangerButtonText: { color: Theme.colors.white, fontWeight: '700', fontSize: 15 },
   buttonDisabled: { opacity: 0.5 },
 
+  // Barra fija al fondo de la pantalla (fuera del ScrollView) — evita que el
+  // usuario deba hacer scroll hasta el final para llegar al botón principal.
+  footerBar: {
+    paddingHorizontal: isSmallDevice ? Theme.spacing.lg : Theme.spacing.xxl,
+    paddingTop: Theme.spacing.md,
+    paddingBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.border,
+  },
+  footerButton: { marginTop: 0 },
+
   // --- Selector de ruta ---
   rutaOption: {
     borderWidth: 1,
@@ -137,6 +149,7 @@ const styles = StyleSheet.create({
   toggleLabel: { ...Theme.typography.body, color: Theme.colors.text },
 
   // --- Listas ---
+  regionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Theme.spacing.sm },
   listaTitulo: { ...Theme.typography.subheading, color: Theme.colors.text, marginBottom: Theme.spacing.sm },
   emptyListText: { ...Theme.typography.small, color: Theme.colors.light, textAlign: 'center', paddingVertical: Theme.spacing.lg },
 
@@ -162,6 +175,18 @@ const styles = StyleSheet.create({
   statusTextPendiente:  { color: Theme.colors.error },
   statusTextEscaneada:  { color: Theme.colors.warning },
   statusTextVerificada: { color: Theme.colors.successDark },
+
+  filterRow: { flexDirection: 'row', gap: Theme.spacing.sm, marginBottom: Theme.spacing.sm },
+  filterChip: {
+    paddingVertical: Theme.spacing.xs,
+    paddingHorizontal: Theme.spacing.sm,
+    borderRadius: Theme.radius.pill,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+  },
+  filterChipActive: { backgroundColor: Theme.colors.primary, borderColor: Theme.colors.primary },
+  filterChipText: { ...Theme.typography.tiny, color: Theme.colors.muted, fontWeight: '600' },
+  filterChipTextActive: { color: Theme.colors.dark },
 
   totalesRow: {
     flexDirection: 'row',

@@ -15,7 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { api } from '../services/api'; // Usar nuestro servicio API robusto
-import FlashMessage, { showMessage } from "react-native-flash-message";
+import { showMessage } from "react-native-flash-message";
 import SoundManager from '../utils/SoundManager';
 import { Ionicons } from '@expo/vector-icons';
 import GlobalColors from '../constants/Colors';
@@ -1080,8 +1080,6 @@ export default function GuiaCargaScreen({ navigation }) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <FlashMessage position="top" />
 
       {/* Modal de Feedback de Escaneo */}
       <Modal

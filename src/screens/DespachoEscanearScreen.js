@@ -7,19 +7,27 @@ import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 
-const PendienteItem = React.memo(({ item, onPress }) => (
-  <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
-    <View style={styles.itemInfo}>
-      <Text style={styles.itemNota}>Factura {item.fact_num}</Text>
-      <Text style={styles.itemDetalle}>{item.cli_des}</Text>
-    </View>
-    <View style={[styles.statusPill, item.ya_escaneada ? styles.statusVerificada : styles.statusPendiente]}>
-      <Text style={[styles.statusPillText, item.ya_escaneada ? styles.statusTextVerificada : styles.statusTextPendiente]}>
-        {item.ya_escaneada ? 'ESCANEADA' : 'PENDIENTE'}
-      </Text>
-    </View>
-  </TouchableOpacity>
-));
+const PendienteItem = React.memo(({ item, onPress }) => {
+  const tieneFactura = !!item.factura_generada;
+  return (
+    <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
+      <View style={styles.itemInfo}>
+        <Text style={styles.itemNota}>Nota de Entrega {item.fact_num}</Text>
+        <Text style={styles.itemDetalle}>{item.cli_des}</Text>
+        <View style={[styles.statusPill, tieneFactura ? styles.statusVerificada : styles.statusEscaneada, { alignSelf: 'flex-start', marginTop: Theme.spacing.xs }]}>
+          <Text style={[styles.statusPillText, tieneFactura ? styles.statusTextVerificada : styles.statusTextEscaneada]}>
+            {tieneFactura ? `FACTURA ${item.factura_generada}` : 'SIN FACTURA'}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.statusPill, item.ya_escaneada ? styles.statusVerificada : styles.statusPendiente]}>
+        <Text style={[styles.statusPillText, item.ya_escaneada ? styles.statusTextVerificada : styles.statusTextPendiente]}>
+          {item.ya_escaneada ? 'ESCANEADA' : 'PENDIENTE'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 const EscaneadoItem = React.memo(({ item, onPress, onDescartar }) => (
   <View style={styles.itemRow}>
@@ -36,7 +44,8 @@ const EscaneadoItem = React.memo(({ item, onPress, onDescartar }) => (
 // Etiquetas legibles para los campos que puede traer cada renglón — cualquier
 // campo no listado igual se muestra, con el nombre de la clave formateado.
 const ETIQUETAS_CAMPO = {
-  fact_num: 'Factura',
+  fact_num: 'Nota de Entrega',
+  factura_generada: 'Nº Factura Profit',
   cli_des: 'Cliente',
   co_cli: 'Código cliente',
   ya_escaneada: 'Escaneada',
@@ -47,14 +56,17 @@ const ETIQUETAS_CAMPO = {
   peso: 'Peso',
   id: 'ID',
 };
-const CAMPOS_OCULTOS = new Set(['id']);
+const CAMPOS_OCULTOS = new Set([
+  'id', 'procesada', 'impresa',
+  'status', 'status1', 'status2', 'responsable', 'orden', 'recepcion', 'observacion',
+]);
 
 const formatearEtiqueta = (clave) =>
   ETIQUETAS_CAMPO[clave] || clave.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
-const formatearValor = (valor) => {
+const formatearValor = (valor, clave) => {
   if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
-  if (valor == null || valor === '') return 'N/D';
+  if (valor == null || valor === '') return clave === 'factura' ? 'Sin factura aún' : 'N/D';
   return String(valor);
 };
 
@@ -69,7 +81,7 @@ const DetalleRenglonModal = ({ item, onClose }) => (
             .map(([clave, valor]) => (
               <View key={clave} style={styles.detailRow}>
                 <Text style={styles.detailLabel}>{formatearEtiqueta(clave)}</Text>
-                <Text style={styles.detailValue}>{formatearValor(valor)}</Text>
+                <Text style={styles.detailValue}>{formatearValor(valor, clave)}</Text>
               </View>
             ))}
         </ScrollView>
@@ -93,6 +105,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const [confirmacion, setConfirmacion] = useState(null); // { nota, caja } | null
   const [guardando, setGuardando] = useState(false);
   const [detalleRenglon, setDetalleRenglon] = useState(null);
+  const [filtroFactura, setFiltroFactura] = useState('todas'); // 'todas' | 'con' | 'sin'
 
   useSalidaConfirmada(navigation);
 
@@ -159,6 +172,12 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     }
   }, [rutagramaId, cargarTodo]);
 
+  const pendientesFiltrados = pendientes.filter((p) => {
+    if (filtroFactura === 'con') return !!p.factura_generada;
+    if (filtroFactura === 'sin') return !p.factura_generada;
+    return true;
+  });
+
   if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
   if (!permission.granted) {
     return (
@@ -172,7 +191,8 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Escanear cajas</Text>
       <View style={styles.activeHeader}>
         <Text style={styles.activeRuta}>{rutaDesc}</Text>
@@ -202,6 +222,14 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         <Text style={styles.secondaryButtonText}>Escribir nota/caja manualmente</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('DespachoFacturaVieja', { rutagramaId, usuarioId, rutaDesc })}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>Factura vieja / perdida</Text>
+      </TouchableOpacity>
+
       <Text style={styles.listaTitulo}>Cargadas en este rutagrama ({detalle.items.length})</Text>
       {cargando ? (
         <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
@@ -216,26 +244,35 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         />
       )}
 
-      <Text style={[styles.listaTitulo, { marginTop: Theme.spacing.lg }]}>Pendientes de Profit ({pendientes.length})</Text>
-      {pendientes.length === 0 ? (
-        <Text style={styles.emptyListText}>No hay notas pendientes en esta ruta.</Text>
+      <Text style={[styles.listaTitulo, { marginTop: Theme.spacing.lg }]}>Pendientes de Profit ({pendientesFiltrados.length})</Text>
+      <View style={styles.filterRow}>
+        {[
+          { key: 'todas', label: 'Todas' },
+          { key: 'con', label: 'Con factura' },
+          { key: 'sin', label: 'Sin factura' },
+        ].map((op) => (
+          <TouchableOpacity
+            key={op.key}
+            style={[styles.filterChip, filtroFactura === op.key && styles.filterChipActive]}
+            onPress={() => setFiltroFactura(op.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, filtroFactura === op.key && styles.filterChipTextActive]}>{op.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {pendientesFiltrados.length === 0 ? (
+        <Text style={styles.emptyListText}>
+          {pendientes.length === 0 ? 'No hay notas pendientes en esta ruta.' : 'Ninguna nota pendiente coincide con el filtro.'}
+        </Text>
       ) : (
         <FlatList
-          data={pendientes}
+          data={pendientesFiltrados}
           keyExtractor={(item) => String(item.fact_num)}
           renderItem={({ item }) => <PendienteItem item={item} onPress={setDetalleRenglon} />}
           scrollEnabled={false}
-          style={{ maxHeight: 260 }}
         />
       )}
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => navigation.navigate('DespachoVerificar', { rutagramaId, usuarioId, rutaDesc })}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.primaryButtonText}>Continuar a verificar por factura</Text>
-      </TouchableOpacity>
 
       <Modal visible={!!confirmacion} transparent animationType="fade" onRequestClose={cerrarConfirmacion}>
         <View style={styles.modalBackground}>
@@ -274,5 +311,16 @@ export default function DespachoEscanearScreen({ route, navigation }) {
 
       <DetalleRenglonModal item={detalleRenglon} onClose={() => setDetalleRenglon(null)} />
     </ScrollView>
+
+    <View style={styles.footerBar}>
+      <TouchableOpacity
+        style={[styles.primaryButton, styles.footerButton]}
+        onPress={() => navigation.navigate('DespachoVerificar', { rutagramaId, usuarioId, rutaDesc })}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.primaryButtonText}>Continuar a verificar por factura</Text>
+      </TouchableOpacity>
+    </View>
+    </View>
   );
 }

@@ -141,11 +141,18 @@ const FacturasModal = ({ visible, onClose, facturasLocales }) => {
 // El número de factura real es letra (A/B) + 7 dígitos (ver transformarNumFactura en el
 // server) — un valor que no matchea es casi siempre un mal escaneo, no un caso válido nuevo.
 // FORMATO_SOLO_DIGITOS cubre la entrada manual: el campo "Ingresar factura manualmente"
-// tiene teclado numérico (sin letras), así que ahí el vendedor solo puede escribir los 7
+// tiene teclado numérico (sin letras), así que ahí el vendedor solo puede escribir los
 // dígitos — la letra la resuelve el server contra Profit (/facturas/scan, /facturas/batch-scan),
-// nunca hace falta que el vendedor la sepa ni la tipee.
+// nunca hace falta que el vendedor la sepa ni la tipee. Acepta de 1 a 7 dígitos (no exige el
+// cero inicial) para que el vendedor tipee el número tal como lo ve impreso en la factura
+// (ej. "392208" en vez de "0392208") — el server rellena con ceros antes de resolver
+// (candidatosSinLetra, mismo contrato que SOLO_DIGITOS en helpers.js). 8 dígitos es el otro
+// caso real: algunas facturas ya imprimen el fact_num interno directo (ej. "72150775", ver
+// el chequeo factNumInt > 72000000 en facturas.controller.js) — sin letra que resolver, el
+// server lo usa tal cual (transformarNumFactura lo deja pasar sin tocar cuando no matchea
+// el patrón letra+7).
 const FORMATO_CON_LETRA = /^[AB]\d{7}$/i;
-const FORMATO_SOLO_DIGITOS = /^\d{7}$/;
+const FORMATO_SOLO_DIGITOS = /^\d{1,8}$/;
 const formatoFacturaValido = (valor) => FORMATO_CON_LETRA.test(valor) || FORMATO_SOLO_DIGITOS.test(valor);
 
 const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCancelar }) => {
@@ -161,7 +168,7 @@ const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCa
         <Text style={[styles.confirmBigNumber, formatoInvalido && { color: COLORS.ERROR }]}>{valor}</Text>
         {formatoInvalido && (
           <Text style={{ color: COLORS.ERROR, textAlign: 'center', marginBottom: 8 }}>
-            Formato no reconocido — revisa antes de guardar (debería ser 7 dígitos, con o sin la letra al inicio, ej. 0392208 o A0392208).
+            Formato no reconocido — revisa antes de guardar (debería ser hasta 8 dígitos, con o sin la letra al inicio, ej. 392208, 72150775 o A0392208).
           </Text>
         )}
 
@@ -314,16 +321,18 @@ export default function FacturasScreen() {
   const registrarEscaneo = useCallback(async (fact_num) => {
     setEnviando(true);
     const coords = await obtenerCoordenadas();
+    const id_local = `${fact_num}-${Date.now()}`;
+    const fecha_escaneo = new Date().toISOString();
     try {
       const respuesta = await api.post(API_ENDPOINTS.FACTURAS_BATCH_SCAN, {
-        items: [{ fact_num: String(fact_num), fecha_escaneo: new Date().toISOString(), coordenadas: coords }],
+        items: [{ id_local, fact_num: String(fact_num), fecha_escaneo, coordenadas: coords }],
       });
       const r = respuesta?.resultados?.[0];
       const status = r?.status === 'ok' ? 'sincronizada' : (r?.status || 'error');
       const registro = {
-        id_local: `${fact_num}-${Date.now()}`,
+        id_local,
         fact_num: String(fact_num),
-        fecha_escaneo: new Date().toISOString(),
+        fecha_escaneo,
         status,
         ultimoError: r?.error || r?.advertencia || null,
         cli_des: r?.cli_des ?? null,
@@ -389,7 +398,7 @@ export default function FacturasScreen() {
     if (!formatoFacturaValido(numero)) {
       Alert.alert(
         'Código no reconocido',
-        `"${numero}" no tiene el formato de una factura (7 dígitos, con o sin la letra al inicio). Volvé a escanear.`
+        `"${numero}" no tiene el formato de una factura (hasta 8 dígitos, con o sin la letra al inicio). Volvé a escanear.`
       );
       liberarEscaneo();
       return;
@@ -579,7 +588,7 @@ export default function FacturasScreen() {
         <View style={styles.manualInputRow}>
           <TextInput
             style={styles.manualInput}
-            placeholder="Solo los 7 dígitos, sin la letra"
+            placeholder="Número tal como aparece en la factura"
             value={manualFactura}
             onChangeText={setManualFactura}
             keyboardType="numeric"

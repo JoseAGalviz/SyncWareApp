@@ -427,7 +427,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                     stock_tachira: item.stock_tachira || 0,
                     stock_barquisimeto: item.stock_barquisimeto || 0,
                     image: `${Config.IMAGES_BASE_URL}/imagenes-v3/imagenes/${(item.imagen || "").trim()}.jpg`,
-                    expiry: item.descripcion.match(/FV\.?\s*(\d{2}\/\d{4})/)?.[1] || 'N/A',
+                    expiry: item.descripcion?.match(/FV\.?\s*(\d{2}\/\d{4})/)?.[1] || 'N/A',
                     quantity: 0,
                     subtotal: 0,
                     priceNum: finalPrice,

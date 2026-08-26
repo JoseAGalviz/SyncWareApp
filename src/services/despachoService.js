@@ -31,8 +31,11 @@ export const DespachoService = {
   resumenCierre: (rutagramaId, usuarioId) =>
     api.get(`${BASE}/${rutagramaId}/resumen-cierre?usuario_id=${encodeURIComponent(usuarioId)}`),
 
-  finalizar: (rutagramaId, { usuario_id, chofer, carro, ayudantes }) =>
-    api.post(`${BASE}/${rutagramaId}/finalizar`, { usuario_id, chofer, carro, ayudantes: ayudantes || [] }),
+  finalizar: (rutagramaId, { usuario_id, chofer, carro, ayudantes, responsable }) =>
+    api.post(`${BASE}/${rutagramaId}/finalizar`, { usuario_id, chofer, carro, ayudantes: ayudantes || [], responsable }),
+
+  historial: (usuarioId) =>
+    api.get(`${BASE}/historial?usuario_id=${encodeURIComponent(usuarioId)}`),
 
   ncEscanear: ({ usuario_id, ruta_codigo, nota }) =>
     api.post(`${BASE}/nc/escanear`, { usuario_id, ruta_codigo, nota }),
@@ -42,4 +45,18 @@ export const DespachoService = {
 
   ncFinalizar: ({ usuario_id, ruta_codigo }) =>
     api.post(`${BASE}/nc/finalizar`, { usuario_id, ruta_codigo }),
+
+  // Recepción de enlace entre sedes (BQTO<->S/C) — ver despachos/lista.php+registro.php
+  // en el legado, y el bloque "Recepción de enlace" en despacho.controller.js.
+  enlacesPendientes: (usuarioId, rutaCodigo) =>
+    api.get(`${BASE}/enlaces/pendientes?usuario_id=${encodeURIComponent(usuarioId)}&ruta_codigo=${encodeURIComponent(rutaCodigo)}`),
+
+  detalleEnlace: (rutagramaId, usuarioId) =>
+    api.get(`${BASE}/${rutagramaId}/enlace/detalle?usuario_id=${encodeURIComponent(usuarioId)}`),
+
+  escanearEnlace: (rutagramaId, { usuario_id, codigo }) =>
+    api.post(`${BASE}/${rutagramaId}/enlace/escanear`, { usuario_id, codigo }),
+
+  recibirEnlace: (rutagramaId, { usuario_id, responsable }) =>
+    api.post(`${BASE}/${rutagramaId}/enlace/recibir`, { usuario_id, responsable }),
 };

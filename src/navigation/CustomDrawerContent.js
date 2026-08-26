@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Alert } from 'react-native';
 import { DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Theme from '../constants/Theme';
@@ -19,8 +18,7 @@ const DRAWER_SECTIONS = [
 
 export default function CustomDrawerContent(props) {
     const [user, setUser] = useState(null);
-    const navigation = useNavigation();
-    const { state, descriptors } = props;
+    const { navigation, state, descriptors } = props;
 
     useEffect(() => {
         const loadUser = async () => {

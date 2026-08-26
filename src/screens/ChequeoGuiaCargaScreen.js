@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -813,7 +814,7 @@ export default function ChequeoGuiaCargaScreen() {
                         </Text>
                       </Text>
                       <Text style={styles.tableCell}>{item.paquetes}</Text>
-                      <Text style={styles.tableCell}>{item.descrip.trim()}</Text>
+                      <Text style={styles.tableCell}>{(item.descrip ?? '').trim()}</Text>
                     </View>
                   );
                 })}

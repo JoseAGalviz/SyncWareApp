@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensio
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncAllData } from '../services/syncAllData'; // Importa la función correctamente
-import FlashMessage, { showMessage } from "react-native-flash-message";
+import { showMessage } from "react-native-flash-message";
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import COLORS from '../constants/Colors';
@@ -579,9 +579,6 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.syncingText}>Sincronizando datos...</Text>
             </View>
           )}
-
-
-          <FlashMessage position="top" />
 
           {/* Modal de Descuento */}
           <Modal

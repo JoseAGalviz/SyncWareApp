@@ -7,18 +7,24 @@ export default function DespachoFinalizarModal({ visible, onCancelar, onConfirma
   const [chofer, setChofer] = useState('');
   const [carro, setCarro] = useState('');
   const [ayudantes, setAyudantes] = useState('');
+  const [responsable, setResponsable] = useState('');
+
+  const valido = chofer.trim() && carro.trim() && responsable.trim();
 
   const confirmar = useCallback(() => {
-    if (!chofer.trim() || !carro.trim()) return;
+    if (!valido) return;
     const ayudantesLista = ayudantes.trim() ? ayudantes.trim().split('.').map(a => a.trim()).filter(Boolean) : [];
-    onConfirmar({ chofer: chofer.trim(), carro: carro.trim(), ayudantes: ayudantesLista });
-  }, [chofer, carro, ayudantes, onConfirmar]);
+    onConfirmar({ chofer: chofer.trim(), carro: carro.trim(), ayudantes: ayudantesLista, responsable: responsable.trim() });
+  }, [chofer, carro, ayudantes, responsable, valido, onConfirmar]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancelar}>
       <View style={styles.modalBackground}>
         <View style={styles.modalCard}>
           <Text style={styles.listaTitulo}>Finalizar y cerrar ruta</Text>
+
+          <Text style={styles.label}>Responsable de la ruta *</Text>
+          <TextInput style={styles.input} value={responsable} onChangeText={setResponsable} autoCapitalize="words" />
 
           <Text style={styles.label}>Nombre del conductor *</Text>
           <TextInput style={styles.input} value={chofer} onChangeText={setChofer} autoCapitalize="words" />
@@ -30,9 +36,9 @@ export default function DespachoFinalizarModal({ visible, onCancelar, onConfirma
           <TextInput style={styles.input} value={ayudantes} onChangeText={setAyudantes} keyboardType="default" />
 
           <TouchableOpacity
-            style={[styles.dangerButton, (!chofer.trim() || !carro.trim() || guardando) && styles.buttonDisabled]}
+            style={[styles.dangerButton, (!valido || guardando) && styles.buttonDisabled]}
             onPress={confirmar}
-            disabled={!chofer.trim() || !carro.trim() || guardando}
+            disabled={!valido || guardando}
             activeOpacity={0.85}
           >
             {guardando ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.dangerButtonText}>Confirmar y cerrar ruta</Text>}

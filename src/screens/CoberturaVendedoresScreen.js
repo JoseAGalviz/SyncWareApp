@@ -145,7 +145,7 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => handleSearch('')}>
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
                             <Ionicons name="close-circle" size={18} color={Theme.colors.muted} />
                         </TouchableOpacity>
                     )}

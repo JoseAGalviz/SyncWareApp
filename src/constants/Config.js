@@ -4,7 +4,7 @@ import { API_BASE_URL, IMAGES_BASE_URL, MAIL_BASE_URL, DESPACHO_URL } from '@env
 export const Config = {
   API_BASE_URL: Platform.OS === 'web' ? '' : (API_BASE_URL || "https://98.94.185.164.nip.io"),
   IMAGES_BASE_URL: IMAGES_BASE_URL || "https://imagenes.cristmedicals.com",
-  MAIL_BASE_URL: MAIL_BASE_URL || "http://98.94.185.164:8025",
+  MAIL_BASE_URL: MAIL_BASE_URL || "http://98.94.185.164:8014",
   DESPACHO_URL: DESPACHO_URL || "https://despacho.cristmedicals.com",
   TIMEOUT: 60000,
   IVA: 0.16,

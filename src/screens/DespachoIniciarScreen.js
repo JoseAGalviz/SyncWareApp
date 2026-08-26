@@ -1,26 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
+import { agruparRutas, REGIONES_AGRUPABLES, codigoRegion } from '../constants/rutasRegiones';
 
-const ROLES_PERMITIDOS = ['despachador', 'conductor'];
+const ROLES_PERMITIDOS = ['despachador', 'conductor', 'vendedor'];
 export const STORAGE_KEY_DESPACHO_ACTIVO = 'despachoActivo';
-
-const RUTAS_CRUZADAS = [
-  { codigo: 'barquisimeto1', label: 'ENVIOS BARQUISIMETO (BQTO → S/C)' },
-  { codigo: 'barquisimeto2', label: 'ENVIOS S/C (S/C → BQTO)' },
-];
 
 export default function DespachoIniciarScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
-  const [rutaSeleccionada, setRutaSeleccionada] = useState(null);
   const [iniciando, setIniciando] = useState(false);
   const [activo, setActivo] = useState(null); // { rutagramaId, rutaCodigo, rutaDesc } | null
   const [cargandoActivo, setCargandoActivo] = useState(true);
   const [segmentos, setSegmentos] = useState([]);
   const [cargandoSegmentos, setCargandoSegmentos] = useState(false);
+  const [regionAbierta, setRegionAbierta] = useState(null);
 
   useEffect(() => {
     const cargar = async () => {
@@ -57,10 +54,8 @@ export default function DespachoIniciarScreen({ navigation }) {
 
   // Catálogo abierto: cualquier despachador/conductor ve todas las rutas de Profit,
   // no hay asignación fija por usuario.
-  const opcionesRuta = [
-    ...segmentos.map(s => ({ codigo: s.codigo, label: `${s.codigo} - ${s.descripcion}` })),
-    ...RUTAS_CRUZADAS,
-  ];
+  const gruposRuta = agruparRutas(segmentos);
+  const totalOpciones = gruposRuta.reduce((acc, g) => acc + g.opciones.length, 0);
 
   const continuarActivo = useCallback(() => {
     navigation.navigate('DespachoEscanear', {
@@ -75,18 +70,15 @@ export default function DespachoIniciarScreen({ navigation }) {
     setActivo(null);
   }, []);
 
-  const iniciar = useCallback(async () => {
+  const iniciarConCodigo = useCallback(async (rutaCodigo) => {
     if (!userData?.id || !userData?.rol || !ROLES_PERMITIDOS.includes(userData.rol)) {
       Alert.alert('Error', 'No se pudo identificar tu usuario o rol. Vuelve a iniciar sesión.');
       return;
     }
-    if (!rutaSeleccionada) {
-      Alert.alert('Falta seleccionar ruta', 'Elegí la ruta que vas a despachar.');
-      return;
-    }
+    if (iniciando) return;
     setIniciando(true);
     try {
-      const resultado = await DespachoService.iniciar({ usuario_id: userData.id, ruta_codigo: rutaSeleccionada });
+      const resultado = await DespachoService.iniciar({ usuario_id: userData.id, ruta_codigo: rutaCodigo });
       const nuevoActivo = {
         rutagramaId: resultado.rutagrama_id,
         rutaCodigo: resultado.ruta_codigo,
@@ -104,7 +96,7 @@ export default function DespachoIniciarScreen({ navigation }) {
     } finally {
       setIniciando(false);
     }
-  }, [userData, rutaSeleccionada, navigation]);
+  }, [userData, iniciando, navigation]);
 
   if (cargandoActivo) {
     return (
@@ -135,32 +127,47 @@ export default function DespachoIniciarScreen({ navigation }) {
           <View style={styles.card}>
             {cargandoSegmentos ? (
               <ActivityIndicator size="small" color={Theme.colors.primary} />
-            ) : opcionesRuta.length === 0 ? (
+            ) : totalOpciones === 0 ? (
               <Text style={styles.emptyListText}>No se pudo cargar el catálogo de rutas.</Text>
             ) : (
-              opcionesRuta.map(opcion => (
-                <TouchableOpacity
-                  key={opcion.codigo}
-                  style={[styles.rutaOption, rutaSeleccionada === opcion.codigo && styles.rutaOptionSelected]}
-                  onPress={() => setRutaSeleccionada(opcion.codigo)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.rutaOptionText}>{opcion.label}</Text>
-                </TouchableOpacity>
-              ))
+              gruposRuta.map(grupo => {
+                const agrupable = REGIONES_AGRUPABLES.has(grupo.region);
+                const abierta = !agrupable && regionAbierta === grupo.region;
+                return (
+                  <View key={grupo.region}>
+                    <TouchableOpacity
+                      style={styles.regionHeader}
+                      onPress={() => {
+                        if (agrupable) {
+                          iniciarConCodigo(codigoRegion(grupo.region));
+                        } else {
+                          setRegionAbierta(abierta ? null : grupo.region);
+                        }
+                      }}
+                      disabled={iniciando}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.listaTitulo}>{grupo.region} ({grupo.opciones.length})</Text>
+                      {!agrupable && (
+                        <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={18} color={Theme.colors.text} />
+                      )}
+                    </TouchableOpacity>
+                    {abierta && grupo.opciones.map(opcion => (
+                      <TouchableOpacity
+                        key={opcion.codigo}
+                        style={styles.rutaOption}
+                        onPress={() => iniciarConCodigo(opcion.codigo)}
+                        disabled={iniciando}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.rutaOptionText}>{opcion.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                );
+              })
             )}
-            <TouchableOpacity
-              style={[styles.primaryButton, (!rutaSeleccionada || iniciando) && styles.buttonDisabled]}
-              onPress={iniciar}
-              disabled={!rutaSeleccionada || iniciando}
-              activeOpacity={0.85}
-            >
-              {iniciando ? (
-                <ActivityIndicator size="small" color={Theme.colors.white} />
-              ) : (
-                <Text style={styles.primaryButtonText}>Iniciar ruta</Text>
-              )}
-            </TouchableOpacity>
+            {iniciando && <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginTop: Theme.spacing.sm }} />}
           </View>
         </>
       )}
@@ -171,6 +178,30 @@ export default function DespachoIniciarScreen({ navigation }) {
         activeOpacity={0.85}
       >
         <Text style={styles.secondaryButtonText}>Notas de Crédito / Débito</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('DespachoHistorial')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>Historial de rutagramas</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto1', rutaDesc: 'BQTO / S/C' })}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>Recepción de enlace (BQTO / S/C)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto2', rutaDesc: 'S/C / BQTO' })}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>Recepción de enlace (S/C / BQTO)</Text>
       </TouchableOpacity>
     </ScrollView>
   );
