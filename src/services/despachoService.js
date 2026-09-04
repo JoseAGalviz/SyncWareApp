@@ -13,6 +13,9 @@ export const DespachoService = {
   iniciar: ({ usuario_id, ruta_codigo }) =>
     api.post(`${BASE}/iniciar`, { usuario_id, ruta_codigo }),
 
+  cancelar: (rutagramaId) =>
+    api.delete(`${BASE}/${rutagramaId}/cancelar`),
+
   pendientes: (rutagramaId, usuarioId) =>
     api.get(`${BASE}/${rutagramaId}/pendientes?usuario_id=${encodeURIComponent(usuarioId)}`),
 

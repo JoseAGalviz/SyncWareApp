@@ -18,20 +18,26 @@ import * as Location from 'expo-location';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/FacturasScreen.styles';
 import COLORS from '../constants/Colors';
-import { api } from '../services/api';
-import { API_ENDPOINTS } from '../constants/Config';
-
-// Consulta en vivo de solo lectura (no marca la factura ni escribe nada) — se usa para
-// mostrarle al vendedor los datos reales antes de comprometer el escaneo.
-const consultarFactura = (fact_num) => api.post(API_ENDPOINTS.FACTURAS_SCAN, { num_factura: String(fact_num) });
+import {
+  obtenerFacturas,
+  contarPendientes,
+  encolarFactura,
+  limpiarHistorialResuelto,
+  sincronizarPendientes,
+  iniciarAutoSync,
+  hayConexion,
+  consultarFactura,
+} from '../services/facturasSyncQueue';
 
 const ESTADO_LABEL = {
-  no_encontrada: 'No se encontró en el sistema — volvé a intentar',
-  error: 'Error al registrar — volvé a intentar',
+  pendiente: 'Pendiente de sincronizar',
+  no_encontrada: 'Aún no disponible en el sistema — se reintentará',
+  error: 'Error al sincronizar — se reintentará',
   invalido: 'Número de factura inválido — corregir y volver a escanear',
+  fallido: 'No se pudo sincronizar tras varios intentos — revisar manualmente',
   ambiguo: 'Número ambiguo (coincide con serie A y B) — reingresar con la letra o escanear',
   duplicada: 'Ya estaba registrada',
-  sincronizada: 'Registrada',
+  sincronizada: 'Sincronizada',
 };
 
 // Motivo real de por qué el servidor NO modificó fec_venc, aunque el escaneo sí se sincronizó.
@@ -75,7 +81,7 @@ const FacturaItem = React.memo(({ factura }) => (
         Aviso: {factura.ultimoError}
       </Text>
     )}
-    {(factura.status === 'error' || factura.status === 'invalido' || factura.status === 'ambiguo') && factura.ultimoError && (
+    {(factura.status === 'error' || factura.status === 'invalido' || factura.status === 'fallido' || factura.status === 'ambiguo') && factura.ultimoError && (
       <Text style={[styles.facturaDetalle, { color: COLORS.ERROR }]}>
         {factura.ultimoError}
       </Text>
@@ -263,16 +269,117 @@ const CorroborarFacturaModal = ({ visible, datos, onConfirmar, onCancelar }) => 
   );
 };
 
+// Aviso grande de "sin conexión" — a propósito muy visible, para usuarios que
+// no leen letra chica: confirma que la factura quedó guardada en el teléfono.
+const AvisoOfflineModal = ({ visible, factNum, onCerrar }) => (
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
+    <View style={styles.modalBackground}>
+      <View style={[styles.modalContent, styles.offlineCard]}>
+        <Ionicons name="cloud-offline-outline" size={56} color={COLORS.ERROR} style={{ marginBottom: 8 }} />
+        <Text style={styles.offlineTitulo}>SIN CONEXIÓN</Text>
+        <Text style={styles.offlineNumero}>Factura #{factNum}</Text>
+        <Text style={styles.offlineTexto}>
+          Se guardó en el teléfono. Se subirá sola cuando tengas wifi o datos.
+        </Text>
+        <TouchableOpacity
+          style={[styles.modalButton, styles.saveButton]}
+          onPress={onCerrar}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.modalButtonText}>Entendido</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
+
+// Fila de resultado de sincronización — un ícono/color por tipo, solo se muestran
+// las categorías con conteo > 0 (nada de ceros aburridos en pantalla).
+const FilaResultado = ({ iconName, color, etiqueta, cantidad }) => (
+  <View style={styles.resultadoFila}>
+    <Ionicons name={iconName} size={20} color={color} style={{ marginRight: 8 }} />
+    <Text style={[styles.resultadoEtiqueta, { color }]}>{etiqueta}</Text>
+    <Text style={[styles.resultadoCantidad, { color }]}>{cantidad}</Text>
+  </View>
+);
+
+const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
+  if (!resumen) return null;
+  const { ok, duplicadas, no_encontradas, invalidas, fallidas, ambiguas, errores, sinConexion, enviados } = resumen;
+  const todoBien = enviados > 0 && ok === enviados;
+  const sinPendientes = enviados === 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
+      <View style={styles.modalBackground}>
+        <View style={[styles.modalContent, styles.syncCard]}>
+          <Ionicons
+            name={sinPendientes ? 'checkmark-done-circle-outline' : todoBien ? 'checkmark-circle' : 'alert-circle'}
+            size={48}
+            color={sinPendientes ? COLORS.MUTED : todoBien ? COLORS.SUCCESS : COLORS.WARNING}
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={styles.syncTitulo}>
+            {sinPendientes ? 'Todo al día' : 'Sincronización completa'}
+          </Text>
+
+          {sinPendientes ? (
+            <Text style={styles.syncTexto}>No había facturas pendientes por enviar.</Text>
+          ) : (
+            <View style={styles.resultadoLista}>
+              {ok > 0 && (
+                <FilaResultado iconName="checkmark-circle" color={COLORS.SUCCESS} etiqueta="Sincronizadas" cantidad={ok} />
+              )}
+              {duplicadas > 0 && (
+                <FilaResultado iconName="information-circle" color={COLORS.INFO} etiqueta="Ya estaban registradas" cantidad={duplicadas} />
+              )}
+              {no_encontradas > 0 && (
+                <FilaResultado iconName="time-outline" color={COLORS.WARNING} etiqueta="Aún no disponibles (se reintentan)" cantidad={no_encontradas} />
+              )}
+              {errores > 0 && (
+                <FilaResultado iconName="close-circle" color={COLORS.ERROR} etiqueta="Con error (se reintentan)" cantidad={errores} />
+              )}
+              {invalidas > 0 && (
+                <FilaResultado iconName="ban-outline" color={COLORS.ERROR} etiqueta="Número inválido (revisar manualmente)" cantidad={invalidas} />
+              )}
+              {fallidas > 0 && (
+                <FilaResultado iconName="stop-circle-outline" color={COLORS.ERROR} etiqueta="Fallidas tras varios intentos (revisar manualmente)" cantidad={fallidas} />
+              )}
+              {ambiguas > 0 && (
+                <FilaResultado iconName="help-circle-outline" color={COLORS.ERROR} etiqueta="Ambiguas — reingresar con la letra o escanear (revisar manualmente)" cantidad={ambiguas} />
+              )}
+              {sinConexion > 0 && (
+                <FilaResultado iconName="cloud-offline-outline" color={COLORS.MUTED} etiqueta="Sin conexión durante el envío" cantidad={sinConexion} />
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.modalButton, styles.saveButton]}
+            onPress={onCerrar}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.modalButtonText}>Entendido</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function FacturasScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [registros, setRegistros] = useState([]); // historial de la sesión (no persiste — cada intento va online)
+  const [registros, setRegistros] = useState([]); // cola persistente (AsyncStorage vía facturasSyncQueue)
   const [manualFactura, setManualFactura] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const [enviando, setEnviando] = useState(false);
+  const [enviando, setEnviando] = useState(false); // encolando/sincronizando el escaneo recién confirmado
+  const [sincronizando, setSincronizando] = useState(false); // botón "Sincronizar ahora"
   const [currentUserCoVend, setCurrentUserCoVend] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null); // { valor } | null
+  const [avisoOffline, setAvisoOffline] = useState(null); // { fact_num } | null
+  const [resultadoSync, setResultadoSync] = useState(null); // resumen de sincronizarPendientes | null
   const [corroborar, setCorroborar] = useState(null); // { numero, datos } | null
 
   const isFocused = useIsFocused();
@@ -293,6 +400,31 @@ export default function FacturasScreen() {
     loadUserData();
     Location.requestForegroundPermissionsAsync();
   }, []);
+
+  const cargarRegistros = useCallback(async () => {
+    try {
+      const lista = await obtenerFacturas();
+      setRegistros(lista);
+    } catch (err) {
+      // No se pisa `registros` con [] — si el storage falló, mejor mostrar lo último
+      // conocido en memoria que hacer parecer que el backlog de pendientes desapareció.
+      Alert.alert('Error de almacenamiento', err.message || 'No se pudo leer el historial local de facturas.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) cargarRegistros();
+  }, [isFocused, cargarRegistros]);
+
+  // Sync automático al recuperar conexión (wifi o datos)
+  useEffect(() => {
+    const unsubscribe = iniciarAutoSync((resumen) => {
+      if (resumen.enviados > 0) {
+        cargarRegistros();
+      }
+    });
+    return unsubscribe;
+  }, [cargarRegistros]);
 
   // Ubicación best-effort: nunca bloquea ni interrumpe el escaneo con alertas.
   const obtenerCoordenadas = useCallback(async () => {
@@ -316,50 +448,62 @@ export default function FacturasScreen() {
     setScanned(false);
   }, []);
 
-  // Registra el escaneo directo contra el servidor — un solo intento, sin cola ni reintento
-  // automático. Si falla por conexión, se avisa claro y el vendedor vuelve a escanear.
+  // Encola el escaneo (siempre, haya o no señal) y, si hay conexión, intenta sincronizarlo
+  // de una vez para dar feedback inmediato — mismo patrón que antes de que existiera la cola:
+  // el registro nunca se pierde, la sincronización es un intento best-effort encima.
   const registrarEscaneo = useCallback(async (fact_num) => {
     setEnviando(true);
     const coords = await obtenerCoordenadas();
-    const id_local = `${fact_num}-${Date.now()}`;
-    const fecha_escaneo = new Date().toISOString();
-    try {
-      const respuesta = await api.post(API_ENDPOINTS.FACTURAS_BATCH_SCAN, {
-        items: [{ id_local, fact_num: String(fact_num), fecha_escaneo, coordenadas: coords }],
-      });
-      const r = respuesta?.resultados?.[0];
-      const status = r?.status === 'ok' ? 'sincronizada' : (r?.status || 'error');
-      const registro = {
-        id_local,
-        fact_num: String(fact_num),
-        fecha_escaneo,
-        status,
-        ultimoError: r?.error || r?.advertencia || null,
-        cli_des: r?.cli_des ?? null,
-        fec_venc_despues: r?.fec_venc_actualizado ?? null,
-        motivo_fecha_no_modificada: r?.motivo_fecha_no_modificada ?? null,
-      };
-      setRegistros(prev => [registro, ...prev]);
 
-      if (status === 'sincronizada') {
-        setAviso(`Factura ${fact_num} sincronizada. Cliente: ${registro.cli_des || 'N/D'} — Vence: ${registro.fec_venc_despues || 'N/D'}`);
-      } else if (status === 'duplicada') {
-        setAviso(`Factura ${fact_num} ya estaba registrada en el servidor.`);
-      } else if (status === 'no_encontrada') {
-        setAviso(`Factura ${fact_num} no se encontró en el sistema todavía. Intentá de nuevo en un momento.`);
-      } else if (status === 'ambiguo') {
-        Alert.alert('Número ambiguo', registro.ultimoError || `"${fact_num}" coincide con más de una factura. Escaneá el código de barras o escribí la letra (A o B) al inicio.`);
-      } else {
-        Alert.alert('No se pudo registrar', registro.ultimoError || 'La factura quedó marcada como error. Revisá e intentá de nuevo.');
-      }
+    let resultado;
+    try {
+      resultado = await encolarFactura({ fact_num, coordenadas: coords });
     } catch (err) {
-      // Sin status = falla de red/timeout, no una respuesta real del servidor. Nada quedó
-      // guardado — hay que decírselo claro al vendedor para que reintente el escaneo.
-      Alert.alert('Sin conexión', 'No se pudo registrar la factura. Verificá tu conexión a internet e intentá de nuevo.');
+      // Distinto de "sin conexión": acá el escaneo NO quedó guardado ni siquiera en el
+      // teléfono — hay que decírselo claro al vendedor para que vuelva a intentar, no
+      // dejarlo pensando que ya está en cola.
+      Alert.alert('No se pudo guardar el escaneo', err.message || 'Intenta de nuevo.');
+      setEnviando(false);
+      return;
+    }
+
+    if (!resultado.ok) {
+      setAviso(`Factura ${fact_num} ya estaba en la lista.`);
+      setEnviando(false);
+      return;
+    }
+
+    await cargarRegistros();
+
+    // Sin conexión: aviso grande e inmediato, ni se intenta sincronizar.
+    if (!(await hayConexion())) {
+      setAvisoOffline({ fact_num });
+      setEnviando(false);
+      return;
+    }
+
+    // Con conexión: intenta sincronizar ya mismo — mismo efecto "tiempo real" que antes.
+    // Si falla igual (señal débil / timeout), se trata como offline: queda pendiente y se avisa.
+    // Solo este ítem, no el backlog entero: con varios pendientes atascados, cada escaneo
+    // nuevo antes reintentaba TODOS de nuevo (amplifica errores en vez de aislarlos).
+    try {
+      await sincronizarPendientes({ soloIdLocal: resultado.item.id_local });
+      const actualizados = await obtenerFacturas();
+      setRegistros(actualizados);
+      const item = actualizados.find(f => f.id_local === resultado.item.id_local);
+      if (item?.status === 'sincronizada') {
+        setAviso(`Factura ${fact_num} sincronizada. Cliente: ${item.cli_des || 'N/D'} — Vence: ${item.fec_venc_despues || 'N/D'}`);
+      } else if (item?.status === 'duplicada') {
+        setAviso(`Factura ${fact_num} ya estaba registrada en el servidor.`);
+      } else if (item?.status === 'no_encontrada') {
+        setAviso(`Factura ${fact_num} en cola: aún no disponible en el sistema, se reintentará.`);
+      }
+    } catch {
+      setAvisoOffline({ fact_num });
     } finally {
       setEnviando(false);
     }
-  }, [obtenerCoordenadas]);
+  }, [obtenerCoordenadas, cargarRegistros]);
 
   // Escaneo de código de barras — abre confirmación, no guarda todavía.
   // Espacios internos (ej. "A 392416") son casi siempre ruido del lector, nunca parte
@@ -406,44 +550,44 @@ export default function FacturasScreen() {
 
     const sinLetra = FORMATO_SOLO_DIGITOS.test(numero);
 
-    // Corroborar datos reales antes de comprometer el escaneo (marca en Profit) — siempre
-    // requiere conexión, no hay flujo offline de respaldo. Si "numero" llegó sin letra
-    // (entrada manual), el server prueba las series A y B contra Profit y devuelve cuál de
-    // las dos es — de acá en adelante se usa esa versión completa (con letra).
-    try {
-      const datos = await consultarFactura(numero);
-      const numeroResuelto = sinLetra && datos?.num_factura_completo ? datos.num_factura_completo : numero;
-      setCorroborar({ numero: numeroResuelto, datos });
-      return; // espera decisión del usuario en el modal; no libera cámara todavía
-    } catch (err) {
-      if (err?.status === 400) {
-        Alert.alert('Factura ya escaneada', err?.data?.error || 'Esta factura ya fue escaneada previamente.');
-        liberarEscaneo();
-        return;
+    // Con conexión: corroborar datos reales antes de comprometer el escaneo (marca en Profit).
+    // Si "numero" llegó sin letra (entrada manual), el server prueba las series A y B contra
+    // Profit y devuelve cuál de las dos es — de acá en adelante se usa esa versión completa
+    // (con letra) para que el resto del flujo (encolar, batch-scan) sea igual que un escaneo
+    // normal y nunca tenga que volver a resolver nada. Sin conexión: se salta la corroboración
+    // y se encola directo (registrarEscaneo se encarga de mostrar el aviso offline).
+    if (await hayConexion()) {
+      try {
+        const datos = await consultarFactura(numero);
+        const numeroResuelto = sinLetra && datos?.num_factura_completo ? datos.num_factura_completo : numero;
+        setCorroborar({ numero: numeroResuelto, datos });
+        return; // espera decisión del usuario en el modal; no libera cámara todavía
+      } catch (err) {
+        if (err?.status === 400) {
+          Alert.alert('Factura ya escaneada', err?.data?.error || 'Esta factura ya fue escaneada previamente.');
+          liberarEscaneo();
+          return;
+        }
+        if (err?.status === 409) {
+          // Ambiguo de verdad (calza con una factura en la serie A y otra en la B a la vez).
+          // No se puede adivinar ni guardar así — el vendedor tiene que escanear el código
+          // de barras o escribir el número completo con la letra en este mismo cartel.
+          Alert.alert(
+            'Número ambiguo',
+            err?.data?.error || `"${numero}" coincide con más de una factura. Escaneá el código de barras o escribí la letra (A o B) al inicio del número.`
+          );
+          liberarEscaneo();
+          return;
+        }
+        if (err?.status === 404) {
+          Alert.alert('Aún no disponible', 'La factura no se encontró todavía. Se guardó para reintentar automáticamente.');
+        }
+        // 500 / timeout / etc.: cae al flujo normal (encolar y sincronizar como siempre).
       }
-      if (err?.status === 409) {
-        // Ambiguo de verdad (calza con una factura en la serie A y otra en la B a la vez).
-        // No se puede adivinar — el vendedor tiene que escanear el código de barras o
-        // escribir el número completo con la letra en este mismo cartel.
-        Alert.alert(
-          'Número ambiguo',
-          err?.data?.error || `"${numero}" coincide con más de una factura. Escaneá el código de barras o escribí la letra (A o B) al inicio del número.`
-        );
-        liberarEscaneo();
-        return;
-      }
-      if (err?.status === 404) {
-        // Puede ser lag de la réplica de lectura, no necesariamente que no exista — se
-        // intenta igual el registro directo, que consulta la fuente autoritativa.
-        await registrarEscaneo(numero);
-        liberarEscaneo();
-        return;
-      }
-      // Sin status = falla de red/timeout: no hay nada más que intentar sin conexión.
-      Alert.alert('Sin conexión', 'No se pudo verificar la factura. Verificá tu conexión a internet e intentá de nuevo.');
-      liberarEscaneo();
-      return;
     }
+
+    await registrarEscaneo(numero);
+    liberarEscaneo();
   }, [confirmacion, registrarEscaneo, liberarEscaneo]);
 
   const confirmarCorroboracion = useCallback(async () => {
@@ -462,6 +606,21 @@ export default function FacturasScreen() {
     setConfirmacion(null);
     liberarEscaneo();
   }, [liberarEscaneo]);
+
+  const sincronizarAhora = useCallback(async () => {
+    setSincronizando(true);
+    try {
+      const r = await sincronizarPendientes();
+      await cargarRegistros();
+      setResultadoSync(r);
+    } catch {
+      Alert.alert('Error', 'No se pudo completar la sincronización.');
+    } finally {
+      setSincronizando(false);
+    }
+  }, [cargarRegistros]);
+
+  const pendientesCount = contarPendientes(registros);
 
   if (!permission) {
     return <Text>Solicitando permiso de cámara...</Text>;
@@ -486,7 +645,7 @@ export default function FacturasScreen() {
     >
       <Text style={styles.title}>Gestión de Facturas</Text>
       <Text style={styles.subtitle}>
-        Escanea el código de barras de tu factura. Necesita conexión a internet — no se guarda nada sin confirmar contra el servidor.
+        Escanea el código de barras de tu factura. Funciona sin conexión: se sincroniza sola al recuperar wifi o datos.
       </Text>
 
       <View style={styles.cameraContainer}>
@@ -540,16 +699,38 @@ export default function FacturasScreen() {
           </View>
         )}
 
-        {registros.length > 0 && (
+        <TouchableOpacity
+          style={[styles.tableButton, pendientesCount === 0 && { opacity: 0.5 }]}
+          onPress={sincronizarAhora}
+          disabled={sincronizando || pendientesCount === 0}
+          activeOpacity={0.85}
+        >
+          {sincronizando ? (
+            <ActivityIndicator size="small" color={COLORS.INFO} />
+          ) : (
+            <Text style={styles.tableButtonText}>
+              Sincronizar ahora ({pendientesCount} pendientes)
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {registros.some(f => ['sincronizada', 'duplicada', 'invalido', 'fallido', 'ambiguo'].includes(f.status)) && (
           <TouchableOpacity
             style={[styles.tableButton, styles.cleanButton]}
             onPress={() => {
               Alert.alert(
                 'Limpiar historial',
-                'Se eliminará el historial de facturas de esta sesión.',
+                'Se eliminará el historial de facturas ya resueltas (sincronizadas, duplicadas, inválidas, ambiguas o fallidas). Las pendientes de sincronizar se conservan.',
                 [
                   { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Limpiar', style: 'destructive', onPress: () => setRegistros([]) },
+                  {
+                    text: 'Limpiar',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await limpiarHistorialResuelto();
+                      await cargarRegistros();
+                    }
+                  }
                 ]
               );
             }}
@@ -579,6 +760,18 @@ export default function FacturasScreen() {
         datos={corroborar?.datos}
         onConfirmar={confirmarCorroboracion}
         onCancelar={cancelarCorroboracion}
+      />
+
+      <AvisoOfflineModal
+        visible={!!avisoOffline}
+        factNum={avisoOffline?.fact_num}
+        onCerrar={() => setAvisoOffline(null)}
+      />
+
+      <ResultadoSyncModal
+        visible={!!resultadoSync}
+        resumen={resultadoSync}
+        onCerrar={() => setResultadoSync(null)}
       />
 
       <View style={styles.manualInputContainer}>

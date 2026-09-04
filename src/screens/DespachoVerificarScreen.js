@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
 import { showMessage } from 'react-native-flash-message';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
@@ -9,6 +9,8 @@ import { DespachoService } from '../services/despachoService';
 import DespachoFinalizarModal from '../components/DespachoFinalizarModal';
 import { quitarActivo } from './DespachoIniciarScreen';
 import { useSalidaConfirmada } from '../hooks/useSalidaConfirmada';
+import { useModoEscaneo, MODO_CAMARA } from '../hooks/useModoEscaneo';
+import EscanerInput from '../components/EscanerInput';
 
 const ESTADOS_VERIFICADO = new Set(['***', '****', 'FAT*', 'NCR', 'NDB', 'REFR', 'REP*']);
 
@@ -54,6 +56,7 @@ export default function DespachoVerificarScreen({ route, navigation }) {
   const { rutagramaId, usuarioId, rutaDesc } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
+  const { modo, setModo, cargado } = useModoEscaneo();
 
   const [detalle, setDetalle] = useState({ items: [], totales: { cantidad: 0, peso: 0 } });
   const [resumen, setResumen] = useState({ verificados: 0, listados: 0, completo: false, puede_cerrar: false, notas_anuladas: [], facturas_anuladas: [] });
@@ -84,7 +87,9 @@ export default function DespachoVerificarScreen({ route, navigation }) {
     }
   }, [rutagramaId, usuarioId]);
 
-  useEffect(() => { cargarTodo(); }, [cargarTodo]);
+  // isFocused en deps: mismo motivo que DespachoEscanearScreen — sin esto, volver de
+  // FacturaVieja dejaba detalle/resumen desactualizados hasta el próximo escaneo.
+  useEffect(() => { if (isFocused) cargarTodo(); }, [isFocused, cargarTodo]);
 
   // Escaneo de una sola factura: matchea contra los renglones ya cargados en
   // pantalla y pinta verde al instante; el POST a /verificar-factura corre
@@ -137,7 +142,7 @@ export default function DespachoVerificarScreen({ route, navigation }) {
   // sin esto, apuntar la cámara a la misma factura ya escaneada (o a una inexistente)
   // reabre el toast decenas de veces por segundo y no se alcanza a leer ninguno.
   const COOLDOWN_MISMO_CODIGO_MS = 2500;
-  const handleBarCodeScanned = useCallback(({ data }) => {
+  const handleEscaneo = useCallback((data) => {
     if (scanned) return;
     const limpio = String(data || '').trim().replace(/\s+/g, '').toUpperCase();
     if (!formatoFacturaValido(limpio)) return; // ruido del lector, se ignora sin avisar
@@ -224,16 +229,19 @@ export default function DespachoVerificarScreen({ route, navigation }) {
     }
   }, [rutagramaId, usuarioId, navigation]);
 
-  if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
-  if (!permission.granted) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
-          <Text style={styles.primaryButtonText}>Permitir cámara</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  if (!cargado) return null;
+  if (modo === MODO_CAMARA) {
+    if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+            <Text style={styles.primaryButtonText}>Permitir cámara</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
   }
 
   return (
@@ -260,11 +268,7 @@ export default function DespachoVerificarScreen({ route, navigation }) {
 
       <Text style={styles.toggleLabel}>Escaneá el código de la factura</Text>
 
-      <View style={styles.cameraContainer}>
-        {isFocused ? (
-          <CameraView onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.cameraBox} facing="back" />
-        ) : null}
-      </View>
+      <EscanerInput modo={modo} setModo={setModo} isFocused={isFocused} disabled={scanned} onScan={handleEscaneo} />
 
       <TouchableOpacity style={styles.secondaryButton} onPress={abrirManual} activeOpacity={0.85}>
         <Text style={styles.secondaryButtonText}>Escribir factura manualmente</Text>

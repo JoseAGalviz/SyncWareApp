@@ -302,7 +302,7 @@ export default function VisitaScreen() {
 
   // Auto-sync silencioso de gestiones pendientes: dispara solo al recuperar señal
   // (evento de NetInfo, no polling) y solo si hay pendientes — mismo patrón que
-  // iniciarAutoSync en facturasSync.js. Sin esto, una gestión quedaba local hasta
+  // iniciarAutoSync en facturasSyncQueue.js. Sin esto, una gestión quedaba local hasta
   // que el vendedor se acordara de presionar "Cargar" a mano; si la app se
   // reinstalaba/actualizaba antes de eso, se perdía sin haber llegado al servidor.
   const gestionesRef = useRef(gestiones);

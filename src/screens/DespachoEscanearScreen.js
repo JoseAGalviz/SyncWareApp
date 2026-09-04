@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { showMessage } from 'react-native-flash-message';
+import { useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { useSalidaConfirmada } from '../hooks/useSalidaConfirmada';
+import { useModoEscaneo, MODO_CAMARA } from '../hooks/useModoEscaneo';
+import EscanerInput from '../components/EscanerInput';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
@@ -97,15 +100,17 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const { rutagramaId, usuarioId, rutaDesc } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
+  const { modo, setModo, cargado } = useModoEscaneo();
 
   const [pendientes, setPendientes] = useState([]);
   const [detalle, setDetalle] = useState({ items: [], totales: { cantidad: 0, peso: 0 } });
   const [cargando, setCargando] = useState(true);
-  const [scanned, setScanned] = useState(false);
-  const [confirmacion, setConfirmacion] = useState(null); // { nota, caja } | null
-  const [guardando, setGuardando] = useState(false);
+  const [manualVisible, setManualVisible] = useState(false);
+  const [manualValor, setManualValor] = useState('');
+  const [procesandoManual, setProcesandoManual] = useState(false);
   const [detalleRenglon, setDetalleRenglon] = useState(null);
   const [filtroFactura, setFiltroFactura] = useState('todas'); // 'todas' | 'con' | 'sin'
+  const ultimoEscaneoRef = useRef({ codigo: '', ts: 0 });
 
   useSalidaConfirmada(navigation);
 
@@ -124,43 +129,58 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     }
   }, [rutagramaId, usuarioId]);
 
-  useEffect(() => { cargarTodo(); }, [cargarTodo]);
+  // isFocused en deps: sin esto, volver de Verificar/FacturaVieja dejaba detalle.items
+  // viejo (la pantalla no se desmonta al navegar, React Navigation la deja atrás en el
+  // stack) — procesarCodigo calculaba el próximo número de caja contra ese caché
+  // desactualizado y repetía una caja ya grabada en servidor (doble conteo / rechazo).
+  useEffect(() => { if (isFocused) cargarTodo(); }, [isFocused, cargarTodo]);
 
-  const handleBarCodeScanned = useCallback(({ data }) => {
-    if (scanned) return;
-    setScanned(true);
-    setConfirmacion({ nota: (data || '').replace(/\s+/g, ''), caja: '1' });
-  }, [scanned]);
-
-  const cerrarConfirmacion = useCallback(() => {
-    setConfirmacion(null);
-    setScanned(false);
-  }, []);
-
-  const escribirManualmente = useCallback(() => {
-    setScanned(true);
-    setConfirmacion({ nota: '', caja: '1' });
-  }, []);
-
-  const confirmarEscaneo = useCallback(async () => {
-    if (!confirmacion?.nota || !confirmacion?.caja) return;
-    setGuardando(true);
+  // Escaneo directo, sin modal de confirmación: busca la nota entre lo ya
+  // cargado en este rutagrama (detalle.items) para calcular el número de
+  // caja siguiente solo — primera vez que aparece esa nota = caja 1, si ya
+  // tiene N cajas escaneadas = N+1 — y graba de una vez. El toast avisa el
+  // resultado sin bloquear; cámara y lector quedan listos para el próximo
+  // código apenas se dispara este.
+  const procesarCodigo = useCallback(async (notaRaw) => {
+    const nota = String(notaRaw || '').trim().replace(/\s+/g, '').toUpperCase();
+    if (!nota) return;
+    const yaCargada = detalle.items.find((i) => String(i.nota) === nota);
+    const caja = (yaCargada?.escaneados || 0) + 1;
     try {
-      await DespachoService.escanearCaja(rutagramaId, {
-        usuario_id: usuarioId,
-        nota: confirmacion.nota,
-        caja: Number(confirmacion.caja),
-      });
-      setConfirmacion(null);
-      setScanned(false);
+      await DespachoService.escanearCaja(rutagramaId, { usuario_id: usuarioId, nota, caja });
+      showMessage({ message: 'Escaneado', description: `Nota ${nota} · caja ${caja} escaneada correctamente`, type: 'success', duration: 1800 });
       await cargarTodo();
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo registrar el escaneo.';
-      Alert.alert('Error al escanear', msg);
-    } finally {
-      setGuardando(false);
+      showMessage({ message: 'Error al escanear', description: `${nota}: ${msg}`, type: 'danger', duration: 2800 });
     }
-  }, [confirmacion, rutagramaId, usuarioId, cargarTodo]);
+  }, [detalle.items, rutagramaId, usuarioId, cargarTodo]);
+
+  // Lector dispara varias lecturas por segundo mientras el código sigue en cuadro —
+  // sin este cooldown, apuntar a la misma caja ya registrada reintenta decenas de
+  // veces por segundo y satura de toasts sin dejar apuntar a la siguiente.
+  const COOLDOWN_MISMO_CODIGO_MS = 2500;
+  const handleEscaneo = useCallback((dataRaw) => {
+    const nota = String(dataRaw || '').trim().replace(/\s+/g, '').toUpperCase();
+    if (!nota) return;
+    const ahora = Date.now();
+    if (nota === ultimoEscaneoRef.current.codigo && ahora - ultimoEscaneoRef.current.ts < COOLDOWN_MISMO_CODIGO_MS) return;
+    ultimoEscaneoRef.current = { codigo: nota, ts: ahora };
+    procesarCodigo(nota);
+  }, [procesarCodigo]);
+
+  const abrirManual = useCallback(() => {
+    setManualValor('');
+    setManualVisible(true);
+  }, []);
+
+  const confirmarManual = useCallback(async () => {
+    if (!manualValor.trim()) return;
+    setProcesandoManual(true);
+    await procesarCodigo(manualValor);
+    setProcesandoManual(false);
+    setManualVisible(false);
+  }, [manualValor, procesarCodigo]);
 
   const descartarRenglon = useCallback(async (detalleId) => {
     try {
@@ -178,16 +198,19 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     return true;
   });
 
-  if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
-  if (!permission.granted) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
-          <Text style={styles.primaryButtonText}>Permitir cámara</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  if (!cargado) return null;
+  if (modo === MODO_CAMARA) {
+    if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+            <Text style={styles.primaryButtonText}>Permitir cámara</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
   }
 
   return (
@@ -212,14 +235,10 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         </View>
       </View>
 
-      <View style={styles.cameraContainer}>
-        {isFocused ? (
-          <CameraView onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.cameraBox} facing="back" />
-        ) : null}
-      </View>
+      <EscanerInput modo={modo} setModo={setModo} isFocused={isFocused} onScan={handleEscaneo} />
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={escribirManualmente} activeOpacity={0.85}>
-        <Text style={styles.secondaryButtonText}>Escribir nota/caja manualmente</Text>
+      <TouchableOpacity style={styles.secondaryButton} onPress={abrirManual} activeOpacity={0.85}>
+        <Text style={styles.secondaryButtonText}>Escribir nota manualmente</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -274,36 +293,28 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         />
       )}
 
-      <Modal visible={!!confirmacion} transparent animationType="fade" onRequestClose={cerrarConfirmacion}>
+      <Modal visible={manualVisible} transparent animationType="fade" onRequestClose={() => setManualVisible(false)}>
         <View style={styles.modalBackground}>
           <View style={styles.card}>
-            <Text style={styles.listaTitulo}>Confirmar caja escaneada</Text>
+            <Text style={styles.listaTitulo}>Escribir nota</Text>
             <Text style={styles.label}>Nº Nota</Text>
             <TextInput
               style={styles.input}
-              value={confirmacion?.nota || ''}
-              onChangeText={(v) => setConfirmacion(prev => ({ ...prev, nota: v }))}
+              value={manualValor}
+              onChangeText={setManualValor}
               autoCapitalize="characters"
-              selectTextOnFocus
-            />
-            <Text style={styles.label}>Nº de caja</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmacion?.caja || ''}
-              onChangeText={(v) => setConfirmacion(prev => ({ ...prev, caja: v.replace(/[^0-9]/g, '') }))}
-              keyboardType="numeric"
-              selectTextOnFocus
+              autoFocus
             />
             <TouchableOpacity
-              style={[styles.primaryButton, guardando && styles.buttonDisabled]}
-              onPress={confirmarEscaneo}
-              disabled={guardando}
+              style={[styles.primaryButton, procesandoManual && styles.buttonDisabled]}
+              onPress={confirmarManual}
+              disabled={procesandoManual}
               activeOpacity={0.85}
             >
-              {guardando ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.primaryButtonText}>Guardar</Text>}
+              {procesandoManual ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.primaryButtonText}>Guardar</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={cerrarConfirmacion} disabled={guardando} activeOpacity={0.85}>
-              <Text style={styles.secondaryButtonText}>Volver a escanear</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualVisible(false)} disabled={procesandoManual} activeOpacity={0.85}>
+              <Text style={styles.secondaryButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>

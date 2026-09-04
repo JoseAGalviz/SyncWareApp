@@ -88,8 +88,28 @@ export default function DespachoIniciarScreen({ navigation }) {
     });
   }, [userData, navigation]);
 
-  const descartarActivo = useCallback(async (rutagramaId) => {
-    setActivos(await quitarActivo(rutagramaId));
+  const descartarActivo = useCallback((rutagramaId) => {
+    Alert.alert(
+      'Descartar rutagrama',
+      'Se va a cancelar este rutagrama y se pierde lo escaneado sin verificar. ¿Seguro?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Descartar', style: 'destructive', onPress: async () => {
+            try {
+              await DespachoService.cancelar(rutagramaId);
+              setActivos(await quitarActivo(rutagramaId));
+            } catch (error) {
+              // 409: ya tiene paquetes verificados (trabajo real) — no se descarta en
+              // servidor, se deja en la lista para que el usuario lo retome o lo cierre
+              // con Finalizar.
+              const msg = error.data?.error || error.message || 'No se pudo descartar el rutagrama.';
+              Alert.alert('No se pudo quitar', msg);
+            }
+          }
+        },
+      ]
+    );
   }, []);
 
   const iniciarConCodigo = useCallback(async (rutaCodigo) => {

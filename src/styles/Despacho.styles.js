@@ -148,6 +148,13 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, marginBottom: Theme.spacing.md },
   toggleLabel: { ...Theme.typography.body, color: Theme.colors.text },
 
+  // --- Lector bluetooth (modo HID, alternativa a la cámara) ---
+  bluetoothBox: { justifyContent: 'center', alignItems: 'center', padding: Theme.spacing.lg },
+  bluetoothHint: { ...Theme.typography.body, color: Theme.colors.white, textAlign: 'center' },
+  // Input real que recibe el tecleo del lector; invisible pero enfocable —
+  // showSoftInputOnFocus=false evita que tape la pantalla con el teclado táctil.
+  bluetoothInput: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+
   // --- Listas ---
   regionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Theme.spacing.sm },
   listaTitulo: { ...Theme.typography.subheading, color: Theme.colors.text, marginBottom: Theme.spacing.sm },
@@ -187,6 +194,22 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Theme.colors.primary, borderColor: Theme.colors.primary },
   filterChipText: { ...Theme.typography.tiny, color: Theme.colors.muted, fontWeight: '600' },
   filterChipTextActive: { color: Theme.colors.dark },
+
+  // --- Toggle Cámara / Lector bluetooth: botones grandes, operador los toca
+  // de un vistazo (no confundir con filterChip, que es el filtro de facturas)
+  modoRow: { flexDirection: 'row', gap: Theme.spacing.md, marginBottom: Theme.spacing.md },
+  modoChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.lg,
+    borderRadius: Theme.radius.lg,
+    borderWidth: 2,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+  },
+  modoChipActive: { backgroundColor: Theme.colors.primary, borderColor: Theme.colors.primary },
+  modoChipText: { ...Theme.typography.subheading, color: Theme.colors.muted },
+  modoChipTextActive: { color: Theme.colors.white },
 
   totalesRow: {
     flexDirection: 'row',

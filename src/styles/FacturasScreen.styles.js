@@ -330,6 +330,33 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.md,
   },
 
+  // --- Aviso de guardado sin conexión ---
+  offlineCard: {
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: Theme.colors.error,
+  },
+  offlineTitulo: {
+    fontSize: isSmallDevice ? 24 : 28,
+    fontWeight: '800',
+    color: Theme.colors.error,
+    letterSpacing: 1,
+    marginBottom: Theme.spacing.sm,
+  },
+  offlineNumero: {
+    fontSize: isSmallDevice ? 20 : 24,
+    fontWeight: '700',
+    color: Theme.colors.text,
+    marginBottom: Theme.spacing.sm,
+  },
+  offlineTexto: {
+    fontSize: isSmallDevice ? 15 : 17,
+    color: Theme.colors.text,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Theme.spacing.lg,
+  },
+
   // --- Resultado de sincronización ---
   syncCard: {
     alignItems: 'center',
