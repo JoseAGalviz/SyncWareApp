@@ -122,6 +122,13 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
       <Text style={styles.title}>Recibir enlace #{rutagramaId}</Text>
       <View style={styles.activeHeader}>
         <Text style={styles.activeRuta}>{cargado?.conductor} · {cargado?.vehiculo}</Text>
+        <Text style={styles.itemDetalle}>Encargado: {cargado?.encargado || '—'}</Text>
+        {cargado?.recibido_por ? (
+          <Text style={styles.itemDetalle}>
+            Recibió: {cargado.recibido_por}
+            {cargado.fecha_recepcion ? ` · ${new Date(cargado.fecha_recepcion).toLocaleString('es-VE')}` : ''}
+          </Text>
+        ) : null}
         <View style={styles.countersRow}>
           <View style={styles.counterPill}>
             <Text style={styles.counterLabel}>Recibidos</Text>

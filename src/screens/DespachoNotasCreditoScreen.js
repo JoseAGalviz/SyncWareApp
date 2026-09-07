@@ -1,196 +1,213 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { showMessage } from 'react-native-flash-message';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { useModoEscaneo, MODO_CAMARA } from '../hooks/useModoEscaneo';
+import { useCameraPermissions } from 'expo-camera';
+import EscanerInput from '../components/EscanerInput';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 
-const RUTAS_CRUZADAS = [
-  { codigo: 'barquisimeto1', label: 'ENVIOS BARQUISIMETO (BQTO → S/C)' },
-  { codigo: 'barquisimeto2', label: 'ENVIOS S/C (S/C → BQTO)' },
-];
+// Módulo independiente de Notas de Crédito / Débito: sin ruta, sin rutagrama.
+// Se escanea la nota y se guarda, una tras otra. La lista es el registro.
 
-const NotaItem = React.memo(({ item }) => (
+const limpiar = (raw) => String(raw || '').trim().replace(/\s+/g, '').toUpperCase();
+const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
+
+const NotaItem = React.memo(({ item, onQuitar }) => (
   <View style={styles.itemRow}>
     <View style={styles.itemInfo}>
-      <Text style={styles.itemNota}>{item.nota} — {item.status}</Text>
-      <Text style={styles.itemDetalle}>{item.descrip} · Fact. afectada: {item.factura || '—'}</Text>
+      <Text style={styles.itemNota}>{item.nro_doc} · {item.tipo}</Text>
+      <Text style={styles.itemDetalle}>{item.cliente || 'Sin nombre'}</Text>
+      <Text style={styles.itemDetalle}>
+        Fact. afectada: {item.nro_orig || '—'}
+        {item.fecha_escaneo ? ` · ${new Date(item.fecha_escaneo).toLocaleString('es-VE')}` : ''}
+      </Text>
     </View>
+    <TouchableOpacity style={styles.itemAccion} onPress={() => onQuitar(item.id)}>
+      <Text style={{ color: Theme.colors.error, fontWeight: '700' }}>Quitar</Text>
+    </TouchableOpacity>
   </View>
 ));
 
 export default function DespachoNotasCreditoScreen({ navigation }) {
-  const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
+  const { modo, setModo, cargado } = useModoEscaneo();
+  const [permission, requestPermission] = useCameraPermissions();
+
   const [userData, setUserData] = useState(null);
-  const [rutaSeleccionada, setRutaSeleccionada] = useState(null);
   const [items, setItems] = useState([]);
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [scanned, setScanned] = useState(false);
-  const [confirmacion, setConfirmacion] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  const [cerrando, setCerrando] = useState(false);
-  const [segmentos, setSegmentos] = useState([]);
+  const [manualVisible, setManualVisible] = useState(false);
+  const [manualValor, setManualValor] = useState('');
+  const [procesandoManual, setProcesandoManual] = useState(false);
+  const ultimoEscaneoRef = useRef({ codigo: '', ts: 0 });
 
   useEffect(() => {
-    const cargarUsuario = async () => {
-      const userDataStr = await AsyncStorage.getItem('userData');
-      if (userDataStr) setUserData(JSON.parse(userDataStr));
-    };
-    cargarUsuario();
+    AsyncStorage.getItem('userData').then((str) => { if (str) setUserData(JSON.parse(str)); });
   }, []);
 
-  useEffect(() => {
+  const cargar = useCallback(async () => {
     if (!userData?.id) return;
-    DespachoService.segmentos(userData.id)
-      .then(setSegmentos)
-      .catch(e => console.error('Error cargando catálogo de rutas', e));
-  }, [userData?.id]);
-
-  // Catálogo abierto, igual que DespachoIniciarScreen — sin asignación fija por usuario.
-  const opcionesRuta = [
-    ...segmentos.map(s => ({ codigo: s.codigo, label: `${s.codigo} - ${s.descripcion}` })),
-    ...RUTAS_CRUZADAS,
-  ];
-
-  const cargarPendientes = useCallback(async () => {
-    if (!userData?.id || !rutaSeleccionada) return;
     setCargando(true);
     try {
-      const resultado = await DespachoService.ncPendientes(userData.id, rutaSeleccionada);
-      setItems(resultado?.items || []);
-    } catch (error) {
-      console.error('Error cargando notas C/D pendientes', error);
+      const res = await DespachoService.ncLista(userData.id);
+      setItems(res?.items || []);
+    } catch (e) {
+      console.error('Error cargando notas C/D', e);
     } finally {
       setCargando(false);
     }
-  }, [userData, rutaSeleccionada]);
+  }, [userData]);
 
-  useEffect(() => { cargarPendientes(); }, [cargarPendientes]);
+  useEffect(() => { if (isFocused) cargar(); }, [isFocused, cargar]);
 
-  const handleBarCodeScanned = useCallback(({ data }) => {
-    if (scanned || !rutaSeleccionada) return;
-    setScanned(true);
-    setConfirmacion({ nota: (data || '').replace(/\s+/g, '') });
-  }, [scanned, rutaSeleccionada]);
-
-  const cerrarConfirmacion = useCallback(() => {
-    setConfirmacion(null);
-    setScanned(false);
-  }, []);
-
-  const confirmarEscaneo = useCallback(async () => {
-    if (!confirmacion?.nota) return;
-    setGuardando(true);
+  const registrar = useCallback(async (codigoRaw) => {
+    const codigo = limpiar(codigoRaw);
+    if (!codigo) return;
     try {
-      await DespachoService.ncEscanear({ usuario_id: userData.id, ruta_codigo: rutaSeleccionada, nota: confirmacion.nota });
-      setConfirmacion(null);
-      setScanned(false);
-      await cargarPendientes();
+      const res = await DespachoService.ncEscanear({ usuario_id: userData.id, codigo });
+      if (res?.fila) setItems((prev) => [res.fila, ...prev.filter((x) => x.id !== res.fila.id)]);
+      showMessage({
+        message: `${res?.fila?.tipo || 'Nota'} registrada`,
+        description: `${res?.fila?.nro_doc || codigo} · ${res?.fila?.cliente || ''}`.trim(),
+        type: 'success',
+        duration: 1600,
+      });
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo registrar la nota.';
-      Alert.alert('Error', msg);
-    } finally {
-      setGuardando(false);
+      if (/se está procesando/i.test(msg)) return;
+      showMessage({ message: 'Error', description: `${codigo}: ${msg}`, type: 'danger', duration: 2800 });
     }
-  }, [confirmacion, userData, rutaSeleccionada, cargarPendientes]);
+  }, [userData]);
 
-  const finalizar = useCallback(async () => {
-    setCerrando(true);
-    try {
-      const resultado = await DespachoService.ncFinalizar({ usuario_id: userData.id, ruta_codigo: rutaSeleccionada });
-      Alert.alert('Comprobante', `${resultado.total} nota(s) de crédito/débito registradas para esta ruta.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error) {
-      const msg = error.data?.error || error.message || 'No se pudo finalizar.';
-      Alert.alert('Error', msg);
-    } finally {
-      setCerrando(false);
+  const COOLDOWN_MS = 1500;
+  const handleEscaneo = useCallback((dataRaw) => {
+    if (scanned) return;
+    const codigo = limpiar(dataRaw);
+    if (!codigo || !FORMATO_VALIDO.test(codigo)) return;
+    const ahora = Date.now();
+    if (codigo === ultimoEscaneoRef.current.codigo && ahora - ultimoEscaneoRef.current.ts < COOLDOWN_MS) return;
+    ultimoEscaneoRef.current = { codigo, ts: ahora };
+    setScanned(true);
+    registrar(codigo).finally(() => setScanned(false));
+  }, [scanned, registrar]);
+
+  const confirmarManual = useCallback(async () => {
+    const valor = limpiar(manualValor);
+    if (!valor) return;
+    if (!FORMATO_VALIDO.test(valor)) {
+      showMessage({ message: 'Formato no reconocido', description: 'Hasta 10 dígitos, con o sin letra al inicio.', type: 'warning', duration: 2800 });
+      return;
     }
-  }, [userData, rutaSeleccionada, navigation]);
+    setProcesandoManual(true);
+    await registrar(valor);
+    setProcesandoManual(false);
+    setManualVisible(false);
+    setManualValor('');
+  }, [manualValor, registrar]);
 
-  if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
-  if (!permission.granted) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
-          <Text style={styles.primaryButtonText}>Permitir cámara</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  const quitar = useCallback((ncId) => {
+    Alert.alert('Quitar nota', '¿Quitar esta nota del registro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Quitar', style: 'destructive', onPress: async () => {
+          try {
+            await DespachoService.ncEliminar(userData.id, ncId);
+            setItems((prev) => prev.filter((x) => x.id !== ncId));
+          } catch (error) {
+            Alert.alert('Error', error.data?.error || error.message || 'No se pudo quitar.');
+          }
+        },
+      },
+    ]);
+  }, [userData]);
+
+  if (!cargado) return null;
+  if (modo === MODO_CAMARA) {
+    if (!permission) return <Text>Solicitando permiso de cámara...</Text>;
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <Text style={styles.subtitle}>No se concedió acceso a la cámara.</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+            <Text style={styles.primaryButtonText}>Permitir cámara</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Notas de Crédito / Débito</Text>
-
-      {!rutaSeleccionada ? (
-        <View style={styles.card}>
-          <Text style={styles.subtitle}>Elegí la ruta.</Text>
-          {opcionesRuta.map(opcion => (
-            <TouchableOpacity key={opcion.codigo} style={styles.rutaOption} onPress={() => setRutaSeleccionada(opcion.codigo)} activeOpacity={0.8}>
-              <Text style={styles.rutaOptionText}>{opcion.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : (
-        <>
-          <View style={styles.cameraContainer}>
-            {isFocused ? (
-              <CameraView onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.cameraBox} facing="back" />
-            ) : null}
-          </View>
-
-          <Text style={styles.listaTitulo}>Escaneadas ({items.length})</Text>
-          {cargando ? (
-            <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
-          ) : items.length === 0 ? (
-            <Text style={styles.emptyListText}>Todavía no escaneaste ninguna nota.</Text>
-          ) : (
-            <FlatList data={items} keyExtractor={(item) => String(item.id)} renderItem={({ item }) => <NotaItem item={item} />} scrollEnabled={false} />
-          )}
-
-          <TouchableOpacity
-            style={[styles.dangerButton, (items.length === 0 || cerrando) && styles.buttonDisabled]}
-            onPress={finalizar}
-            disabled={items.length === 0 || cerrando}
-            activeOpacity={0.85}
-          >
-            {cerrando ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.dangerButtonText}>Finalizar</Text>}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
+            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
           </TouchableOpacity>
-        </>
-      )}
+          <Text style={styles.title}>Notas de Crédito / Débito</Text>
+        </View>
+        <Text style={styles.subtitle}>Escaneá la nota y se guarda. Sin ruta.</Text>
 
-      <Modal visible={!!confirmacion} transparent animationType="fade" onRequestClose={cerrarConfirmacion}>
-        <View style={styles.modalBackground}>
-          <View style={styles.card}>
-            <Text style={styles.listaTitulo}>Confirmar nota C/D escaneada</Text>
-            <Text style={styles.label}>Nº Nota</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmacion?.nota || ''}
-              onChangeText={(v) => setConfirmacion({ nota: v })}
-              autoCapitalize="characters"
-              selectTextOnFocus
-            />
-            <TouchableOpacity
-              style={[styles.primaryButton, guardando && styles.buttonDisabled]}
-              onPress={confirmarEscaneo}
-              disabled={guardando}
-              activeOpacity={0.85}
-            >
-              {guardando ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.primaryButtonText}>Guardar</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={cerrarConfirmacion} disabled={guardando} activeOpacity={0.85}>
-              <Text style={styles.secondaryButtonText}>Volver a escanear</Text>
-            </TouchableOpacity>
+        <View style={styles.countersRow}>
+          <View style={styles.counterPill}>
+            <Text style={styles.counterLabel}>Registradas</Text>
+            <Text style={styles.counterValue}>{items.length}</Text>
           </View>
         </View>
-      </Modal>
-    </ScrollView>
+
+        <EscanerInput modo={modo} setModo={setModo} isFocused={isFocused} disabled={scanned} onScan={handleEscaneo} />
+
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualVisible(true)} activeOpacity={0.85}>
+          <Text style={styles.secondaryButtonText}>Escribir número manualmente</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.listaTitulo}>Registradas ({items.length})</Text>
+        {cargando ? (
+          <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
+        ) : items.length === 0 ? (
+          <Text style={styles.emptyListText}>Todavía no registraste ninguna nota.</Text>
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => <NotaItem item={item} onQuitar={quitar} />}
+            scrollEnabled={false}
+          />
+        )}
+
+        <Modal visible={manualVisible} transparent animationType="fade" onRequestClose={() => setManualVisible(false)}>
+          <View style={styles.modalBackground}>
+            <View style={styles.card}>
+              <Text style={styles.listaTitulo}>Escribir nota C/D</Text>
+              <Text style={styles.label}>Nº nota</Text>
+              <TextInput
+                style={styles.input}
+                value={manualValor}
+                onChangeText={setManualValor}
+                autoCapitalize="characters"
+                keyboardType="number-pad"
+                autoFocus
+              />
+              <TouchableOpacity
+                style={[styles.primaryButton, procesandoManual && styles.buttonDisabled]}
+                onPress={confirmarManual}
+                disabled={procesandoManual}
+                activeOpacity={0.85}
+              >
+                {procesandoManual ? <ActivityIndicator size="small" color={Theme.colors.white} /> : <Text style={styles.primaryButtonText}>Registrar</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualVisible(false)} disabled={procesandoManual} activeOpacity={0.85}>
+                <Text style={styles.secondaryButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </View>
   );
 }

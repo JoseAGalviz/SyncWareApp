@@ -24,7 +24,7 @@ import {
   encolarFactura,
   limpiarHistorialResuelto,
   sincronizarPendientes,
-  iniciarAutoSync,
+  // iniciarAutoSync,  // MÓDULO OFFLINE DESACTIVADO — sin auto-sync al recuperar señal.
   hayConexion,
   consultarFactura,
 } from '../services/facturasSyncQueue';
@@ -416,15 +416,19 @@ export default function FacturasScreen() {
     if (isFocused) cargarRegistros();
   }, [isFocused, cargarRegistros]);
 
-  // Sync automático al recuperar conexión (wifi o datos)
-  useEffect(() => {
-    const unsubscribe = iniciarAutoSync((resumen) => {
-      if (resumen.enviados > 0) {
-        cargarRegistros();
-      }
-    });
-    return unsubscribe;
-  }, [cargarRegistros]);
+  // MÓDULO OFFLINE DESACTIVADO — el sync automático al recuperar conexión queda apagado.
+  // El registro de facturas ahora exige conexión al momento del escaneo. La cola persistente
+  // se mantiene SOLO como mecanismo de reintento de los ítems que el servidor devolvió como
+  // 'error' (factura marcada en Profit pero historial no escrito): se reintentan con el botón
+  // "Sincronizar ahora".
+  // useEffect(() => {
+  //   const unsubscribe = iniciarAutoSync((resumen) => {
+  //     if (resumen.enviados > 0) {
+  //       cargarRegistros();
+  //     }
+  //   });
+  //   return unsubscribe;
+  // }, [cargarRegistros]);
 
   // Ubicación best-effort: nunca bloquea ni interrumpe el escaneo con alertas.
   const obtenerCoordenadas = useCallback(async () => {
@@ -448,20 +452,28 @@ export default function FacturasScreen() {
     setScanned(false);
   }, []);
 
-  // Encola el escaneo (siempre, haya o no señal) y, si hay conexión, intenta sincronizarlo
-  // de una vez para dar feedback inmediato — mismo patrón que antes de que existiera la cola:
-  // el registro nunca se pierde, la sincronización es un intento best-effort encima.
+  // MÓDULO OFFLINE DESACTIVADO — el registro exige conexión al momento del escaneo.
+  // El escaneo se encola (para tener id_local y reintento) e inmediatamente se sincroniza
+  // contra el servidor. Si no hay conexión, NO se guarda nada: se avisa y el vendedor
+  // reintenta cuando tenga señal.
   const registrarEscaneo = useCallback(async (fact_num) => {
     setEnviando(true);
+
+    if (!(await hayConexion())) {
+      Alert.alert(
+        'Sin conexión',
+        'Necesitás conexión para registrar la factura. Volvé a intentar cuando tengas wifi o datos.'
+      );
+      setEnviando(false);
+      return;
+    }
+
     const coords = await obtenerCoordenadas();
 
     let resultado;
     try {
       resultado = await encolarFactura({ fact_num, coordenadas: coords });
     } catch (err) {
-      // Distinto de "sin conexión": acá el escaneo NO quedó guardado ni siquiera en el
-      // teléfono — hay que decírselo claro al vendedor para que vuelva a intentar, no
-      // dejarlo pensando que ya está en cola.
       Alert.alert('No se pudo guardar el escaneo', err.message || 'Intenta de nuevo.');
       setEnviando(false);
       return;
@@ -475,17 +487,9 @@ export default function FacturasScreen() {
 
     await cargarRegistros();
 
-    // Sin conexión: aviso grande e inmediato, ni se intenta sincronizar.
-    if (!(await hayConexion())) {
-      setAvisoOffline({ fact_num });
-      setEnviando(false);
-      return;
-    }
-
-    // Con conexión: intenta sincronizar ya mismo — mismo efecto "tiempo real" que antes.
-    // Si falla igual (señal débil / timeout), se trata como offline: queda pendiente y se avisa.
-    // Solo este ítem, no el backlog entero: con varios pendientes atascados, cada escaneo
-    // nuevo antes reintentaba TODOS de nuevo (amplifica errores en vez de aislarlos).
+    // Sincroniza este ítem ya mismo. Si el servidor lo devuelve como 'error' (marcada en
+    // Profit pero historial no escrito), queda pendiente en la cola y se reintenta con
+    // "Sincronizar ahora" hasta que el historial entre.
     try {
       await sincronizarPendientes({ soloIdLocal: resultado.item.id_local });
       const actualizados = await obtenerFacturas();
@@ -497,9 +501,11 @@ export default function FacturasScreen() {
         setAviso(`Factura ${fact_num} ya estaba registrada en el servidor.`);
       } else if (item?.status === 'no_encontrada') {
         setAviso(`Factura ${fact_num} en cola: aún no disponible en el sistema, se reintentará.`);
+      } else if (item?.status === 'error') {
+        setAviso(`Factura ${fact_num}: quedó pendiente por un error al registrar el historial. Reintentá con "Sincronizar ahora".`);
       }
     } catch {
-      setAvisoOffline({ fact_num });
+      setAviso(`Factura ${fact_num}: no se pudo confirmar con el servidor. Quedó pendiente — reintentá con "Sincronizar ahora".`);
     } finally {
       setEnviando(false);
     }
@@ -645,7 +651,7 @@ export default function FacturasScreen() {
     >
       <Text style={styles.title}>Gestión de Facturas</Text>
       <Text style={styles.subtitle}>
-        Escanea el código de barras de tu factura. Funciona sin conexión: se sincroniza sola al recuperar wifi o datos.
+        Escanea el código de barras de tu factura. Necesitás conexión: si falla, queda pendiente y podés reintentar con "Sincronizar ahora".
       </Text>
 
       <View style={styles.cameraContainer}>
@@ -762,11 +768,13 @@ export default function FacturasScreen() {
         onCancelar={cancelarCorroboracion}
       />
 
+      {/* MÓDULO OFFLINE DESACTIVADO — ya no se muestra el aviso de "sin conexión / guardado en el teléfono".
       <AvisoOfflineModal
         visible={!!avisoOffline}
         factNum={avisoOffline?.fact_num}
         onCerrar={() => setAvisoOffline(null)}
       />
+      */}
 
       <ResultadoSyncModal
         visible={!!resultadoSync}

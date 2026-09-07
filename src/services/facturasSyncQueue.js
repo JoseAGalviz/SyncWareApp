@@ -108,7 +108,10 @@ export async function encolarFactura({ fact_num, coordenadas }) {
     return { ok: false, motivo: 'duplicada_local' };
   }
 
-  const origen = (await hayConexion()) ? 'online' : 'offline';
+  // MÓDULO OFFLINE DESACTIVADO — el registro exige conexión (ver registrarEscaneo en
+  // FacturasScreen), así que el origen siempre es 'online'.
+  // const origen = (await hayConexion()) ? 'online' : 'offline';
+  const origen = 'online';
   const item = {
     id_local: uuidv4(),
     fact_num: String(fact_num),

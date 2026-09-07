@@ -7,35 +7,51 @@ import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
 
+const FILTROS = [
+  { key: 'todos', label: 'Todos', estatus: null },
+  { key: 'transito', label: 'En tránsito', estatus: 'F' },
+  { key: 'recibidos', label: 'Recibidos', estatus: 'E' },
+];
+
 const EnlaceItem = React.memo(({ item, onPress }) => {
-  const completo = item.total > 0 && item.recibidos === item.total;
+  const enTransito = item.en_transito;
   return (
     <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemNota}>Enlace #{item.id}</Text>
-        <Text style={styles.itemDetalle}>Encargado: {item.encargado || '—'}</Text>
+        <Text style={styles.itemNota}>Enlace #{item.id} · {item.direccion}</Text>
+        <Text style={styles.itemDetalle}>
+          Encargado: {item.encargado || '—'}
+        </Text>
         <Text style={styles.itemDetalle}>
           {item.conductor} · {item.vehiculo} · {new Date(item.fecha).toLocaleString('es-VE')}
         </Text>
+        {!enTransito && item.recibido_por ? (
+          <Text style={styles.itemDetalle}>
+            Recibió: {item.recibido_por}
+            {item.fecha_recepcion ? ` · ${new Date(item.fecha_recepcion).toLocaleString('es-VE')}` : ''}
+          </Text>
+        ) : null}
       </View>
-      <View style={[styles.statusPill, completo ? styles.statusVerificada : styles.statusEscaneada]}>
-        <Text style={[styles.statusPillText, completo ? styles.statusTextVerificada : styles.statusTextEscaneada]}>
-          {item.recibidos}/{item.total}
+      <View style={[styles.statusPill, enTransito ? styles.statusEscaneada : styles.statusVerificada]}>
+        <Text style={[styles.statusPillText, enTransito ? styles.statusTextEscaneada : styles.statusTextVerificada]}>
+          {enTransito ? `EN TRÁNSITO ${item.recibidos}/${item.total}` : 'RECIBIDO'}
         </Text>
       </View>
     </TouchableOpacity>
   );
 });
 
-// Lista de rutagramas de enlace (barquisimeto1/barquisimeto2) despachados en la sede
-// origen y esperando confirmación de recepción en esta sede.
-export default function DespachoRecibirEnlaceScreen({ route, navigation }) {
-  const { rutaCodigo, rutaDesc } = route.params;
+// Listado global de enlaces entre sedes (BQTO <-> S/C): todos los generados, las dos
+// direcciones, en tránsito y recibidos. Cualquiera lo ve. Tocar un enlace abre el mismo
+// detalle que el flujo de recepción por dirección (DespachoRecibirEnlaceDetalle), que ya
+// distingue 'F' (escanear + cerrar) de 'E' (solo lectura).
+export default function DespachoEnlacesScreen({ navigation }) {
   const isFocused = useIsFocused();
   const [userData, setUserData] = useState(null);
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [filtro, setFiltro] = useState('todos');
 
   useEffect(() => {
     AsyncStorage.getItem('userData').then(str => {
@@ -48,17 +64,20 @@ export default function DespachoRecibirEnlaceScreen({ route, navigation }) {
     setCargando(true);
     setError(null);
     try {
-      const resultado = await DespachoService.enlacesPendientes(userData.id, rutaCodigo);
+      const resultado = await DespachoService.enlacesTodos(userData.id);
       setItems(resultado?.items || []);
     } catch (e) {
-      console.error('Error cargando enlaces pendientes', e);
+      console.error('Error cargando enlaces', e);
       setError(e.data?.error || e.message || 'No se pudo cargar la lista de enlaces.');
     } finally {
       setCargando(false);
     }
-  }, [userData, rutaCodigo]);
+  }, [userData]);
 
   useEffect(() => { if (isFocused) cargar(); }, [isFocused, cargar]);
+
+  const estatusFiltro = FILTROS.find(f => f.key === filtro)?.estatus;
+  const itemsFiltrados = estatusFiltro ? items.filter(i => i.estatus === estatusFiltro) : items;
 
   const abrirEnlace = useCallback((item) => {
     navigation.navigate('DespachoRecibirEnlaceDetalle', { rutagramaId: item.id, usuarioId: userData.id });
@@ -70,19 +89,34 @@ export default function DespachoRecibirEnlaceScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
           <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Recepción de enlace ({rutaDesc})</Text>
+        <Text style={styles.title}>Enlaces generados</Text>
       </View>
-      <Text style={styles.subtitle}>Cargas despachadas desde la otra sede, esperando confirmación de llegada.</Text>
+      <Text style={styles.subtitle}>Todos los enlaces entre sedes (BQTO / S/C), las dos direcciones.</Text>
+
+      <View style={styles.filterRow}>
+        {FILTROS.map(op => (
+          <TouchableOpacity
+            key={op.key}
+            style={[styles.filterChip, filtro === op.key && styles.filterChipActive]}
+            onPress={() => setFiltro(op.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, filtro === op.key && styles.filterChipTextActive]}>{op.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {cargando ? (
         <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
       ) : error ? (
         <Text style={styles.emptyListText}>{error}</Text>
-      ) : items.length === 0 ? (
-        <Text style={styles.emptyListText}>No hay enlaces pendientes por recibir.</Text>
+      ) : itemsFiltrados.length === 0 ? (
+        <Text style={styles.emptyListText}>
+          {items.length === 0 ? 'No hay enlaces generados.' : 'Ningún enlace coincide con el filtro.'}
+        </Text>
       ) : (
         <FlatList
-          data={items}
+          data={itemsFiltrados}
           keyExtractor={item => String(item.id)}
           renderItem={({ item }) => <EnlaceItem item={item} onPress={abrirEnlace} />}
           scrollEnabled={false}

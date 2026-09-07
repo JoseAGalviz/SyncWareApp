@@ -2,12 +2,12 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DespachoIniciarScreen from '../screens/DespachoIniciarScreen';
 import DespachoEscanearScreen from '../screens/DespachoEscanearScreen';
-import DespachoVerificarScreen from '../screens/DespachoVerificarScreen';
 import DespachoFacturaViejaScreen from '../screens/DespachoFacturaViejaScreen';
 import DespachoNotasCreditoScreen from '../screens/DespachoNotasCreditoScreen';
 import DespachoHistorialScreen from '../screens/DespachoHistorialScreen';
 import DespachoRecibirEnlaceScreen from '../screens/DespachoRecibirEnlaceScreen';
 import DespachoRecibirEnlaceDetalleScreen from '../screens/DespachoRecibirEnlaceDetalleScreen';
+import DespachoEnlacesScreen from '../screens/DespachoEnlacesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,12 +19,12 @@ export default function DespachoNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DespachoIniciar" component={DespachoIniciarScreen} />
       <Stack.Screen name="DespachoEscanear" component={DespachoEscanearScreen} />
-      <Stack.Screen name="DespachoVerificar" component={DespachoVerificarScreen} />
       <Stack.Screen name="DespachoFacturaVieja" component={DespachoFacturaViejaScreen} />
       <Stack.Screen name="DespachoNotasCredito" component={DespachoNotasCreditoScreen} />
       <Stack.Screen name="DespachoHistorial" component={DespachoHistorialScreen} />
       <Stack.Screen name="DespachoRecibirEnlace" component={DespachoRecibirEnlaceScreen} />
       <Stack.Screen name="DespachoRecibirEnlaceDetalle" component={DespachoRecibirEnlaceDetalleScreen} />
+      <Stack.Screen name="DespachoEnlaces" component={DespachoEnlacesScreen} />
     </Stack.Navigator>
   );
 }

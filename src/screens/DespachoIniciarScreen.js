@@ -236,6 +236,14 @@ export default function DespachoIniciarScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.secondaryButton}
+        onPress={() => navigation.navigate('DespachoEnlaces')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>Enlaces generados (todos)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
         onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto1', rutaDesc: 'BQTO / S/C' })}
         activeOpacity={0.85}
       >

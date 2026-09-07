@@ -69,12 +69,12 @@ export default function DespachoFacturaViejaScreen({ route, navigation }) {
     if (!codigo) return;
     setProcesando(true);
     try {
-      const resultado = await DespachoService.verificarFactura(rutagramaId, {
+      const resultado = await DespachoService.escanear(rutagramaId, {
         usuario_id: usuarioId,
-        factura: codigo,
-        solo_factura: true,
+        codigo,
       });
-      setAgregadas((prev) => [{ id: resultado?.id, factura: codigo, cliente: resultado?.cliente }, ...prev]);
+      const f = resultado?.fila;
+      setAgregadas((prev) => [{ id: f?.id, factura: f?.factura || codigo, cliente: f?.cliente }, ...prev]);
       showMessage({ message: 'Factura vieja agregada', description: `${codigo} agregada al rutagrama.`, type: 'success', duration: 1800 });
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo agregar la factura.';
