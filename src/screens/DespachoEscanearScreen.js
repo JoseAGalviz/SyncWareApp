@@ -31,6 +31,25 @@ const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
 
 const esNotaCredito = (s) => s === 'NCR' || s === 'NDB';
 
+// Texto plano de lo que le falta a un pedido, para que el operador lo lea de un vistazo.
+// Devuelve null si el pedido está completo.
+const pendienteTexto = (f) => {
+  if (!f) return null;
+  if (esNotaCredito(f.status)) return null; // N/C y N/D no llevan cajas ni factura
+  const partes = [];
+  const esc = Number(f.cajas_escaneadas) || 0;
+  const esp = Number(f.cajas_esperadas) || 0;
+  if (esp >= 1 && esc < esp) partes.push(`${esp - esc} caja${esp - esc === 1 ? '' : 's'}`);
+  if (!f.factura_verificada) {
+    partes.push(
+      f.factura && f.factura !== f.nota
+        ? `escanear FACTURA ${f.factura}`
+        : 'la FACTURA (aún sin generar)'
+    );
+  }
+  return partes.length ? partes.join(' · ') : null;
+};
+
 const CajasPill = ({ item }) => {
   if (!item.espera_carga) return null;
   const completo = item.cajas_completas;
@@ -116,23 +135,125 @@ const PendienteItem = React.memo(({ item, onPress }) => {
   );
 });
 
-const RenglonItem = React.memo(({ item, onPress, onDescartar }) => (
-  <View style={styles.itemRow}>
+const RenglonItem = React.memo(({ item, onPress, onDescartar }) => {
+  const falta = pendienteTexto(item);
+  const completo = !falta;
+  return (
+  <View style={[styles.itemRow, completo && styles.itemRowCompleto]}>
     <TouchableOpacity style={styles.itemInfo} onPress={() => onPress(item)} activeOpacity={0.6}>
       <Text style={styles.itemNota}>
-        {item.nota}{item.factura && item.factura !== item.nota ? ` · Fact ${item.factura}` : ''}
+        NOTA {item.nota}{item.factura && item.factura !== item.nota ? ` · FACTURA ${item.factura}` : ''}
       </Text>
       <Text style={styles.itemDetalle}>{item.descrip}</Text>
       <View style={{ flexDirection: 'row', gap: Theme.spacing.xs, marginTop: Theme.spacing.xs }}>
         <CajasPill item={item} />
         <FacturaPill item={item} />
       </View>
+      <Text style={{ marginTop: Theme.spacing.xs, fontWeight: '800', color: falta ? Theme.colors.warning : Theme.colors.success }}>
+        {falta ? `PENDIENTE: ${falta}` : 'COMPLETO ✓'}
+      </Text>
     </TouchableOpacity>
     <TouchableOpacity style={styles.itemAccion} onPress={() => onDescartar(item.id)}>
       <Text style={{ color: Theme.colors.error, fontWeight: '700' }}>Quitar</Text>
     </TouchableOpacity>
   </View>
-));
+  );
+});
+
+// Pantalla de revisión antes de cerrar el rutagrama: lista todo lo escaneado, marca lo que
+// falta (cajas incompletas / sin factura) y pide confirmación. "Volver al escaneo" no pierde
+// nada — el progreso vive en el server (detalle), esto es solo una vista.
+const RevisarCierreModal = ({ visible, items, totales, resumen, onVolver, onConfirmar, onVerRenglon, onQuitarRenglon }) => {
+  const incompletos = items.filter((i) => pendienteTexto(i));
+  const hayFaltantes = incompletos.length > 0;
+
+  // Bloqueos DUROS del server (no se puede cerrar hasta resolverlos).
+  const bloqueado = !resumen?.puede_cerrar;
+  const motivosBloqueo = [];
+  if (Number(resumen?.sin_cajas || 0) > 0) motivosBloqueo.push(`${resumen.sin_cajas} pedido(s) con factura pero SIN cajas escaneadas`);
+  if (resumen?.notas_anuladas?.length) motivosBloqueo.push(`${resumen.notas_anuladas.length} nota(s) anulada(s)`);
+  if (resumen?.facturas_anuladas?.length) motivosBloqueo.push(`${resumen.facturas_anuladas.length} factura(s) anulada(s)`);
+  if (bloqueado && motivosBloqueo.length === 0) motivosBloqueo.push('No hay pedidos escaneados en este rutagrama.');
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onVolver}>
+      <View style={[styles.container, { flex: 1, paddingTop: Theme.spacing.lg }]}>
+        <Text style={styles.title}>Revisá antes de cerrar</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.listaTitulo}>
+            {items.length} pedido(s) · {Number(totales?.cajas || 0)} caja(s) · {Number(totales?.peso || 0).toFixed(2)} kg
+          </Text>
+          {bloqueado ? (
+            <Text style={{ color: Theme.colors.error, fontWeight: '800', marginTop: Theme.spacing.xs }}>
+              ✕ No se puede cerrar todavía
+            </Text>
+          ) : hayFaltantes ? (
+            <Text style={{ color: Theme.colors.warning, fontWeight: '800', marginTop: Theme.spacing.xs }}>
+              ⚠ {incompletos.length} pedido(s) con algo pendiente
+            </Text>
+          ) : (
+            <Text style={{ color: Theme.colors.success, fontWeight: '800', marginTop: Theme.spacing.xs }}>
+              ✓ Todo escaneado
+            </Text>
+          )}
+          {motivosBloqueo.map((m) => (
+            <Text key={m} style={{ color: Theme.colors.error, marginTop: 2 }}>• {m}</Text>
+          ))}
+          {!bloqueado && Number(resumen?.sin_factura || 0) > 0 && (
+            <Text style={styles.itemDetalle}>
+              {resumen.sin_factura} pedido(s) sin factura escaneada — se despachan igual
+            </Text>
+          )}
+        </View>
+
+        {items.length === 0 ? (
+          <Text style={styles.emptyListText}>No hay pedidos escaneados.</Text>
+        ) : (
+          <FlatList
+            style={{ flex: 1 }}
+            data={items}
+            keyExtractor={(i) => String(i.id)}
+            renderItem={({ item }) => (
+              <RenglonItem item={item} onPress={onVerRenglon} onDescartar={onQuitarRenglon} />
+            )}
+            initialNumToRender={15}
+            windowSize={7}
+          />
+        )}
+
+        <View style={{ padding: Theme.spacing.md }}>
+          {bloqueado ? (
+            <Text style={{ color: Theme.colors.error, fontWeight: '700', marginBottom: Theme.spacing.sm, textAlign: 'center' }}>
+              Escaneá las cajas que faltan, o tocá "Quitar" en el pedido que no va, para poder cerrar.
+            </Text>
+          ) : hayFaltantes ? (
+            <Text style={{ color: Theme.colors.warning, fontWeight: '700', marginBottom: Theme.spacing.sm, textAlign: 'center' }}>
+              Hay pedidos incompletos. ¿Seguro que querés cerrar el rutagrama así?
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            style={[
+              styles.dangerButton,
+              bloqueado && styles.buttonDisabled,
+              !bloqueado && hayFaltantes && { backgroundColor: Theme.colors.warning },
+            ]}
+            onPress={bloqueado ? undefined : onConfirmar}
+            disabled={bloqueado}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.dangerButtonText}>
+              {bloqueado ? 'No se puede cerrar' : hayFaltantes ? 'Sí, cerrar así' : 'Cerrar el rutagrama'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={onVolver} activeOpacity={0.85}>
+            <Text style={styles.secondaryButtonText}>Volver al escaneo</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 export default function DespachoEscanearScreen({ route, navigation }) {
   const { rutagramaId, usuarioId, rutaDesc } = route.params;
@@ -143,8 +264,14 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const [detalle, setDetalle] = useState({ items: [], totales: { cantidad: 0, peso: 0, cajas: 0 } });
   const [resumen, setResumen] = useState({ listados: 0, sin_cajas: 0, sin_factura: 0, completo: false, puede_cerrar: false, notas_anuladas: [], facturas_anuladas: [] });
   const [pendientes, setPendientes] = useState([]);
-  const [filtroPend, setFiltroPend] = useState('todas');
-  const [pendAbierto, setPendAbierto] = useState(true);
+  const [pendientesCargados, setPendientesCargados] = useState(false);
+  // Arranca en 'con': lo accionable son las notas con factura ya generada (listas para
+  // despachar). Reduce la lista al abrir en rutas grandes; el operador cambia a 'todas'/'sin'
+  // si necesita ver el resto.
+  const [filtroPend, setFiltroPend] = useState('con');
+  // Arranca cerrada: "Notas de esta ruta" es la consulta pesada de toda la ruta contra
+  // Profit (rutas grandes = 1000+ notas). Se carga recién al abrir la sección.
+  const [pendAbierto, setPendAbierto] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [scanned, setScanned] = useState(false);
   const [filtro, setFiltro] = useState('todas');
@@ -152,6 +279,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
   const [manualVisible, setManualVisible] = useState(false);
   const [manualValor, setManualValor] = useState('');
   const [procesandoManual, setProcesandoManual] = useState(false);
+  const [mostrarRevisar, setMostrarRevisar] = useState(false); // pantalla de revisión pre-cierre
   const [mostrarFinalizar, setMostrarFinalizar] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const ultimoEscaneoRef = useRef({ codigo: '', ts: 0 });
@@ -169,13 +297,13 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     }
   }, [rutagramaId, usuarioId]);
 
-  // Después de cada escaneo: detalle + resumen (para el gate). NO /pendientes — esa es la
-  // consulta pesada de toda la ruta contra Profit, se refresca solo al enfocar la pantalla
-  // o al abrir la sección "Notas de esta ruta".
+  // Después de cada escaneo: detalle + resumen (para el gate). `rapido:true` -> el backend
+  // NO consulta Profit para autocompletar facturas (facturación no generó nada nuevo en el
+  // ínterin); ese lookup lo hace el poll de fondo. NO /pendientes.
   const refrescarPostEscaneo = useCallback(async () => {
     try {
       const [d, r] = await Promise.all([
-        DespachoService.listarDetalle(rutagramaId, usuarioId),
+        DespachoService.listarDetalle(rutagramaId, usuarioId, { rapido: true }),
         DespachoService.resumenCierre(rutagramaId, usuarioId),
       ]);
       if (d) setDetalle(d);
@@ -189,41 +317,43 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     try {
       const p = await DespachoService.pendientes(rutagramaId, usuarioId);
       setPendientes(Array.isArray(p) ? p : []);
+      setPendientesCargados(true);
     } catch (error) {
       console.error('Error refrescando pendientes', error);
     }
   }, [rutagramaId, usuarioId]);
 
+  // Carga inicial: detalle + resumen. `pendientes` (toda la ruta contra Profit) NO se trae
+  // acá — se pide recién al abrir "Notas de esta ruta" (o se re-trae si ya estaba abierta).
   const cargarTodo = useCallback(async () => {
     try {
-      const [d, r, p] = await Promise.all([
+      const [d, r] = await Promise.all([
         DespachoService.listarDetalle(rutagramaId, usuarioId),
         DespachoService.resumenCierre(rutagramaId, usuarioId),
-        DespachoService.pendientes(rutagramaId, usuarioId).catch(() => []),
       ]);
       setDetalle(d || { items: [], totales: { cantidad: 0, peso: 0, cajas: 0 } });
       if (r && !r.error) setResumen(r);
-      setPendientes(Array.isArray(p) ? p : []);
+      if (pendAbierto) refrescarPendientes();
     } catch (error) {
       console.error('Error cargando detalle/resumen', error);
     } finally {
       setCargando(false);
     }
-  }, [rutagramaId, usuarioId]);
+  }, [rutagramaId, usuarioId, pendAbierto, refrescarPendientes]);
 
   useEffect(() => { if (isFocused) cargarTodo(); }, [isFocused, cargarTodo]);
 
   // Mientras el rutagrama esté abierto y queden pedidos escaneados sin factura, refresca
-  // /detalle cada 25s — apenas facturación genera la factura, el backend la autocompleta y
-  // aparece sola en el renglón. Es un lookup chico (reng_fac IN <notas escaneadas>), NO la
-  // consulta pesada de toda la ruta. Se corta cuando ya no falta ninguna.
+  // /detalle cada 45s — apenas facturación genera la factura, el backend la autocompleta y
+  // aparece sola en el renglón. Este SÍ consulta Profit (reng_fac IN <notas escaneadas>),
+  // por eso el intervalo es holgado. Se corta cuando ya no falta ninguna.
   useEffect(() => {
     if (!isFocused) return;
     const faltan = detalle.items.some(
       (i) => !i.factura_verificada && !i.factura_pendiente_escaneo && i.status !== 'NCR' && i.status !== 'NDB'
     );
     if (!faltan) return;
-    const t = setInterval(() => { refrescarDetalle(); }, 25000);
+    const t = setInterval(() => { refrescarDetalle(); }, 45000);
     return () => clearInterval(t);
   }, [isFocused, detalle.items, refrescarDetalle]);
 
@@ -235,29 +365,48 @@ export default function DespachoEscanearScreen({ route, navigation }) {
       const f = res?.fila;
       const adv = (res?.advertencias || []).join(' · ');
       if (res?.accion === 'caja' && f) {
+        const falta = pendienteTexto(f);
         showMessage({
-          message: `Caja ${f.cajas_escaneadas}/${f.cajas_esperadas}`,
-          description: `Nota ${f.nota}${adv ? ` — ${adv}` : ''}`,
-          type: f.cajas_completas ? 'success' : 'info',
-          duration: 1800,
+          message: `SE ESCANEÓ NOTA ${f.nota}`,
+          description: [
+            `Cajas ${f.cajas_escaneadas}/${f.cajas_esperadas}`,
+            falta ? `PENDIENTE: ${falta}` : 'PEDIDO COMPLETO ✓',
+            adv || null,
+          ].filter(Boolean).join('\n'),
+          type: falta ? 'info' : 'success',
+          duration: 3000,
         });
       } else if (res?.accion === 'nota_credito' && f) {
-        showMessage({ message: 'Nota C/D registrada', description: `${f.nota}`, type: 'success', duration: 1800 });
-      } else if (f) {
         showMessage({
-          message: f.factura_verificada ? 'Factura verificada' : 'Factura registrada',
-          description: `Nota ${f.nota}${adv ? ` — ${adv}` : ''}`,
-          type: f.factura_verificada ? 'success' : 'warning',
-          duration: 1800,
+          message: `SE ESCANEÓ NOTA ${f.status === 'NDB' ? 'DÉBITO' : 'CRÉDITO'} ${f.nota}`,
+          description: 'Registrada ✓',
+          type: 'success',
+          duration: 2400,
+        });
+      } else if (f) {
+        const falta = pendienteTexto(f);
+        showMessage({
+          message: `SE ESCANEÓ FACTURA ${f.factura || codigo}`,
+          description: [
+            `Nota ${f.nota}`,
+            f.factura_verificada ? 'Factura verificada ✓' : 'Factura registrada',
+            falta ? `PENDIENTE: ${falta}` : 'PEDIDO COMPLETO ✓',
+            adv || null,
+          ].filter(Boolean).join('\n'),
+          type: falta ? 'warning' : 'success',
+          duration: 3000,
         });
       } else {
-        showMessage({ message: 'Escaneado', description: adv || codigo, type: 'info', duration: 1500 });
+        showMessage({ message: 'Escaneado', description: adv || codigo, type: 'info', duration: 1800 });
       }
       await refrescarPostEscaneo();
     } catch (error) {
-      const msg = error.data?.error || error.message || 'No se pudo procesar el escaneo.';
+      const msg = (error.data?.error || error.message || 'No se pudo procesar el escaneo.')
+        .replace(/:\s*(POST|GET|PUT|DELETE)\s+\/\S+\s*$/i, '') // cola tecnica ": POST /api/..."
+        .replace(/^\d+:\s*/, '')                                // id de traza "497261: "
+        .trim();
       if (/se está procesando/i.test(msg)) return; // doble disparo del lector, se ignora sin ruido
-      showMessage({ message: 'Error al escanear', description: `${codigo}: ${msg}`, type: 'danger', duration: 2800 });
+      showMessage({ message: `NO SE PUDO ESCANEAR — ${codigo}`, description: msg, type: 'danger', duration: 3500 });
     }
   }, [rutagramaId, usuarioId, refrescarPostEscaneo]);
 
@@ -299,27 +448,12 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     }
   }, [rutagramaId, refrescarPostEscaneo]);
 
+  // Siempre abre la pantalla de revisión. Ahí se muestra todo lo escaneado y, si algo
+  // bloquea el cierre (pedido sin cajas, anuladas), el botón de cerrar queda deshabilitado
+  // con el motivo — pero el operador ve QUÉ pedido es y puede volver a escanear o quitarlo.
   const abrirFinalizar = useCallback(() => {
-    if (!resumen.puede_cerrar) {
-      const motivos = [];
-      if (resumen.notas_anuladas?.length) motivos.push(`${resumen.notas_anuladas.length} nota(s) anulada(s)`);
-      if (resumen.facturas_anuladas?.length) motivos.push(`${resumen.facturas_anuladas.length} factura(s) anulada(s)`);
-      if (resumen.sin_cajas) motivos.push(`${resumen.sin_cajas} pedido(s) sin ninguna caja escaneada`);
-      Alert.alert('No se puede cerrar todavía', motivos.join('\n') || 'No hay renglones en este rutagrama.');
-      return;
-    }
-    const avisos = [];
-    if (!resumen.completo) avisos.push('Hay pedidos con cajas incompletas.');
-    if (resumen.sin_factura) avisos.push(`${resumen.sin_factura} pedido(s) sin factura escaneada (se despachan igual).`);
-    if (avisos.length) {
-      Alert.alert('Revisá antes de cerrar', `${avisos.join('\n')}\n\n¿Cerrar de todas formas?`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar igual', style: 'destructive', onPress: () => setMostrarFinalizar(true) },
-      ]);
-      return;
-    }
-    setMostrarFinalizar(true);
-  }, [resumen]);
+    setMostrarRevisar(true);
+  }, []);
 
   const confirmarFinalizar = useCallback(async ({ chofer, carro, ayudantes, responsable }) => {
     setFinalizando(true);
@@ -359,11 +493,16 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     return true;
   });
 
-  const pendientesFiltrados = pendientes.filter((p) => {
+  const pendientesFiltradosTodos = pendientes.filter((p) => {
     if (filtroPend === 'con') return !!p.factura_generada;
     if (filtroPend === 'sin') return !p.factura_generada;
     return true;
   });
+  // Rutas grandes traen 1000+ notas. Se renderiza un tope; el operador escanea por código,
+  // no scrollea la lista entera. Para ver una puntual, están los filtros Con/Sin factura.
+  const TOPE_PENDIENTES = 120;
+  const pendientesFiltrados = pendientesFiltradosTodos.slice(0, TOPE_PENDIENTES);
+  const pendientesOcultos = pendientesFiltradosTodos.length - pendientesFiltrados.length;
   const pendientesSinEscanear = pendientes.filter((p) => !p.ya_escaneada).length;
 
   if (!cargado) return null;
@@ -489,15 +628,30 @@ export default function DespachoEscanearScreen({ route, navigation }) {
             </View>
             {pendientesFiltrados.length === 0 ? (
               <Text style={styles.emptyListText}>
-                {pendientes.length === 0 ? 'No hay notas pendientes en esta ruta.' : 'Ninguna coincide con el filtro.'}
+                {!pendientesCargados
+                  ? 'Cargando notas de la ruta...'
+                  : pendientes.length === 0
+                    ? 'No hay notas pendientes en esta ruta.'
+                    : 'Ninguna coincide con el filtro.'}
               </Text>
             ) : (
-              <FlatList
-                data={pendientesFiltrados}
-                keyExtractor={(item) => String(item.fact_num)}
-                renderItem={({ item }) => <PendienteItem item={item} onPress={setDetalleRenglon} />}
-                scrollEnabled={false}
-              />
+              <>
+                <FlatList
+                  data={pendientesFiltrados}
+                  keyExtractor={(item) => String(item.fact_num)}
+                  renderItem={({ item }) => <PendienteItem item={item} onPress={setDetalleRenglon} />}
+                  scrollEnabled={false}
+                  initialNumToRender={20}
+                  maxToRenderPerBatch={20}
+                  windowSize={7}
+                  removeClippedSubviews
+                />
+                {pendientesOcultos > 0 && (
+                  <Text style={styles.emptyListText}>
+                    +{pendientesOcultos} nota(s) más — usá los filtros Con/Sin factura para acotar.
+                  </Text>
+                )}
+              </>
             )}
           </>
         )}
@@ -530,6 +684,17 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         </Modal>
 
         <DetalleRenglonModal item={detalleRenglon} onClose={() => setDetalleRenglon(null)} />
+
+        <RevisarCierreModal
+          visible={mostrarRevisar}
+          items={detalle.items}
+          totales={detalle.totales}
+          resumen={resumen}
+          onVolver={() => setMostrarRevisar(false)}
+          onConfirmar={() => { setMostrarRevisar(false); setMostrarFinalizar(true); }}
+          onVerRenglon={setDetalleRenglon}
+          onQuitarRenglon={descartarRenglon}
+        />
 
         <DespachoFinalizarModal
           visible={mostrarFinalizar}

@@ -169,6 +169,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.border,
   },
+  // Pedido con cajas + factura completas: renglón entero en verde.
+  itemRowCompleto: {
+    backgroundColor: Theme.colors.successLight,
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.success,
+  },
   itemInfo: { flex: 1 },
   itemNota: { ...Theme.typography.body, color: Theme.colors.text, fontWeight: '600' },
   itemDetalle: { ...Theme.typography.tiny, color: Theme.colors.muted, marginTop: 2 },

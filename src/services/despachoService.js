@@ -27,8 +27,10 @@ export const DespachoService = {
   escanearCaja: (rutagramaId, { usuario_id, nota, caja }) =>
     api.post(`${BASE}/${rutagramaId}/escanear-caja`, { usuario_id, nota, caja }),
 
-  listarDetalle: (rutagramaId, usuarioId) =>
-    api.get(`${BASE}/${rutagramaId}/detalle?usuario_id=${encodeURIComponent(usuarioId)}`),
+  // `rapido:true` -> el backend salta el autocompletado de factura contra Profit (link lento).
+  // Se usa en el refresh inmediato post-escaneo; el poll de fondo y la carga inicial van sin rapido.
+  listarDetalle: (rutagramaId, usuarioId, { rapido } = {}) =>
+    api.get(`${BASE}/${rutagramaId}/detalle?usuario_id=${encodeURIComponent(usuarioId)}${rapido ? '&rapido=1' : ''}`),
 
   descartarDetalle: (rutagramaId, detalleId) =>
     api.delete(`${BASE}/${rutagramaId}/detalle/${detalleId}`),
