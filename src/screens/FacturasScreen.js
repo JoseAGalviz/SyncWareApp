@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Text,
   View,
@@ -11,7 +11,6 @@ import {
   FlatList,
   RefreshControl
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -24,7 +23,7 @@ import {
   encolarFactura,
   limpiarHistorialResuelto,
   sincronizarPendientes,
-  // iniciarAutoSync,  // MÓDULO OFFLINE DESACTIVADO — sin auto-sync al recuperar señal.
+  iniciarAutoSync,
   hayConexion,
   consultarFactura,
 } from '../services/facturasSyncQueue';
@@ -33,9 +32,9 @@ const ESTADO_LABEL = {
   pendiente: 'Pendiente de sincronizar',
   no_encontrada: 'Aún no disponible en el sistema — se reintentará',
   error: 'Error al sincronizar — se reintentará',
-  invalido: 'Número de factura inválido — corregir y volver a escanear',
+  invalido: 'Número de factura inválido — corregir y volver a ingresar',
   fallido: 'No se pudo sincronizar tras varios intentos — revisar manualmente',
-  ambiguo: 'Número ambiguo (coincide con serie A y B) — reingresar con la letra o escanear',
+  ambiguo: 'Número ambiguo (coincide con serie A y B) — reingresar con la letra',
   duplicada: 'Ya estaba registrada',
   sincronizada: 'Sincronizada',
 };
@@ -66,7 +65,7 @@ const FacturaItem = React.memo(({ factura }) => (
       </Text>
     ) : null}
     <Text style={styles.facturaDetalle}>
-      Escaneada: {factura.fecha_escaneo ? new Date(factura.fecha_escaneo).toLocaleString() : 'N/D'}
+      Ingresada: {factura.fecha_escaneo ? new Date(factura.fecha_escaneo).toLocaleString() : 'N/D'}
     </Text>
     <Text style={styles.facturaDetalle}>
       Estado: {ESTADO_LABEL[factura.status] || factura.status}
@@ -141,11 +140,11 @@ const FacturasModal = ({ visible, onClose, facturasLocales }) => {
   );
 };
 
-// Cartel de confirmación del número leído. Editable — el usuario puede corregir
-// antes de guardar (el escaneo/tipeo pueden fallar y esto es lo único que se
-// puede validar sin conexión, ya que el resto lo resuelve el servidor).
+// Cartel de confirmación del número ingresado. Editable — el usuario puede corregir
+// antes de guardar (el tipeo puede fallar y esto es lo único que se puede validar sin
+// conexión, ya que el resto lo resuelve el servidor).
 // El número de factura real es letra (A/B) + 7 dígitos (ver transformarNumFactura en el
-// server) — un valor que no matchea es casi siempre un mal escaneo, no un caso válido nuevo.
+// server) — un valor que no matchea es casi siempre un mal tipeo, no un caso válido nuevo.
 // FORMATO_SOLO_DIGITOS cubre la entrada manual: el campo "Ingresar factura manualmente"
 // tiene teclado numérico (sin letras), así que ahí el vendedor solo puede escribir los
 // dígitos — la letra la resuelve el server contra Profit (/facturas/scan, /facturas/batch-scan),
@@ -202,7 +201,7 @@ const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCa
           onPress={onCancelar}
           activeOpacity={0.85}
         >
-          <Text style={styles.modalButtonText}>Volver a escanear</Text>
+          <Text style={styles.modalButtonText}>Volver a escribir</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -211,7 +210,7 @@ const ConfirmarNumeroModal = ({ visible, valor, onChangeValor, onConfirmar, onCa
 };
 
 // Muestra los datos reales de la factura (consulta solo-lectura) para que el vendedor
-// corrobore antes de guardar — se usa cuando hay conexión al momento de escanear.
+// corrobore antes de guardar — se usa cuando hay conexión al momento de ingresarla.
 const CorroborarFacturaModal = ({ visible, datos, onConfirmar, onCancelar }) => {
   if (!datos) return null;
   const fmtFecha = (v) => {
@@ -246,7 +245,7 @@ const CorroborarFacturaModal = ({ visible, datos, onConfirmar, onCancelar }) => 
             <ModalRow label="Número completo" value={datos.num_factura_completo} />
           ) : null}
 
-          <Text style={styles.confirmSubtext}>¿Corresponde a la factura escaneada?</Text>
+          <Text style={styles.confirmSubtext}>¿Corresponde a la factura ingresada?</Text>
 
           <TouchableOpacity
             style={[styles.modalButton, styles.saveButton]}
@@ -346,7 +345,7 @@ const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
                 <FilaResultado iconName="stop-circle-outline" color={COLORS.ERROR} etiqueta="Fallidas tras varios intentos (revisar manualmente)" cantidad={fallidas} />
               )}
               {ambiguas > 0 && (
-                <FilaResultado iconName="help-circle-outline" color={COLORS.ERROR} etiqueta="Ambiguas — reingresar con la letra o escanear (revisar manualmente)" cantidad={ambiguas} />
+                <FilaResultado iconName="help-circle-outline" color={COLORS.ERROR} etiqueta="Ambiguas — reingresar con la letra (revisar manualmente)" cantidad={ambiguas} />
               )}
               {sinConexion > 0 && (
                 <FilaResultado iconName="cloud-offline-outline" color={COLORS.MUTED} etiqueta="Sin conexión durante el envío" cantidad={sinConexion} />
@@ -368,13 +367,11 @@ const ResultadoSyncModal = ({ visible, resumen, onCerrar }) => {
 };
 
 export default function FacturasScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
   const [registros, setRegistros] = useState([]); // cola persistente (AsyncStorage vía facturasSyncQueue)
   const [manualFactura, setManualFactura] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const [enviando, setEnviando] = useState(false); // encolando/sincronizando el escaneo recién confirmado
+  const [enviando, setEnviando] = useState(false); // encolando/sincronizando el número recién confirmado
   const [sincronizando, setSincronizando] = useState(false); // botón "Sincronizar ahora"
   const [currentUserCoVend, setCurrentUserCoVend] = useState(null);
   const [confirmacion, setConfirmacion] = useState(null); // { valor } | null
@@ -383,7 +380,6 @@ export default function FacturasScreen() {
   const [corroborar, setCorroborar] = useState(null); // { numero, datos } | null
 
   const isFocused = useIsFocused();
-  const scanCooldown = useRef(false);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -416,21 +412,17 @@ export default function FacturasScreen() {
     if (isFocused) cargarRegistros();
   }, [isFocused, cargarRegistros]);
 
-  // MÓDULO OFFLINE DESACTIVADO — el sync automático al recuperar conexión queda apagado.
-  // El registro de facturas ahora exige conexión al momento del escaneo. La cola persistente
-  // se mantiene SOLO como mecanismo de reintento de los ítems que el servidor devolvió como
-  // 'error' (factura marcada en Profit pero historial no escrito): se reintentan con el botón
-  // "Sincronizar ahora".
-  // useEffect(() => {
-  //   const unsubscribe = iniciarAutoSync((resumen) => {
-  //     if (resumen.enviados > 0) {
-  //       cargarRegistros();
-  //     }
-  //   });
-  //   return unsubscribe;
-  // }, [cargarRegistros]);
+  // Sync automático al recuperar conexión: sube las facturas que quedaron encoladas offline.
+  useEffect(() => {
+    const unsubscribe = iniciarAutoSync((resumen) => {
+      if (resumen.enviados > 0) {
+        cargarRegistros();
+      }
+    });
+    return unsubscribe;
+  }, [cargarRegistros]);
 
-  // Ubicación best-effort: nunca bloquea ni interrumpe el escaneo con alertas.
+  // Ubicación best-effort: nunca bloquea ni interrumpe el ingreso con alertas.
   const obtenerCoordenadas = useCallback(async () => {
     try {
       const lastLocation = await Location.getLastKnownPositionAsync();
@@ -446,35 +438,20 @@ export default function FacturasScreen() {
     }
   }, []);
 
-  // Termina el ciclo de escaneo y reabre la cámara (se llama al confirmar o cancelar).
-  const liberarEscaneo = useCallback(() => {
-    scanCooldown.current = false;
-    setScanned(false);
-  }, []);
-
-  // MÓDULO OFFLINE DESACTIVADO — el registro exige conexión al momento del escaneo.
-  // El escaneo se encola (para tener id_local y reintento) e inmediatamente se sincroniza
-  // contra el servidor. Si no hay conexión, NO se guarda nada: se avisa y el vendedor
-  // reintenta cuando tenga señal.
+  // El número se encola siempre primero (para tener id_local y reintento). Si hay conexión,
+  // se sincroniza de una vez contra el servidor; si no, queda pendiente y el auto-sync lo
+  // sube solo cuando vuelva la señal — nunca se pierde un ingreso por falta de red.
   const registrarEscaneo = useCallback(async (fact_num) => {
     setEnviando(true);
 
-    if (!(await hayConexion())) {
-      Alert.alert(
-        'Sin conexión',
-        'Necesitás conexión para registrar la factura. Volvé a intentar cuando tengas wifi o datos.'
-      );
-      setEnviando(false);
-      return;
-    }
-
+    const online = await hayConexion();
     const coords = await obtenerCoordenadas();
 
     let resultado;
     try {
       resultado = await encolarFactura({ fact_num, coordenadas: coords });
     } catch (err) {
-      Alert.alert('No se pudo guardar el escaneo', err.message || 'Intenta de nuevo.');
+      Alert.alert('No se pudo guardar la factura', err.message || 'Intenta de nuevo.');
       setEnviando(false);
       return;
     }
@@ -487,9 +464,17 @@ export default function FacturasScreen() {
 
     await cargarRegistros();
 
-    // Sincroniza este ítem ya mismo. Si el servidor lo devuelve como 'error' (marcada en
-    // Profit pero historial no escrito), queda pendiente en la cola y se reintenta con
-    // "Sincronizar ahora" hasta que el historial entre.
+    // Sin conexión: queda encolada. Se sube sola con el auto-sync al recuperar señal, o
+    // con "Sincronizar ahora".
+    if (!online) {
+      setAvisoOffline({ fact_num });
+      setEnviando(false);
+      return;
+    }
+
+    // Con conexión: sincroniza este ítem ya mismo. Si el servidor lo devuelve como 'error'
+    // (marcada en Profit pero historial no escrito), queda pendiente en la cola y se
+    // reintenta con "Sincronizar ahora" hasta que el historial entre.
     try {
       await sincronizarPendientes({ soloIdLocal: resultado.item.id_local });
       const actualizados = await obtenerFacturas();
@@ -511,24 +496,12 @@ export default function FacturasScreen() {
     }
   }, [obtenerCoordenadas, cargarRegistros]);
 
-  // Escaneo de código de barras — abre confirmación, no guarda todavía.
-  // Espacios internos (ej. "A 392416") son casi siempre ruido del lector, nunca parte
-  // real del número — se limpian antes de mostrarle el dato al vendedor.
-  const handleBarCodeScanned = useCallback(({ data }) => {
-    if (scanCooldown.current) return;
-    scanCooldown.current = true;
-    setScanned(true);
-    setConfirmacion({ valor: (data || '').replace(/\s+/g, '') });
-  }, []);
-
   const abrirConfirmacionManual = useCallback(() => {
     const num = manualFactura.trim();
     if (!num) {
       Alert.alert('Debes ingresar un número de factura.');
       return;
     }
-    scanCooldown.current = true;
-    setScanned(true);
     setConfirmacion({ valor: num });
   }, [manualFactura]);
 
@@ -536,53 +509,47 @@ export default function FacturasScreen() {
     const numero = (confirmacion?.valor || '').trim();
     setConfirmacion(null);
     setManualFactura('');
-    if (!numero) {
-      liberarEscaneo();
-      return;
-    }
+    if (!numero) return;
 
     // Formato inválido: se corta acá, nunca se guarda ni se manda al server. Antes esto
     // solo mostraba un aviso en rojo pero dejaba seguir — si el vendedor no lo notaba,
     // el ítem terminaba en el historial marcado 'invalido' hasta que alguien lo borrara
-    // a mano. Ahora directamente no se registra: alerta y vuelve a la cámara.
+    // a mano. Ahora directamente no se registra: alerta y vuelve al campo.
     if (!formatoFacturaValido(numero)) {
       Alert.alert(
-        'Código no reconocido',
-        `"${numero}" no tiene el formato de una factura (hasta 8 dígitos, con o sin la letra al inicio). Volvé a escanear.`
+        'Número no reconocido',
+        `"${numero}" no tiene el formato de una factura (hasta 8 dígitos, con o sin la letra al inicio). Volvé a escribirlo.`
       );
-      liberarEscaneo();
       return;
     }
 
     const sinLetra = FORMATO_SOLO_DIGITOS.test(numero);
 
-    // Con conexión: corroborar datos reales antes de comprometer el escaneo (marca en Profit).
+    // Con conexión: corroborar datos reales antes de comprometer el ingreso (marca en Profit).
     // Si "numero" llegó sin letra (entrada manual), el server prueba las series A y B contra
     // Profit y devuelve cuál de las dos es — de acá en adelante se usa esa versión completa
-    // (con letra) para que el resto del flujo (encolar, batch-scan) sea igual que un escaneo
-    // normal y nunca tenga que volver a resolver nada. Sin conexión: se salta la corroboración
-    // y se encola directo (registrarEscaneo se encarga de mostrar el aviso offline).
+    // (con letra) para que el resto del flujo (encolar, batch-scan) sea igual siempre y nunca
+    // tenga que volver a resolver nada. Sin conexión: se salta la corroboración y se encola
+    // directo (registrarEscaneo se encarga de mostrar el aviso offline).
     if (await hayConexion()) {
       try {
         const datos = await consultarFactura(numero);
         const numeroResuelto = sinLetra && datos?.num_factura_completo ? datos.num_factura_completo : numero;
         setCorroborar({ numero: numeroResuelto, datos });
-        return; // espera decisión del usuario en el modal; no libera cámara todavía
+        return; // espera decisión del usuario en el modal
       } catch (err) {
         if (err?.status === 400) {
-          Alert.alert('Factura ya escaneada', err?.data?.error || 'Esta factura ya fue escaneada previamente.');
-          liberarEscaneo();
+          Alert.alert('Factura ya ingresada', err?.data?.error || 'Esta factura ya fue ingresada previamente.');
           return;
         }
         if (err?.status === 409) {
           // Ambiguo de verdad (calza con una factura en la serie A y otra en la B a la vez).
-          // No se puede adivinar ni guardar así — el vendedor tiene que escanear el código
-          // de barras o escribir el número completo con la letra en este mismo cartel.
+          // No se puede adivinar ni guardar así — el vendedor tiene que escribir el número
+          // completo con la letra en este mismo cartel.
           Alert.alert(
             'Número ambiguo',
-            err?.data?.error || `"${numero}" coincide con más de una factura. Escaneá el código de barras o escribí la letra (A o B) al inicio del número.`
+            err?.data?.error || `"${numero}" coincide con más de una factura. Escribí la letra (A o B) al inicio del número.`
           );
-          liberarEscaneo();
           return;
         }
         if (err?.status === 404) {
@@ -593,25 +560,21 @@ export default function FacturasScreen() {
     }
 
     await registrarEscaneo(numero);
-    liberarEscaneo();
-  }, [confirmacion, registrarEscaneo, liberarEscaneo]);
+  }, [confirmacion, registrarEscaneo]);
 
   const confirmarCorroboracion = useCallback(async () => {
     const numero = corroborar?.numero;
     setCorroborar(null);
     if (numero) await registrarEscaneo(numero);
-    liberarEscaneo();
-  }, [corroborar, registrarEscaneo, liberarEscaneo]);
+  }, [corroborar, registrarEscaneo]);
 
   const cancelarCorroboracion = useCallback(() => {
     setCorroborar(null);
-    liberarEscaneo();
-  }, [liberarEscaneo]);
+  }, []);
 
   const cancelarConfirmacion = useCallback(() => {
     setConfirmacion(null);
-    liberarEscaneo();
-  }, [liberarEscaneo]);
+  }, []);
 
   const sincronizarAhora = useCallback(async () => {
     setSincronizando(true);
@@ -628,21 +591,6 @@ export default function FacturasScreen() {
 
   const pendientesCount = contarPendientes(registros);
 
-  if (!permission) {
-    return <Text>Solicitando permiso de cámara...</Text>;
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.permissionText}>No se concedió acceso a la cámara.</Text>
-        <TouchableOpacity style={styles.scanButton} onPress={requestPermission}>
-          <Text style={styles.scanButtonText}>Permitir cámara</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <ScrollView
       style={styles.container}
@@ -651,22 +599,38 @@ export default function FacturasScreen() {
     >
       <Text style={styles.title}>Gestión de Facturas</Text>
       <Text style={styles.subtitle}>
-        Escanea el código de barras de tu factura. Necesitás conexión: si falla, queda pendiente y podés reintentar con "Sincronizar ahora".
+        Escribí el número de factura para extender su fecha de vencimiento. Funciona sin conexión: queda guardada en el teléfono y se sincroniza sola cuando vuelva la señal.
       </Text>
 
-      <View style={styles.cameraContainer}>
-        {isFocused && permission?.granted ? (
-          <CameraView
-            onBarcodeScanned={scanned || enviando ? undefined : handleBarCodeScanned}
-            barcodeScannerSettings={{ barcodeTypes: ['code39'] }}
-            style={styles.cameraBox}
-            facing="back"
+      <View style={styles.infoBanner}>
+        <Ionicons name="information-circle" size={22} color={COLORS.INFO} style={{ marginTop: 1 }} />
+        <Text style={styles.infoBannerText}>
+          Las facturas de <Text style={styles.infoBannerFuerte}>serie B</Text> siempre empiezan con <Text style={styles.infoBannerFuerte}>72</Text>. Escribí el número completo empezando por 72 e ignorá los <Text style={styles.infoBannerFuerte}>00</Text> que aparecen al inicio en la factura física.
+        </Text>
+      </View>
+
+      <View style={styles.manualInputContainer}>
+        <Text style={styles.manualInputLabel}>
+          Ingresar factura manualmente
+        </Text>
+        <View style={styles.manualInputRow}>
+          <TextInput
+            style={styles.manualInput}
+            placeholder="Número tal como aparece en la factura"
+            value={manualFactura}
+            onChangeText={setManualFactura}
+            keyboardType="numeric"
+            returnKeyType="done"
+            onSubmitEditing={abrirConfirmacionManual}
           />
-        ) : (
-          <TouchableOpacity style={styles.scanButton} onPress={requestPermission}>
-            <Text style={styles.scanButtonText}>Permitir cámara</Text>
+          <TouchableOpacity
+            style={styles.consultButton}
+            onPress={abrirConfirmacionManual}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.consultButtonText}>Agregar</Text>
           </TouchableOpacity>
-        )}
+        </View>
       </View>
 
       {aviso && (
@@ -768,42 +732,17 @@ export default function FacturasScreen() {
         onCancelar={cancelarCorroboracion}
       />
 
-      {/* MÓDULO OFFLINE DESACTIVADO — ya no se muestra el aviso de "sin conexión / guardado en el teléfono".
       <AvisoOfflineModal
         visible={!!avisoOffline}
         factNum={avisoOffline?.fact_num}
         onCerrar={() => setAvisoOffline(null)}
       />
-      */}
 
       <ResultadoSyncModal
         visible={!!resultadoSync}
         resumen={resultadoSync}
         onCerrar={() => setResultadoSync(null)}
       />
-
-      <View style={styles.manualInputContainer}>
-        <Text style={styles.manualInputLabel}>
-          Ingresar factura manualmente
-        </Text>
-        <View style={styles.manualInputRow}>
-          <TextInput
-            style={styles.manualInput}
-            placeholder="Número tal como aparece en la factura"
-            value={manualFactura}
-            onChangeText={setManualFactura}
-            keyboardType="numeric"
-            returnKeyType="done"
-          />
-          <TouchableOpacity
-            style={styles.consultButton}
-            onPress={abrirConfirmacionManual}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.consultButtonText}>Agregar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </ScrollView>
   );
 }
