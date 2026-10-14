@@ -11,6 +11,7 @@ import GuiaCargaScreen from "../screens/GuiaCargaScreen";
 import ChequeoGuiaCargaScreen from "../screens/ChequeoGuiaCargaScreen";
 import FacturasScreen from '../screens/FacturasScreen';
 import DespachoNavigator from './DespachoNavigator';
+import DevolucionesNavigator from './DevolucionesNavigator';
 import COLORS from '../constants/Colors';
 import Theme from '../constants/Theme';
 
@@ -66,6 +67,8 @@ export default function AppNavigatorConductor() {
             iconName = focused ? "document-text" : "document-text-outline";
           } else if (route.name === "Rutagrama") {
             iconName = focused ? "map" : "map-outline";
+          } else if (route.name === "Devoluciones") {
+            iconName = focused ? "return-down-back" : "return-down-back-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -86,6 +89,7 @@ export default function AppNavigatorConductor() {
       />
       <Tab.Screen name="Facturas" component={FacturasScreen} />
       <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
+      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} />
     </Tab.Navigator>
   );
 }

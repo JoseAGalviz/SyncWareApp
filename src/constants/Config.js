@@ -26,4 +26,6 @@ export const API_ENDPOINTS = {
   FACTURAS_SCAN: "/api/facturas/scan",
   FACTURAS_BATCH_SCAN: "/api/facturas/batch-scan",
   DESPACHO: "/api/despacho",
+  RFID: "/api/rfid",
+  DEVOLUCIONES: "/api/devoluciones",
 };

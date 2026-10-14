@@ -1,5 +1,155 @@
 # Estado — SyncWareApp
 
+## Experimental: módulo RFID (pistola Chainway SR160) — 2026-09-24
+
+Módulo nuevo, separado a propósito del flujo real de Despacho (no toca
+`DespachoEscanearScreen`/`escanearCaja`): reconocer notas de entrega
+etiquetadas con RFID al escanearlas con la pistola Chainway SR160. Backend en
+`api-app` (ver su STATUS.md) — tablas `rfid_tags`/`rfid_lecturas`, endpoints
+`/api/rfid/*`.
+
+El SR160 no tiene SDK Android — se empareja como teclado Bluetooth (HID) y
+tipea el EPC de cada tag leído donde esté el cursor, exactamente el mismo
+mecanismo que ya usa `EscanerInput.js` (`MODO_BLUETOOTH`) para el lector de
+dedo Bluetooth existente. Se extrajo ese patrón (input oculto siempre
+enfocado, `showSoftInputOnFocus={false}`, `blurOnSubmit={false}`, confirma en
+`onSubmitEditing`) a un componente propio `RfidLectorInput.js`, sin el toggle
+de cámara (no aplica acá) y **sin gatear la próxima lectura por el estado de
+red** — en modo inventario (gatillo sostenido) pueden llegar varias lecturas
+en ráfaga y no hay que perderlas esperando el round-trip de la anterior.
+
+Piezas nuevas, colgadas del stack `DespachoNavigator.js` (entrada: botón
+"RFID (experimental)" en `DespachoIniciarScreen.js`):
+
+- `RfidMenuScreen.js` — landing con aviso de "experimental".
+- `RfidAsociarScreen.js` — lectura de **un** tag a la vez (a propósito, para
+  no ligar por error un lote entero al mismo tag): lee EPC, tipea nº de
+  nota, `POST /rfid/tags`. Avisa (sin bloquear) si el EPC ya estaba asociado
+  a otra nota o si la nota ya tenía otro tag.
+- `RfidEscanearScreen.js` — lectura continua tipo inventario: al montar
+  cachea `GET /rfid/tags` en memoria (`Map` epc→nota) para resolver cada
+  lectura localmente, sin round-trip por tag. "Iniciar lectura" arranca una
+  sesión (`sesion_id` local), acumula tags distintos con contador de
+  repeticiones, "Detener y guardar" manda el lote a `POST /rfid/lecturas`.
+- `rfidService.js` — mismo patrón que `despachoService.js` sobre `api.js`.
+- `Rfid.styles.js` — hoja propia, no se mezcla con `Despacho.styles.js`.
+- Ambas pantallas de captura tienen un modal "Escribir EPC manualmente"
+  (mismo patrón que `DespachoNotasCreditoScreen`) — sirve tanto de respaldo
+  en campo si falla el emparejamiento Bluetooth, como para poder ejercitar
+  el flujo sin la pistola en mano (el input HID real es invisible/sin
+  teclado táctil, `showSoftInputOnFocus={false}`).
+
+### Fix: EPC pegados en modo inventario (2026-09-24, prueba real con la SR160)
+
+Primera prueba con la pistola real (Escanear, gatillo sostenido) mostró
+lecturas con 2-6 tags concatenados en un solo renglón, sin separador — el fix
+inicial (input sin controlar + `.clear()` imperativo, ver abajo) no lo
+resolvía porque la causa no era una carrera de React: la SR160 en modo
+inventario hace rondas de barrido y **manda un solo Enter al final de cada
+ronda**, con todos los EPC detectados en esa ronda tipeados uno atrás de otro
+— no un Enter por tag.
+
+La resolvió `Proyectos/sistema_operaciones` (`ETIQUETA_RFID_DESPACHO.md`,
+`api/src/services/etiquetaRfid.ts`): ese sistema ya graba los tags de estas
+notas con `^RFW`, y el EPC que escribe **es el número de nota** con ceros a
+la izquierda hasta 24 caracteres (`nota.replace(/\D/g,'').padStart(24,'0')`)
+— no un ID opaco. Longitud fija → cualquier texto capturado se puede partir
+de forma confiable en bloques de 24.
+
+`src/utils/rfid.js` (nuevo):
+
+- `extraerEpcs(textoBruto)` — parte el buffer en EPCs de 24 caracteres,
+  descarta cualquier remanente incompleto al final.
+- `decodificarNotaDesdeEpc(epc)` — si el EPC son 24 dígitos decimales, la
+  nota es directo `Number(epc)` (saca los ceros); si no calza ese formato
+  (tag no grabado por ese flujo), devuelve `null`.
+
+`RfidEscanearScreen.onLectura` ahora parte cada flush con `extraerEpcs` y
+registra cada EPC por separado (`registrarEpc`), en vez de tratar todo el
+texto como un único código. La resolución de nota prioriza
+`decodificarNotaDesdeEpc` (instantánea, sin tabla) y cae al mapeo manual
+(`rfid_tags`) solo si el EPC no tiene ese formato — para las notas de este
+lote (grabadas por `sistema_operaciones`), **`RfidAsociarScreen` ya no hace
+falta**: solo queda como respaldo para tags no estándar. `RfidAsociarScreen`
+también decodifica y precarga el campo de nota cuando el EPC calza.
+
+La entrada manual de ambas pantallas ahora rellena con ceros a 24 igual que
+`sistema_operaciones` — se puede probar tipeando solo el nº de nota
+(`471103`) sin el EPC completo.
+
+## Probado
+
+- `npm test` completo (40 tests, todos verdes) tras agregar el módulo y
+  después del fix de EPC pegados — no rompe nada existente.
+- Caso real reportado por el usuario (3 EPC de una ronda de inventario
+  concatenados en un solo renglón) reproducido en un test descartable con
+  `extraerEpcs` — separa los 3 correctamente. `decodificarNotaDesdeEpc`
+  verificado contra el ejemplo de `ETIQUETA_RFID_DESPACHO.md`
+  (`000000000000000000471103` → `471103`) y contra un EPC no estándar
+  (devuelve `null`, cae al mapeo manual).
+
+### Integración real: prueba acotada a MERIDA (2026-09-24)
+
+A pedido del usuario, `RfidEscanearScreen` pasó de loguear solo en
+`rfid_lecturas` (tablas propias, aisladas) a **registrar de verdad** cada
+nota reconocida contra un rutagrama real — mismo endpoint que usa la pantalla
+normal de Despacho (`DespachoService.escanear`, sin `caja`: el server la
+autoincrementa, correcto acá porque cada EPC distinto es una caja física
+aunque decodifique a la misma nota). Acotado a propósito a una sola ruta,
+`region:MERIDA` (mismo código que `codigoRegion('MERIDA')` en
+`constants/rutasRegiones.js` y que `REGIONES['region:MERIDA']` en
+`despacho.controller.js`) — no es un selector genérico de rutas.
+
+El rutagrama de Merida se comparte con el flujo normal vía
+`leerActivos()`/`agregarActivo()` (helpers ya exportados de
+`DespachoIniciarScreen.js`, ahora importados desde acá): si ya hay uno
+abierto lo reusa, si no lo inicia (`DespachoService.iniciar`). Por eso
+también aparece en la lista "rutas abiertas" de `DespachoIniciarScreen` — se
+puede seguir/cerrar/finalizar desde ahí con el flujo normal, esta pantalla
+solo escanea.
+
+Cada renglón de la lista de lecturas muestra el resultado real del
+`escanear` (✓ registrada / ⚠ advertencia del server / ✗ error), no solo el
+conteo local. `decodificarNotaDesdeEpc` ya devolvía la nota sin ceros a la
+izquierda (`String(Number(epc))`), así que ya llega en el formato que espera
+el endpoint real — no hizo falta tocar nada ahí.
+
+**Notas de la ruta visibles (2026-09-24)**: se agregó la lista completa de
+notas de MERIDA (mismo `DespachoService.pendientes` que usa "Notas de esta
+ruta" en Despacho normal — `cli_des` + `fact_num`), a pedido del usuario para
+ver contra qué se está probando. Se resalta en verde (`itemRowMatch`) apenas
+una lectura RFID de la sesión registra esa nota con éxito
+(`notasReconocidasSet`, derivado de `lecturas` con `useMemo` — reactivo, sin
+estado aparte); en gris atenuado (`itemRowYaEscaneada`) si ya estaba
+escaneada de una sesión anterior (campo `ya_escaneada` del endpoint). A
+diferencia de "Notas de esta ruta" en `DespachoEscanearScreen` (que arranca
+cerrada por performance en rutas de 1000+ notas), acá arranca siempre
+visible — Merida es chica y es justamente lo que se quiere ver en la prueba;
+igual se capa el render a 200 filas por las dudas.
+
+**Caveat no resuelto (lógica compartida de `despacho.controller.js`, no
+tocada)**: `sumarCaja` tiene un `throttleCaja(id, nota)` que ignora como
+"repetido" un segundo escaneo de la MISMA nota dentro de una ventana corta
+cuando no se manda `caja` explícita. Si una nota tiene más de un tag (más de
+una caja) y ambos se leen casi al mismo tiempo en una misma ronda de
+inventario, el segundo podría no sumar caja. No se tocó ese código (es del
+flujo real compartido) — a verificar en la prueba con notas multi-caja.
+
+## Pendiente
+
+- **Confirmar en la pistola real** que ya no se pegan lecturas de distintas
+  rondas (el fix se validó con datos de prueba, no todavía con la SR160 en
+  mano tras el cambio de EPC).
+- **Probar la integración con MERIDA en la pistola real**: iniciar/reusar el
+  rutagrama, escanear notas reales de esa ruta, confirmar en `detalle` que
+  quedan marcadas igual que con el escaneo normal, y revisar el caveat del
+  throttle con una nota de más de una caja.
+- Sin rol/permiso especial por ahora, cualquier usuario logueado con acceso
+  a Despacho ve el botón "RFID (experimental)".
+- `RfidAsociarScreen` quedó como flujo secundario (tags no estándar); evaluar
+  si conviene ocultarlo o dejarlo menos visible ahora que la mayoría de los
+  tags se resuelven solos.
+
 ## 2026-09-09 — Facturas: solo entrada manual + offline reactivado
 
 Rama `feat/facturas-manual-offline` (parte de `feat/escaneo-unificado`, ya mergeada a `main`).

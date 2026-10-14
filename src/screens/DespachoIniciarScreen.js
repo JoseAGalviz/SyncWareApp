@@ -244,6 +244,14 @@ export default function DespachoIniciarScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.secondaryButton}
+        onPress={() => navigation.navigate('RfidMenu')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.secondaryButtonText}>RFID (experimental)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.secondaryButton}
         onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto1', rutaDesc: 'BQTO / S/C' })}
         activeOpacity={0.85}
       >

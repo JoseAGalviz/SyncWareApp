@@ -10,6 +10,7 @@ import FacturasScreen from "../screens/FacturasScreen";
 import DespachoScreen from "../screens/DespachoScreen";
 import LotesScreen from "../screens/LotesScreen";
 import DespachoNavigator from "./DespachoNavigator";
+import DevolucionesNavigator from "./DevolucionesNavigator";
 import Theme from "../constants/Theme";
 
 const Tab = createBottomTabNavigator();
@@ -80,6 +81,8 @@ export default function AppNavigatorDespachador() {
             iconName = focused ? "layers" : "layers-outline";
           } else if (route.name === "Rutagrama") {
             iconName = focused ? "map" : "map-outline";
+          } else if (route.name === "Devoluciones") {
+            iconName = focused ? "return-down-back" : "return-down-back-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -102,6 +105,7 @@ export default function AppNavigatorDespachador() {
       <Tab.Screen name="Despacho" component={DespachoScreen} />
       <Tab.Screen name="Lotes" component={LotesScreen} />
       <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
+      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} />
     </Tab.Navigator>
   );
 }

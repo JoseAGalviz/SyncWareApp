@@ -31,6 +31,16 @@ const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
 
 const esNotaCredito = (s) => s === 'NCR' || s === 'NDB';
 
+// Hora de generación en Profit (hora_nota / hora_factura, ver despacho.controller.js
+// listarDetalle) formateada corta, ej. "08:41 a. m.". null si Profit no respondió o el
+// dato aún no existe (factura sin generar).
+const formatoHora = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+};
+
 // Texto plano de lo que le falta a un pedido, para que el operador lo lea de un vistazo.
 // Devuelve null si el pedido está completo.
 const pendienteTexto = (f) => {
@@ -86,6 +96,7 @@ const CAMPOS_OCULTOS = new Set(['id', 'id_ca', 'reglon', 'status1', 'status2', '
 const ETIQUETAS = {
   nota: 'Nota', factura: 'Factura', descrip: 'Cliente', vendedor: 'Vendedor', peso: 'Peso',
   cajas_escaneadas: 'Cajas escaneadas', cajas_esperadas: 'Cajas esperadas', status: 'Estado',
+  hora_nota: 'Hora de la nota', hora_factura: 'Hora de la factura',
 };
 const DetalleRenglonModal = ({ item, onClose }) => (
   <Modal visible={!!item} transparent animationType="fade" onRequestClose={onClose}>
@@ -98,7 +109,11 @@ const DetalleRenglonModal = ({ item, onClose }) => (
             .map(([k, v]) => (
               <View key={k} style={styles.detailRow}>
                 <Text style={styles.detailLabel}>{ETIQUETAS[k] || k.replace(/_/g, ' ')}</Text>
-                <Text style={styles.detailValue}>{typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v ?? '—')}</Text>
+                <Text style={styles.detailValue}>
+                  {k === 'hora_nota' || k === 'hora_factura'
+                    ? formatoHora(v) || '—'
+                    : typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v ?? '—')}
+                </Text>
               </View>
             ))}
         </ScrollView>
@@ -138,11 +153,14 @@ const PendienteItem = React.memo(({ item, onPress }) => {
 const RenglonItem = React.memo(({ item, onPress, onDescartar }) => {
   const falta = pendienteTexto(item);
   const completo = !falta;
+  const horaNota = formatoHora(item.hora_nota);
+  const horaFactura = formatoHora(item.hora_factura);
   return (
   <View style={[styles.itemRow, completo && styles.itemRowCompleto]}>
     <TouchableOpacity style={styles.itemInfo} onPress={() => onPress(item)} activeOpacity={0.6}>
       <Text style={styles.itemNota}>
-        NOTA {item.nota}{item.factura && item.factura !== item.nota ? ` · FACTURA ${item.factura}` : ''}
+        NOTA {item.nota}{horaNota ? ` (${horaNota})` : ''}
+        {item.factura && item.factura !== item.nota ? ` · FACTURA ${item.factura}${horaFactura ? ` (${horaFactura})` : ''}` : ''}
       </Text>
       <Text style={styles.itemDetalle}>{item.descrip}</Text>
       <View style={{ flexDirection: 'row', gap: Theme.spacing.xs, marginTop: Theme.spacing.xs }}>
