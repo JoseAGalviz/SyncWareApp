@@ -12,6 +12,7 @@ import { quitarActivo } from './DespachoIniciarScreen';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
+import SoundManager from '../utils/SoundManager';
 
 // Un solo módulo de escaneo: se escanea nota o factura, sin orden fijo. El backend
 // clasifica el código y devuelve el estado del renglón. Cada pedido = una fila con dos
@@ -382,6 +383,19 @@ export default function DespachoEscanearScreen({ route, navigation }) {
       const res = await DespachoService.escanear(rutagramaId, { usuario_id: usuarioId, codigo });
       const f = res?.fila;
       const adv = (res?.advertencias || []).join(' · ');
+      // Escaneo doble (nota/factura ya escaneada, o la nota está en otro rutagrama abierto):
+      // aviso naranja + vibración, distinto del verde de un escaneo normal.
+      if (res?.duplicado) {
+        SoundManager.playErrorSound();
+        showMessage({
+          message: `⚠ ESCANEO DOBLE — ${f?.nota || codigo}`,
+          description: adv || 'Este código ya fue escaneado.',
+          type: 'warning',
+          duration: 4500,
+        });
+        await refrescarPostEscaneo();
+        return;
+      }
       if (res?.accion === 'caja' && f) {
         const falta = pendienteTexto(f);
         showMessage({

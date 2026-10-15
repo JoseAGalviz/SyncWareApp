@@ -8,6 +8,7 @@ import EscanerInput from '../components/EscanerInput';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
+import SoundManager from '../utils/SoundManager';
 
 // Mismo criterio que DespachoEscanearScreen: limpia el código y descarta lecturas que no
 // son nota/factura (ruido de la cámara, otros códigos de la caja).
@@ -88,7 +89,12 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
       return true;
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo confirmar el código.';
-      showMessage({ message: `NO SE PUDO ESCANEAR — ${codigo}`, description: msg, type: 'danger', duration: 3500 });
+      SoundManager.playErrorSound();
+      if (error.data?.duplicado) {
+        showMessage({ message: `⚠ ESCANEO DOBLE — ${codigo}`, description: msg, type: 'warning', duration: 4500 });
+      } else {
+        showMessage({ message: `NO SE PUDO ESCANEAR — ${codigo}`, description: msg, type: 'danger', duration: 3500 });
+      }
       return false;
     } finally {
       setGuardando(false);
