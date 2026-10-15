@@ -1,10 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { showMessage } from 'react-native-flash-message';
+import { useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
+import { useModoEscaneo } from '../hooks/useModoEscaneo';
+import EscanerInput from '../components/EscanerInput';
 import styles from '../styles/Despacho.styles';
 import Theme from '../constants/Theme';
 import { DespachoService } from '../services/despachoService';
+
+// Mismo criterio que DespachoEscanearScreen: limpia el código y descarta lecturas que no
+// son nota/factura (ruido de la cámara, otros códigos de la caja).
+const limpiarCodigo = (raw) => String(raw || '').trim().replace(/\s+/g, '').toUpperCase();
+const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
+const COOLDOWN_MS = 900;
 
 const RenglonItem = React.memo(({ item }) => (
   <View style={styles.itemRow}>
@@ -27,6 +36,8 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
   const { rutagramaId, usuarioId } = route.params;
   const [permission, requestPermission] = useCameraPermissions();
   const isFocused = useIsFocused();
+  const { modo, setModo } = useModoEscaneo();
+  const ultimoEscaneoRef = useRef({ codigo: null, ts: 0 });
 
   const [cargado, setCargado] = useState(null);
   const [items, setItems] = useState([]);
@@ -58,27 +69,50 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
   const completo = items.length > 0 && recibidos === items.length;
   const yaRecibido = cargado?.estatus === 'E';
 
-  const confirmarCodigo = useCallback(async (codigo) => {
-    if (!codigo) return;
+  // Devuelve true si se confirmó. Feedback con showMessage (no Alert): un Alert por cada
+  // lectura fallida bloqueaba la pantalla, y `scanned` quedaba en true tras un error, así
+  // que la cámara dejaba de leer hasta salir de la pantalla.
+  const confirmarCodigo = useCallback(async (codigoRaw) => {
+    const codigo = limpiarCodigo(codigoRaw);
+    if (!codigo) return false;
     setGuardando(true);
     try {
-      await DespachoService.escanearEnlace(rutagramaId, { usuario_id: usuarioId, codigo });
-      setCodigoManual(null);
-      setScanned(false);
+      const res = await DespachoService.escanearEnlace(rutagramaId, { usuario_id: usuarioId, codigo });
+      showMessage({
+        message: `RECIBIDA NOTA ${res?.nota || codigo}`,
+        description: `${res?.descrip || ''}\nRecibidos ${res?.recibidos ?? '?'}/${res?.total ?? '?'}`.trim(),
+        type: 'success',
+        duration: 2000,
+      });
       await cargarDetalle();
+      return true;
     } catch (error) {
       const msg = error.data?.error || error.message || 'No se pudo confirmar el código.';
-      Alert.alert('Error al escanear', msg);
+      showMessage({ message: `NO SE PUDO ESCANEAR — ${codigo}`, description: msg, type: 'danger', duration: 3500 });
+      return false;
     } finally {
       setGuardando(false);
     }
   }, [rutagramaId, usuarioId, cargarDetalle]);
 
-  const handleBarCodeScanned = useCallback(({ data }) => {
+  const handleEscaneo = useCallback((dataRaw) => {
     if (scanned) return;
+    const codigo = limpiarCodigo(dataRaw);
+    if (!codigo || !FORMATO_VALIDO.test(codigo)) return; // ruido del lector
+    const ahora = Date.now();
+    if (codigo === ultimoEscaneoRef.current.codigo && ahora - ultimoEscaneoRef.current.ts < COOLDOWN_MS) return;
+    ultimoEscaneoRef.current = { codigo, ts: ahora };
     setScanned(true);
-    confirmarCodigo((data || '').replace(/\s+/g, ''));
+    confirmarCodigo(codigo).finally(() => setScanned(false));
   }, [scanned, confirmarCodigo]);
+
+  const guardarManual = useCallback(async () => {
+    const ok = await confirmarCodigo(codigoManual);
+    if (ok) {
+      setCodigoManual(null);
+      setScanned(false);
+    }
+  }, [codigoManual, confirmarCodigo]);
 
   const escribirManualmente = useCallback(() => {
     setScanned(true);
@@ -145,11 +179,13 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
 
       {!yaRecibido && (
         <>
-          <View style={styles.cameraContainer}>
-            {isFocused ? (
-              <CameraView onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.cameraBox} facing="back" />
-            ) : null}
-          </View>
+          <EscanerInput
+            modo={modo}
+            setModo={setModo}
+            isFocused={isFocused && codigoManual === null && !mostrarCierre}
+            disabled={scanned}
+            onScan={handleEscaneo}
+          />
           <TouchableOpacity style={styles.secondaryButton} onPress={escribirManualmente} activeOpacity={0.85}>
             <Text style={styles.secondaryButtonText}>Escribir nota/factura manualmente</Text>
           </TouchableOpacity>
@@ -198,7 +234,7 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
             />
             <TouchableOpacity
               style={[styles.primaryButton, guardando && styles.buttonDisabled]}
-              onPress={() => confirmarCodigo(codigoManual)}
+              onPress={guardarManual}
               disabled={guardando}
               activeOpacity={0.85}
             >
