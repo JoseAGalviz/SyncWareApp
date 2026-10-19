@@ -132,14 +132,17 @@ const PendienteItem = React.memo(({ item, onPress }) => {
   return (
     <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemNota}>Nota {item.fact_num}</Text>
+        <Text style={styles.itemNota}>{item.es_valija ? 'Valija' : 'Nota'} {item.fact_num}</Text>
         <Text style={styles.itemDetalle}>{item.cli_des}</Text>
         <View style={{ flexDirection: 'row', gap: Theme.spacing.xs, marginTop: Theme.spacing.xs }}>
-          <View style={[styles.statusPill, tieneFactura ? styles.statusVerificada : styles.statusEscaneada]}>
-            <Text style={[styles.statusPillText, tieneFactura ? styles.statusTextVerificada : styles.statusTextEscaneada]}>
-              {tieneFactura ? `Fact ${item.factura_generada}` : 'sin factura'}
-            </Text>
-          </View>
+          {/* Valija de sistema_operaciones: no lleva factura. */}
+          {!item.es_valija && (
+            <View style={[styles.statusPill, tieneFactura ? styles.statusVerificada : styles.statusEscaneada]}>
+              <Text style={[styles.statusPillText, tieneFactura ? styles.statusTextVerificada : styles.statusTextEscaneada]}>
+                {tieneFactura ? `Fact ${item.factura_generada}` : 'sin factura'}
+              </Text>
+            </View>
+          )}
           <View style={[styles.statusPill, item.ya_escaneada ? styles.statusVerificada : styles.statusPendiente]}>
             <Text style={[styles.statusPillText, item.ya_escaneada ? styles.statusTextVerificada : styles.statusTextPendiente]}>
               {item.ya_escaneada ? 'escaneada' : 'pendiente'}
@@ -160,7 +163,7 @@ const RenglonItem = React.memo(({ item, onPress, onDescartar }) => {
   <View style={[styles.itemRow, completo && styles.itemRowCompleto]}>
     <TouchableOpacity style={styles.itemInfo} onPress={() => onPress(item)} activeOpacity={0.6}>
       <Text style={styles.itemNota}>
-        NOTA {item.nota}{horaNota ? ` (${horaNota})` : ''}
+        {item.status === 'VAL*' ? 'VALIJA' : 'NOTA'} {item.nota}{horaNota ? ` (${horaNota})` : ''}
         {item.factura && item.factura !== item.nota ? ` · FACTURA ${item.factura}${horaFactura ? ` (${horaFactura})` : ''}` : ''}
       </Text>
       <Text style={styles.itemDetalle}>{item.descrip}</Text>
