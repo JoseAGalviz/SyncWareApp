@@ -23,6 +23,7 @@ import Theme from '../constants/Theme';
 import { api } from '../services/api';
 import COLORS from '../constants/Colors';
 import styles from '../styles/MontarPedidoScreen.styles';
+import AppHeader from '../components/AppHeader';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -33,7 +34,7 @@ const AVATAR_COLORS = [
     '#ec4899', // pink-500
     '#f43f5e', // rose-500
     COLORS.WARNING, // amber-500
-    '#10b981', // emerald-500
+    Theme.colors.primary, // emerald-500
     '#06b6d4', // cyan-500
     '#3b82f6', // blue-500
 ];
@@ -85,7 +86,7 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
     const activeTierIdx = activeTier ? tiers.indexOf(activeTier) : -1;
     const nextTier = activeTierIdx >= 0 ? tiers[activeTierIdx + 1] : tiers.find(t => currentQty < t.hasta);
     const isMaxTier = activeTier && !nextTier;
-    const barColor = activeTier ? '#10b981' : Theme.colors.primary;
+    const barColor = activeTier ? Theme.colors.primary : Theme.colors.primary;
 
     if (compact) {
         const statusText = activeTier
@@ -97,16 +98,16 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
                 : '');
         return (
             <View style={{ marginTop: 5 }}>
-                <View style={{ height: 5, backgroundColor: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+                <View style={{ height: 5, backgroundColor: Theme.colors.border, borderRadius: 3, overflow: 'hidden' }}>
                     <View style={{ height: '100%', width: `${fillPct}%`, backgroundColor: barColor, borderRadius: 3 }} />
                     {tiers.slice(0, -1).map((tier, idx) => (
                         <View key={idx} style={{
                             position: 'absolute', left: `${(tier.hasta / maxQty) * 100}%`,
-                            top: 0, bottom: 0, width: 1.5, backgroundColor: '#fff', opacity: 0.8
+                            top: 0, bottom: 0, width: 1.5, backgroundColor: Theme.colors.white, opacity: 0.8
                         }} />
                     ))}
                 </View>
-                <Text style={{ fontSize: 9, color: activeTier ? '#047857' : Theme.colors.muted, marginTop: 2, fontWeight: activeTier ? '700' : '500' }}>
+                <Text style={{ fontSize: 9, color: activeTier ? Theme.colors.primaryDark : Theme.colors.muted, marginTop: 2, fontWeight: activeTier ? '700' : '500' }}>
                     {statusText}
                 </Text>
             </View>
@@ -116,12 +117,12 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
     return (
         <View style={{ marginTop: 8 }}>
             {/* Progress bar */}
-            <View style={{ height: 10, backgroundColor: '#e5e7eb', borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
+            <View style={{ height: 10, backgroundColor: Theme.colors.border, borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
                 <View style={{ height: '100%', width: `${fillPct}%`, backgroundColor: barColor, borderRadius: 5 }} />
                 {tiers.slice(0, -1).map((tier, idx) => (
                     <View key={idx} style={{
                         position: 'absolute', left: `${(tier.hasta / maxQty) * 100}%`,
-                        top: 0, bottom: 0, width: 2, backgroundColor: '#fff', opacity: 0.9
+                        top: 0, bottom: 0, width: 2, backgroundColor: Theme.colors.white, opacity: 0.9
                     }} />
                 ))}
             </View>
@@ -133,14 +134,14 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
                     return (
                         <View key={idx} style={{ alignItems: 'center', gap: 2 }}>
                             <View style={{
-                                backgroundColor: isActive ? '#10b981' : (isReached ? barColor : '#e5e7eb'),
+                                backgroundColor: isActive ? Theme.colors.primary : (isReached ? barColor : Theme.colors.border),
                                 borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3,
                             }}>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: (isActive || isReached) ? '#fff' : '#9ca3af' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: (isActive || isReached) ? Theme.colors.white : Theme.colors.light }}>
                                     -{tier.porc}%
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 8, color: '#9ca3af' }}>{'≥'}{tier.hasta}</Text>
+                            <Text style={{ fontSize: 8, color: Theme.colors.light }}>{'≥'}{tier.hasta}</Text>
                         </View>
                     );
                 })}
@@ -149,12 +150,12 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
             {activeTier ? (
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
-                    backgroundColor: '#ecfdf5', borderRadius: 8,
+                    backgroundColor: Theme.colors.primaryLight, borderRadius: 8,
                     paddingHorizontal: 10, paddingVertical: 6,
-                    borderWidth: 1, borderColor: '#a7f3d0',
+                    borderWidth: 1, borderColor: Theme.colors.primaryBorder,
                 }}>
-                    <MaterialIcons name="check-circle" size={14} color="#10b981" />
-                    <Text style={{ fontSize: 11, color: '#065f46', fontWeight: '700', flex: 1 }}>
+                    <MaterialIcons name="check-circle" size={14} color={Theme.colors.primary} />
+                    <Text style={{ fontSize: 11, color: Theme.colors.primaryDark, fontWeight: '700', flex: 1 }}>
                         {isMaxTier
                             ? `-${activeTier.porc}% activo · escala máxima alcanzada`
                             : `-${activeTier.porc}% activo · faltan ${nextTier.hasta - currentQty} ud${nextTier.hasta - currentQty !== 1 ? 's' : ''} para -${nextTier.porc}%`}
@@ -163,9 +164,9 @@ const ScaleProgressBar = ({ tiers, currentQty, compact = false }) => {
             ) : tiers[0] && currentQty < tiers[0].hasta ? (
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
-                    backgroundColor: '#eff6ff', borderRadius: 8,
+                    backgroundColor: Theme.colors.infoLight, borderRadius: 8,
                     paddingHorizontal: 10, paddingVertical: 6,
-                    borderWidth: 1, borderColor: '#bfdbfe',
+                    borderWidth: 1, borderColor: Theme.colors.border,
                 }}>
                     <MaterialIcons name="trending-up" size={14} color={Theme.colors.primary} />
                     <Text style={{ fontSize: 11, color: Theme.colors.primaryDark || Theme.colors.primary, fontWeight: '600', flex: 1 }}>
@@ -831,18 +832,18 @@ const MontarPedidoScreen = ({ navigation }) => {
         let bgColor, textColor, borderColor, valueColor;
 
         if (colorType === 'amber') {
-            bgColor = '#fffbeb'; // amber-50
-            textColor = '#b45309'; // amber-700
-            borderColor = '#fde68a'; // amber-200
-            valueColor = '#92400e'; // amber-800
+            bgColor = Theme.colors.warningLight; // amber-50
+            textColor = Theme.colors.warningDark; // amber-700
+            borderColor = Theme.colors.warningBorder; // amber-200
+            valueColor = Theme.colors.warningDark; // amber-800
         } else if (colorType === 'emerald') {
-            bgColor = '#ecfdf5'; // emerald-50
-            textColor = '#047857'; // emerald-700
-            borderColor = '#a7f3d0'; // emerald-200
-            valueColor = '#065f46'; // emerald-800
+            bgColor = Theme.colors.primaryLight; // emerald-50
+            textColor = Theme.colors.primaryDark; // emerald-700
+            borderColor = Theme.colors.primaryBorder; // emerald-200
+            valueColor = Theme.colors.primaryDark; // emerald-800
         } else {
             bgColor = COLORS.WHITE;
-            textColor = '#64748b'; // slate-500
+            textColor = Theme.colors.muted; // slate-500
             borderColor = COLORS.BORDER; // slate-200
             valueColor = COLORS.PRIMARY; // primary
         }
@@ -876,14 +877,14 @@ const MontarPedidoScreen = ({ navigation }) => {
                         />
                         <View style={styles.imageBadgeContainer}>
                             {product.categoryDiscount > 0 && (
-                                <View style={[styles.productImageBadge, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
-                                    <MaterialIcons name="local-offer" size={10} color="#b45309" />
-                                    <Text style={[styles.imageBadgeText, { color: '#b45309' }]}>-{product.categoryDiscount}%</Text>
+                                <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.warningLight, borderColor: Theme.colors.warningBorder }]}>
+                                    <MaterialIcons name="local-offer" size={10} color={Theme.colors.warningDark} />
+                                    <Text style={[styles.imageBadgeText, { color: Theme.colors.warningDark }]}>-{product.categoryDiscount}%</Text>
                                 </View>
                             )}
                             {product.lineDiscount > 0 && (
-                                <View style={[styles.productImageBadge, { backgroundColor: '#dcfce7', borderColor: '#86efac' }]}>
-                                    <MaterialIcons name="auto-awesome" size={10} color="#166534" />
+                                <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primaryBorder }]}>
+                                    <MaterialIcons name="auto-awesome" size={10} color={Theme.colors.primaryDark} />
                                     <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS }]}>-{product.lineDiscount}%</Text>
                                 </View>
                             )}
@@ -918,11 +919,11 @@ const MontarPedidoScreen = ({ navigation }) => {
                             </View>
                         </View>
                         <View style={{ marginTop: 6, flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                            <Text style={{ fontSize: 11, color: '#6b7280' }}>Base: {product.basePriceLabel}</Text>
+                            <Text style={{ fontSize: 11, color: Theme.colors.muted }}>Base: {product.basePriceLabel}</Text>
                             {product.hasIva ? (
-                                <Text style={{ fontSize: 11, color: '#b45309' }}>IVA: +{product.ivaAmountLabel}</Text>
+                                <Text style={{ fontSize: 11, color: Theme.colors.warningDark }}>IVA: +{product.ivaAmountLabel}</Text>
                             ) : (
-                                <Text style={{ fontSize: 11, color: '#6b7280' }}>Sin IVA</Text>
+                                <Text style={{ fontSize: 11, color: Theme.colors.muted }}>Sin IVA</Text>
                             )}
                         </View>
                         {!product.categoryDiscount && !product.provDiscount && product.escala && product.escala.length > 0 && (
@@ -1030,7 +1031,7 @@ const MontarPedidoScreen = ({ navigation }) => {
 
                         {parseFloat(item.desc_glob || 0) > 0 && (
                             <View style={[styles.clientDetailItem, styles.clientDiscountTag]}>
-                                <MaterialIcons name="local-offer" size={12} color="#b45309" />
+                                <MaterialIcons name="local-offer" size={12} color={Theme.colors.warningDark} />
                                 <Text style={styles.clientDiscountText}>
                                     {Math.round(parseFloat(item.desc_glob))}% DESC
                                 </Text>
@@ -1056,19 +1057,9 @@ const MontarPedidoScreen = ({ navigation }) => {
     // Client Selection View
     if (!selectedClient) {
         return (
-            <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" />
-                <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                            <MaterialIcons name="arrow-back-ios" size={20} color="#64748b" />
-                        </TouchableOpacity>
-                        <View>
-                            <Text style={styles.headerTitle}>PEDIDOS</Text>
-                            <Text style={styles.headerSubtitle}>SELECCIONAR CLIENTE</Text>
-                        </View>
-                    </View>
-                </View>
+            <View style={styles.container}>
+                <StatusBar barStyle="light-content" />
+                <AppHeader title="Pedidos" subtitle="Selecciona el cliente" onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined} />
 
                 <View style={styles.searchContainer}>
                     <View style={styles.searchInputWrapper}>
@@ -1103,28 +1094,20 @@ const MontarPedidoScreen = ({ navigation }) => {
                         </View>
                     }
                 />
-            </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
 
-            {/* Custom Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={handleBackToClients} style={styles.backButton}>
-                        <MaterialIcons name="arrow-back-ios" size={20} color="#64748b" />
-                    </TouchableOpacity>
-                    <View style={{ justifyContent: 'center' }}>
-                        <Text style={styles.headerTitle}>PEDIDOS</Text>
-                        <Text style={styles.headerSubtitle} numberOfLines={1}>
-                            {selectedClient?.cli_des || "Cliente Seleccionado"}
-                        </Text>
-                    </View>
-                </View>
-            </View>
+            {/* Encabezado del diseño: cliente seleccionado; "volver" regresa a la lista de clientes. */}
+            <AppHeader
+                title={selectedClient?.cli_des || "Cliente seleccionado"}
+                subtitle={selectedClient?.co_cli ? `Cliente · ${selectedClient.co_cli}` : 'Pedido'}
+                onBack={handleBackToClients}
+            />
 
             <MontarPedidoListHeader
                 searchQuery={searchQuery}
@@ -1145,17 +1128,27 @@ const MontarPedidoScreen = ({ navigation }) => {
                 removeClippedSubviews={Platform.OS === 'android'}
             />
 
-            {/* Floating Action Button - Replaces Bottom Bar */}
-            <TouchableOpacity style={styles.fab} onPress={() => setCartModalVisible(true)}>
-                <View style={styles.fabIconContainer}>
-                    <MaterialIcons name="shopping-cart" size={28} color={COLORS.WHITE} />
-                    {cartItemsCount > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{cartItemsCount}</Text>
-                        </View>
-                    )}
+            {/* Barra del pedido (diseño "Montar Pedido"): total neto + abrir el carrito para confirmar. */}
+            <View style={styles.barraPedido}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.barraPedidoMeta}>
+                        {cartItemsCount} {cartItemsCount === 1 ? 'unidad' : 'unidades'} · {cart.length} producto(s)
+                    </Text>
+                    <Text style={styles.barraPedidoTotal}>
+                        {cartTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </Text>
                 </View>
-            </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.barraPedidoBoton, cartItemsCount === 0 && { opacity: 0.5 }]}
+                    onPress={() => setCartModalVisible(true)}
+                    disabled={cartItemsCount === 0}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                >
+                    <MaterialIcons name="shopping-cart" size={20} color={COLORS.WHITE} />
+                    <Text style={styles.barraPedidoBotonTexto}>VER PEDIDO</Text>
+                </TouchableOpacity>
+            </View>
 
             <CartModal
                 visible={cartModalVisible}
@@ -1185,7 +1178,7 @@ const MontarPedidoScreen = ({ navigation }) => {
                 scaleTiers={getScaleTiers(selectedProductForDetail?.co_prov)}
                 providerQtyInCart={getProviderQtyInCart(selectedProductForDetail?.co_prov)}
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -1346,14 +1339,14 @@ const CartModal = ({
         let bgColor, textColor, borderColor, valueColor;
 
         if (colorType === 'amber') {
-            bgColor = isSelected ? '#fff7ed' : '#fffbeb';
-            textColor = '#b45309';
-            borderColor = isSelected ? '#f97316' : '#fde68a';
-            valueColor = '#92400e';
+            bgColor = isSelected ? Theme.colors.warningLight : Theme.colors.warningLight;
+            textColor = Theme.colors.warningDark;
+            borderColor = isSelected ? Theme.colors.warning : Theme.colors.warningBorder;
+            valueColor = Theme.colors.warningDark;
         } else {
-            bgColor = isSelected ? '#f0fdf4' : COLORS.WHITE;
-            textColor = '#64748b';
-            borderColor = isSelected ? '#22c55e' : COLORS.BORDER;
+            bgColor = isSelected ? Theme.colors.primaryLight : COLORS.WHITE;
+            textColor = Theme.colors.muted;
+            borderColor = isSelected ? Theme.colors.primary : COLORS.BORDER;
             valueColor = COLORS.PRIMARY;
         }
 
@@ -1370,7 +1363,7 @@ const CartModal = ({
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Text style={[styles.discountTag, { color: textColor }]} numberOfLines={2}>{item.tiempo}</Text>
                     {isSelected && (
-                        <MaterialIcons name="check-circle" size={16} color={colorType === 'amber' ? '#f97316' : '#22c55e'} />
+                        <MaterialIcons name="check-circle" size={16} color={colorType === 'amber' ? Theme.colors.warning : Theme.colors.primary} />
                     )}
                 </View>
                 <Text style={[styles.discountValue, { color: valueColor }]}>{item.porcentaje}%</Text>
@@ -1393,14 +1386,14 @@ const CartModal = ({
                             {cartItems.length > 0 && (
                                 <TouchableOpacity
                                     onPress={onClearCart}
-                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.errorLight, borderWidth: 1, borderColor: Theme.colors.errorBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
                                 >
-                                    <MaterialIcons name="delete-sweep" size={16} color="#ef4444" />
-                                    <Text style={{ fontSize: 12, color: '#ef4444', fontWeight: '600', marginLeft: 4 }}>Limpiar</Text>
+                                    <MaterialIcons name="delete-sweep" size={16} color={Theme.colors.error} />
+                                    <Text style={{ fontSize: 12, color: Theme.colors.error, fontWeight: '600', marginLeft: 4 }}>Limpiar</Text>
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                                <MaterialIcons name="close" size={24} color="#64748b" />
+                                <MaterialIcons name="close" size={24} color={Theme.colors.muted} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -1410,7 +1403,7 @@ const CartModal = ({
                     {scaleBreakdown.length > 0 && (
                         <View style={styles.cartSection}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' }} />
+                                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Theme.colors.primary }} />
                                 <Text style={styles.sectionTitle}>Descuentos por Volumen</Text>
                             </View>
                             <ScrollView
@@ -1422,17 +1415,17 @@ const CartModal = ({
                                     <View key={idx} style={[styles.scaleBreakdownRow, { borderRadius: 10, marginBottom: 6, padding: 10 }]}>
                                         <View style={{
                                             width: 34, height: 34, borderRadius: 17,
-                                            backgroundColor: '#10b981', alignItems: 'center',
+                                            backgroundColor: Theme.colors.primary, alignItems: 'center',
                                             justifyContent: 'center', marginRight: 10,
                                         }}>
-                                            <MaterialIcons name="trending-up" size={17} color="#fff" />
+                                            <MaterialIcons name="trending-up" size={17} color={Theme.colors.white} />
                                         </View>
                                         <View style={styles.scaleBreakdownInfo}>
                                             <Text style={styles.scaleBreakdownProv}>Prov. {item.co_prov}</Text>
                                             <Text style={styles.scaleBreakdownDetail}>{item.qty} unidades · tier -{item.porc}%</Text>
                                         </View>
                                         <View style={{ alignItems: 'flex-end' }}>
-                                            <Text style={{ fontSize: 9, color: '#047857', fontWeight: '600', marginBottom: 1 }}>AHORRO</Text>
+                                            <Text style={{ fontSize: 9, color: Theme.colors.primaryDark, fontWeight: '600', marginBottom: 1 }}>AHORRO</Text>
                                             <Text style={[styles.scaleBreakdownAmount, { fontSize: 14 }]}>
                                                 -{item.discount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                             </Text>
@@ -1492,7 +1485,7 @@ const CartModal = ({
                                         <View style={styles.cartQuantitySection}>
                                             <View style={styles.quantitySelectorSm}>
                                                 <TouchableOpacity onPress={() => onDecrement(item)} style={styles.quantityButtonSm}>
-                                                    <MaterialIcons name="remove" size={14} color="#ef4444" />
+                                                    <MaterialIcons name="remove" size={14} color={Theme.colors.error} />
                                                 </TouchableOpacity>
                                                 <TextInput
                                                     style={styles.quantityTextSm}
@@ -1512,7 +1505,7 @@ const CartModal = ({
                                                 onPress={() => onRemoveItem(item)}
                                                 style={styles.cartDeleteButton}
                                             >
-                                                <MaterialIcons name="delete" size={15} color="#ef4444" />
+                                                <MaterialIcons name="delete" size={15} color={Theme.colors.error} />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -1527,12 +1520,12 @@ const CartModal = ({
                         {(scaleDiscountTotal > 0 || discountAmount > 0) && (
                             <View style={{
                                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                                gap: 6, backgroundColor: '#ecfdf5', borderRadius: 10,
+                                gap: 6, backgroundColor: Theme.colors.primaryLight, borderRadius: 10,
                                 paddingVertical: 8, paddingHorizontal: 12,
-                                borderWidth: 1, borderColor: '#a7f3d0', marginBottom: 10,
+                                borderWidth: 1, borderColor: Theme.colors.primaryBorder, marginBottom: 10,
                             }}>
-                                <MaterialIcons name="savings" size={16} color="#10b981" />
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#065f46' }}>
+                                <MaterialIcons name="savings" size={16} color={Theme.colors.primary} />
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: Theme.colors.primaryDark }}>
                                     Ahorras {(scaleDiscountTotal + discountAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} en este pedido
                                 </Text>
                             </View>
@@ -1547,10 +1540,10 @@ const CartModal = ({
                             {scaleDiscountTotal > 0 && (
                                 <View style={styles.summaryRow}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                        <MaterialIcons name="trending-up" size={12} color="#047857" />
-                                        <Text style={[styles.summaryLabel, { color: '#047857' }]}>Desc. por Volumen</Text>
+                                        <MaterialIcons name="trending-up" size={12} color={Theme.colors.primaryDark} />
+                                        <Text style={[styles.summaryLabel, { color: Theme.colors.primaryDark }]}>Desc. por Volumen</Text>
                                     </View>
-                                    <Text style={[styles.summaryValue, { color: '#047857' }]}>
+                                    <Text style={[styles.summaryValue, { color: Theme.colors.primaryDark }]}>
                                         -{scaleDiscountTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                     </Text>
                                 </View>
@@ -1559,12 +1552,12 @@ const CartModal = ({
                             {selectedDiscounts.length > 0 && (
                                 <View style={styles.summaryRow}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                        <MaterialIcons name="local-offer" size={12} color="#b45309" />
-                                        <Text style={[styles.summaryLabel, { color: '#b45309' }]}>
+                                        <MaterialIcons name="local-offer" size={12} color={Theme.colors.warningDark} />
+                                        <Text style={[styles.summaryLabel, { color: Theme.colors.warningDark }]}>
                                             Desc. Pago ({totalDiscountPercentageText})
                                         </Text>
                                     </View>
-                                    <Text style={[styles.summaryValue, { color: '#b45309' }]}>
+                                    <Text style={[styles.summaryValue, { color: Theme.colors.warningDark }]}>
                                         -{discountAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                     </Text>
                                 </View>
@@ -1634,7 +1627,7 @@ const ProductDetailModal = ({
                             <Text style={styles.modalSubtitle}>COD: {product.co_art}</Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <MaterialIcons name="close" size={24} color="#64748b" />
+                            <MaterialIcons name="close" size={24} color={Theme.colors.muted} />
                         </TouchableOpacity>
                     </View>
 
@@ -1677,14 +1670,14 @@ const ProductDetailModal = ({
                                 </View>
                                 <View style={styles.detailBadgeRow}>
                                     {product.categoryDiscount > 0 && (
-                                        <View style={[styles.productImageBadge, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
-                                            <MaterialIcons name="local-offer" size={14} color="#b45309" />
-                                            <Text style={[styles.imageBadgeText, { color: '#b45309', fontSize: 12 }]}>-{product.categoryDiscount}% Cat.</Text>
+                                        <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.warningLight, borderColor: Theme.colors.warningBorder }]}>
+                                            <MaterialIcons name="local-offer" size={14} color={Theme.colors.warningDark} />
+                                            <Text style={[styles.imageBadgeText, { color: Theme.colors.warningDark, fontSize: 12 }]}>-{product.categoryDiscount}% Cat.</Text>
                                         </View>
                                     )}
                                     {product.lineDiscount > 0 && (
-                                        <View style={[styles.productImageBadge, { backgroundColor: '#dcfce7', borderColor: '#86efac' }]}>
-                                            <MaterialIcons name="auto-awesome" size={14} color="#166534" />
+                                        <View style={[styles.productImageBadge, { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primaryBorder }]}>
+                                            <MaterialIcons name="auto-awesome" size={14} color={Theme.colors.primaryDark} />
                                             <Text style={[styles.imageBadgeText, { color: COLORS.SUCCESS, fontSize: 12 }]}>-{product.lineDiscount}% Línea</Text>
                                         </View>
                                     )}
@@ -1740,7 +1733,7 @@ const ProductDetailModal = ({
                                                 <Text style={[styles.scaleTablePorc, isActive && styles.scaleTablePorcActive]}>
                                                     -{tier.porc}%
                                                 </Text>
-                                                {isActive && <MaterialIcons name="check-circle" size={14} color="#10b981" style={{ marginLeft: 4 }} />}
+                                                {isActive && <MaterialIcons name="check-circle" size={14} color={Theme.colors.primary} style={{ marginLeft: 4 }} />}
                                             </View>
                                         );
                                     })}

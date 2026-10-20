@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/FacturasScreen.styles';
 import COLORS from '../constants/Colors';
+import { Pill } from '../components/ui';
 import {
   obtenerFacturas,
   contarPendientes,
@@ -46,6 +47,22 @@ const MOTIVO_FECHA_LABEL = {
   sin_dias_credito: 'sin cambios — cliente sin días de crédito configurados',
   cliente_no_encontrado: 'sin cambios — cliente de la factura no encontrado en el sistema',
 };
+
+// Estado resumido para la lista "Recientes" (pastilla del diseño + detalle opcional).
+function estadoCorto(f) {
+  if (f.status === 'sincronizada') {
+    if (!f.fec_venc_despues && f.motivo_fecha_no_modificada) {
+      return { tono: 'rojo', label: 'Sin actualizar', detalle: `Motivo: ${MOTIVO_FECHA_LABEL[f.motivo_fecha_no_modificada] || f.motivo_fecha_no_modificada}` };
+    }
+    return { tono: 'verde', label: 'Sincronizada', detalle: f.fec_venc_despues ? `Vence: ${f.fec_venc_despues}` : null };
+  }
+  if (f.status === 'duplicada') return { tono: 'azul', label: 'Ya registrada', detalle: null };
+  if (f.status === 'pendiente') return { tono: 'ambar', label: 'Pendiente', detalle: null };
+  if (f.status === 'no_encontrada' || f.status === 'error') {
+    return { tono: 'ambar', label: 'Reintentando', detalle: ESTADO_LABEL[f.status] };
+  }
+  return { tono: 'rojo', label: 'Revisar', detalle: f.ultimoError || ESTADO_LABEL[f.status] || f.status };
+}
 
 // Componente para mostrar filas en el modal
 const ModalRow = ({ label, value }) => (
@@ -597,7 +614,6 @@ export default function FacturasScreen() {
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>Gestión de Facturas</Text>
       <Text style={styles.subtitle}>
         Escribí el número de factura para extender su fecha de vencimiento. Funciona sin conexión: queda guardada en el teléfono y se sincroniza sola cuando vuelva la señal.
       </Text>
@@ -646,6 +662,27 @@ export default function FacturasScreen() {
         </View>
       )}
 
+      {registros.length > 0 && (
+        <View style={styles.recientes}>
+          <Text style={styles.recientesTitulo}>Recientes</Text>
+          {[...registros]
+            .sort((a, b) => String(b.fecha_escaneo || '').localeCompare(String(a.fecha_escaneo || '')))
+            .slice(0, 5)
+            .map((f) => {
+              const est = estadoCorto(f);
+              return (
+                <View key={`${f.fact_num}-${f.fecha_escaneo}`} style={styles.recienteFila}>
+                  <View style={styles.recienteCabecera}>
+                    <Text style={styles.recienteNumero}>{f.fact_num}</Text>
+                    <Pill tono={est.tono}>{est.label}</Pill>
+                  </View>
+                  {est.detalle ? <Text style={styles.recienteDetalle}>{est.detalle}</Text> : null}
+                </View>
+              );
+            })}
+        </View>
+      )}
+
       <View style={styles.buttonGroup}>
         <TouchableOpacity
           style={styles.tableButton}
@@ -670,15 +707,15 @@ export default function FacturasScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.tableButton, pendientesCount === 0 && { opacity: 0.5 }]}
+          style={[styles.tableButton, styles.syncButton, pendientesCount === 0 && { opacity: 0.5 }]}
           onPress={sincronizarAhora}
           disabled={sincronizando || pendientesCount === 0}
           activeOpacity={0.85}
         >
           {sincronizando ? (
-            <ActivityIndicator size="small" color={COLORS.INFO} />
+            <ActivityIndicator size="small" color={COLORS.WHITE} />
           ) : (
-            <Text style={styles.tableButtonText}>
+            <Text style={[styles.tableButtonText, styles.syncButtonText]}>
               Sincronizar ahora ({pendientesCount} pendientes)
             </Text>
           )}
@@ -706,7 +743,7 @@ export default function FacturasScreen() {
             }}
             activeOpacity={0.85}
           >
-            <Text style={styles.tableButtonText}>Limpiar historial</Text>
+            <Text style={[styles.tableButtonText, styles.cleanButtonText]}>Limpiar historial</Text>
           </TouchableOpacity>
         )}
       </View>

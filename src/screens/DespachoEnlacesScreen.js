@@ -85,12 +85,6 @@ export default function DespachoEnlacesScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-          <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Enlaces generados</Text>
-      </View>
       <Text style={styles.subtitle}>Todos los enlaces entre sedes (BQTO / S/C), las dos direcciones.</Text>
 
       <View style={styles.filterRow}>

@@ -457,10 +457,6 @@ export default function LotesScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.inner}>
-        <View style={styles.headerRow}>
-          <Ionicons name="layers" size={22} color={Theme.colors.primary} />
-          <Text style={styles.title}>Lotes de Facturas</Text>
-        </View>
         <Text style={styles.subtitle}>
           Agrupa varias facturas escaneadas dentro de un mismo lote antes de enviarlas.
         </Text>

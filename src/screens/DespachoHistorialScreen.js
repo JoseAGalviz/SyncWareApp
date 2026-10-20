@@ -93,12 +93,6 @@ export default function DespachoHistorialScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-          <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Historial de rutagramas</Text>
-      </View>
 
       <View style={styles.card}>
         <Text style={styles.listaTitulo}>Elegí la ruta</Text>

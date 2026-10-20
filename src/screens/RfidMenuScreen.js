@@ -10,12 +10,6 @@ export default function RfidMenuScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>RFID (experimental)</Text>
-        </View>
         <View style={styles.bannerExperimental}>
           <Text style={styles.bannerExperimentalTexto}>
             Módulo de prueba con la pistola Chainway SR160. No reemplaza el escaneo real de

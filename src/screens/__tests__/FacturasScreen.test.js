@@ -72,7 +72,7 @@ const escribirYAgregar = (numero) => {
 test('muestra entrada manual + banner de serie B y NO pide permiso de cámara', async () => {
   await montar();
 
-  expect(screen.getByText('Gestión de Facturas')).toBeTruthy();
+  // El título "Gestión de Facturas" ahora lo pone el encabezado del navegador (NavHeader).
   expect(screen.getByText(/Funciona sin conexión/i)).toBeTruthy();
   expect(screen.getByText(/siempre empiezan con/i)).toBeTruthy();
   expect(screen.getByPlaceholderText(/Número tal como aparece/i)).toBeTruthy();

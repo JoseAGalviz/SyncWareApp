@@ -55,6 +55,15 @@
         "projectId": "677acec4-a876-4b5c-b576-b6d65d0803c8"
       }
     },
-    "owner": "ccristmedicals"
+    "owner": "ccristmedicals",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/677acec4-a876-4b5c-b576-b6d65d0803c8",
+      "enabled": true,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

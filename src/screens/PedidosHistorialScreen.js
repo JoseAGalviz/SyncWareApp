@@ -19,6 +19,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
 import Theme from '../constants/Theme';
 import styles from '../styles/PedidosHistorialScreen.styles';
+import AppHeader from '../components/AppHeader';
 
 
 const ESTADO_COLORS = {
@@ -352,8 +353,12 @@ const PedidosHistorialScreen = ({ navigation }) => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <AppHeader
+                title="Historial de Pedidos"
+                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
+            />
 
             {/* Search Bar */}
             <View style={styles.searchContainer}>
@@ -404,7 +409,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
             )}
 
             <DetailModal />
-        </SafeAreaView>
+        </View>
     );
 };
 

@@ -19,6 +19,7 @@ import * as Clipboard from 'expo-clipboard';
 import { printAndSharePdf } from '../utils/pdfUtils';
 import Theme from '../constants/Theme';
 import styles from '../styles/RutasVendedoresScreen.styles';
+import AppHeader, { HeaderTextButton } from '../components/AppHeader';
 
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -330,26 +331,21 @@ const RutasVendedoresScreen = ({ navigation }) => {
     const renderItem = ({ item }) => <RutaCard item={item} />;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
-
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={Theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Rutas Vendedores</Text>
-                <TouchableOpacity
-                    onPress={handleGeneratePdf}
-                    disabled={generatingPdf || loading || filteredData.length === 0}
-                    style={{ padding: 8, opacity: (generatingPdf || loading || filteredData.length === 0) ? 0.4 : 1 }}
-                >
-                    {generatingPdf
-                        ? <ActivityIndicator size="small" color={Theme.colors.primary} />
-                        : <Ionicons name="download-outline" size={24} color={Theme.colors.primary} />
-                    }
-                </TouchableOpacity>
-            </View>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <AppHeader
+                title="Rutas Vendedores"
+                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
+                right={
+                    <HeaderTextButton
+                        icon="download-outline"
+                        label="PDF"
+                        onPress={handleGeneratePdf}
+                        disabled={loading || filteredData.length === 0}
+                        cargando={generatingPdf}
+                    />
+                }
+            />
 
             {/* Búsqueda */}
             <View style={styles.searchContainer}>
@@ -440,7 +436,7 @@ const RutasVendedoresScreen = ({ navigation }) => {
                     removeClippedSubviews={true}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

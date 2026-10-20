@@ -11,34 +11,37 @@ const sombra = Platform.select({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
+  // Diseño "Devoluciones" del lienzo SyncWareApp (estos estilos los comparte DevolucionNueva).
   scrollContent: {
-    padding: isSmallDevice ? Theme.spacing.lg : Theme.spacing.xxl,
+    padding: Theme.spacing.lg,
     paddingBottom: 60,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm },
-  title: { ...Theme.typography.title, color: Theme.colors.primary, flex: 1 },
-  subtitle: { ...Theme.typography.body, color: Theme.colors.muted, marginBottom: Theme.spacing.lg },
+  title: { fontSize: 20, fontWeight: '800', color: Theme.colors.text, flex: 1 },
+  subtitle: { fontSize: 13, color: Theme.colors.muted, marginBottom: Theme.spacing.lg },
 
   card: {
     width: '100%',
     backgroundColor: Theme.colors.surface,
-    borderRadius: Theme.radius.lg,
-    padding: Theme.spacing.lg,
-    marginBottom: Theme.spacing.lg,
-    ...sombra,
-  },
-  cardTitulo: { ...Theme.typography.subheading, color: Theme.colors.text, marginBottom: Theme.spacing.sm },
-
-  label: { ...Theme.typography.label, color: Theme.colors.muted, marginBottom: Theme.spacing.xs, marginTop: Theme.spacing.md },
-  input: {
-    backgroundColor: Theme.colors.surfaceAlt,
-    borderRadius: Theme.radius.md,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    padding: Theme.spacing.md,
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  cardTitulo: { fontSize: 16, fontWeight: '700', color: Theme.colors.text, marginBottom: Theme.spacing.sm },
+
+  label: { fontSize: 12, fontWeight: '600', color: Theme.colors.muted, marginBottom: 6, marginTop: Theme.spacing.md },
+  input: {
+    backgroundColor: Theme.colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 15,
     color: Theme.colors.text,
-    minHeight: 44,
+    minHeight: 48,
   },
   inputCantidad: {
     backgroundColor: Theme.colors.surfaceAlt,
@@ -53,17 +56,18 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: Theme.radius.md,
-    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.primaryDark,
+    borderRadius: 14,
+    height: 52,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: Theme.spacing.lg,
   },
-  primaryButtonText: { color: Theme.colors.white, fontWeight: '700', fontSize: 15 },
+  primaryButtonText: { color: Theme.colors.white, fontWeight: '700', fontSize: 16 },
   secondaryButton: {
-    backgroundColor: Theme.colors.surfaceAlt,
-    borderRadius: Theme.radius.md,
-    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    height: 48,
     alignItems: 'center',
     marginTop: Theme.spacing.md,
     borderWidth: 1,
@@ -72,7 +76,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Theme.spacing.sm,
   },
-  secondaryButtonText: { color: Theme.colors.primary, fontWeight: '700', fontSize: 15 },
+  secondaryButtonText: { color: Theme.colors.text, fontWeight: '600', fontSize: 14 },
+  // Botón fijo "Nueva devolución / reposición" sobre la lista.
+  botonFijo: { position: 'absolute', left: 16, right: 16, bottom: 16 },
+  botonFijoSombra: {
+    borderRadius: 16,
+    shadowColor: Theme.colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 8,
+  },
   buttonDisabled: { opacity: 0.5 },
 
   // Selector Reposición / Devolución
@@ -86,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.surfaceAlt,
     alignItems: 'center',
   },
-  segmentoOpcionActiva: { backgroundColor: Theme.colors.primary, borderColor: Theme.colors.primary },
+  segmentoOpcionActiva: { backgroundColor: Theme.colors.dark, borderColor: Theme.colors.dark },
   segmentoTexto: { fontWeight: '700', color: Theme.colors.muted },
   segmentoTextoActivo: { color: Theme.colors.white },
 
@@ -94,14 +108,14 @@ const styles = StyleSheet.create({
   fila: {
     paddingVertical: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.md,
-    borderRadius: Theme.radius.md,
-    backgroundColor: Theme.colors.surfaceAlt,
+    borderRadius: 14,
+    backgroundColor: Theme.colors.surface,
     marginBottom: Theme.spacing.sm,
     borderWidth: 1,
     borderColor: Theme.colors.border,
   },
   filaActiva: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
-  filaTitulo: { ...Theme.typography.body, color: Theme.colors.text, fontWeight: '600' },
+  filaTitulo: { fontSize: 14, color: Theme.colors.text, fontWeight: '700', flexShrink: 1 },
   filaDetalle: { ...Theme.typography.small, color: Theme.colors.muted, marginTop: 2 },
   filaEntre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Theme.spacing.sm },
 
@@ -216,7 +230,7 @@ const styles = StyleSheet.create({
   estadoPendiente: { backgroundColor: Theme.colors.warningLight },
   estadoRechazada: { backgroundColor: Theme.colors.errorLight },
   estadoTexto: { ...Theme.typography.tiny, fontWeight: '700' },
-  mensajeError: { ...Theme.typography.small, color: Theme.colors.error, marginTop: Theme.spacing.xs },
+  mensajeError: { fontSize: 12, color: Theme.colors.errorText, marginTop: Theme.spacing.xs },
 
   bannerPendientes: {
     backgroundColor: Theme.colors.warningLight,

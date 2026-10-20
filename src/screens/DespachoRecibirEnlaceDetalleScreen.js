@@ -159,7 +159,6 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Recibir enlace #{rutagramaId}</Text>
       <View style={styles.activeHeader}>
         <Text style={styles.activeRuta}>{cargado?.conductor} · {cargado?.vehiculo}</Text>
         <Text style={styles.itemDetalle}>Encargado: {cargado?.encargado || '—'}</Text>

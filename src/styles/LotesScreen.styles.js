@@ -54,7 +54,7 @@ export default function createStyles(width) {
     title: {
       fontSize: isTiny ? 19 : isSmall ? 21 : 25,
       fontWeight: '800',
-      color: Theme.colors.primary,
+      color: Theme.colors.text,
       textAlign: 'center',
       letterSpacing: -0.3,
       marginLeft: Theme.spacing.sm,
@@ -73,7 +73,7 @@ export default function createStyles(width) {
     emptyCard: {
       width: '100%',
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       paddingVertical: Theme.spacing.xxl,
       paddingHorizontal: Theme.spacing.lg,
       alignItems: 'center',
@@ -112,13 +112,12 @@ export default function createStyles(width) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: Theme.colors.primary,
+      backgroundColor: Theme.colors.primaryDark,
       paddingVertical: Theme.spacing.md,
       paddingHorizontal: Theme.spacing.xl,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       width: '100%',
       minHeight: 50,
-      ...cardShadow,
     },
     primaryButtonText: {
       color: Theme.colors.white,
@@ -142,7 +141,7 @@ export default function createStyles(width) {
       borderColor: Theme.colors.border,
       paddingVertical: Theme.spacing.sm + 2,
       paddingHorizontal: Theme.spacing.md,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       minHeight: 46,
     },
     secondaryButtonText: {
@@ -162,12 +161,11 @@ export default function createStyles(width) {
     loteSummaryCard: {
       width: '100%',
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       padding: isSmall ? Theme.spacing.md : Theme.spacing.lg,
       marginBottom: Theme.spacing.lg,
       borderLeftWidth: 5,
       borderLeftColor: Theme.colors.warning,
-      ...cardShadow,
     },
     loteSummaryTop: {
       flexDirection: 'row',
@@ -194,7 +192,7 @@ export default function createStyles(width) {
     loteSummaryCountNumber: {
       fontSize: isTiny ? 32 : isSmall ? 36 : 42,
       fontWeight: '800',
-      color: Theme.colors.primary,
+      color: Theme.colors.text,
       lineHeight: isTiny ? 36 : isSmall ? 40 : 46,
     },
     loteSummaryCountLabel: {
@@ -233,7 +231,7 @@ export default function createStyles(width) {
     cameraWrap: {
       width: '100%',
       aspectRatio: 4 / 3,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       overflow: 'hidden',
       borderWidth: 2,
       borderColor: Theme.colors.primary,
@@ -261,7 +259,7 @@ export default function createStyles(width) {
     permissionInlineButton: {
       width: '100%',
       aspectRatio: 4 / 3,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       backgroundColor: Theme.colors.surfaceAlt,
       borderWidth: 1,
       borderColor: Theme.colors.border,
@@ -295,7 +293,7 @@ export default function createStyles(width) {
     manualInput: {
       flex: 1,
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: Theme.colors.border,
       paddingHorizontal: Theme.spacing.md,
@@ -305,14 +303,13 @@ export default function createStyles(width) {
       color: Theme.colors.text,
     },
     consultButton: {
-      backgroundColor: Theme.colors.primary,
+      backgroundColor: Theme.colors.primaryDark,
       paddingHorizontal: Theme.spacing.lg,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       minHeight: 48,
       minWidth: 48,
       alignItems: 'center',
       justifyContent: 'center',
-      ...cardShadow,
     },
 
     // ── Overlay de carga ─────────────────────────────────────────────────
@@ -322,9 +319,8 @@ export default function createStyles(width) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       marginBottom: Theme.spacing.md,
-      ...cardShadow,
     },
     loadingText: {
       marginTop: Theme.spacing.sm,
@@ -337,12 +333,11 @@ export default function createStyles(width) {
     previewCard: {
       width: '100%',
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       padding: isSmall ? Theme.spacing.md : Theme.spacing.lg,
       marginBottom: Theme.spacing.lg,
       borderWidth: 1,
       borderColor: Theme.colors.success,
-      ...cardShadow,
     },
     previewErrorCard: {
       borderColor: Theme.colors.error,
@@ -394,11 +389,10 @@ export default function createStyles(width) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: Theme.colors.success,
+      backgroundColor: Theme.colors.primaryDark,
       paddingVertical: Theme.spacing.md,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       minHeight: 48,
-      ...cardShadow,
     },
     previewCancelButton: {
       flex: 1,
@@ -409,7 +403,7 @@ export default function createStyles(width) {
       borderWidth: 1,
       borderColor: Theme.colors.border,
       paddingVertical: Theme.spacing.md,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       minHeight: 48,
     },
     previewButtonTextLight: {
@@ -429,7 +423,7 @@ export default function createStyles(width) {
     facturasListBox: {
       width: '100%',
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: Theme.colors.border,
       marginBottom: Theme.spacing.lg,
@@ -488,11 +482,10 @@ export default function createStyles(width) {
       justifyContent: 'center',
       backgroundColor: Theme.colors.warning,
       paddingVertical: Theme.spacing.md,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       width: '100%',
       minHeight: 50,
       marginTop: Theme.spacing.sm,
-      ...cardShadow,
     },
     closeLoteButtonDisabled: {
       backgroundColor: Theme.colors.border,
@@ -523,7 +516,7 @@ export default function createStyles(width) {
     },
     modalContent: {
       backgroundColor: Theme.colors.surface,
-      borderRadius: Theme.radius.lg,
+      borderRadius: 18,
       padding: isSmall ? Theme.spacing.lg : Theme.spacing.xl,
       width: '100%',
       maxWidth: 500,
@@ -537,7 +530,7 @@ export default function createStyles(width) {
       fontSize: isSmall ? 17 : 19,
       fontWeight: '800',
       marginBottom: Theme.spacing.md,
-      color: Theme.colors.primary,
+      color: Theme.colors.text,
       alignSelf: 'center',
       textAlign: 'center',
     },
@@ -551,10 +544,9 @@ export default function createStyles(width) {
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: Theme.spacing.md,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       marginTop: Theme.spacing.sm,
       minHeight: 48,
-      ...cardShadow,
     },
     modalButtonText: {
       color: Theme.colors.white,
@@ -568,7 +560,7 @@ export default function createStyles(width) {
       paddingVertical: Theme.spacing.sm + 2,
       paddingHorizontal: Theme.spacing.md,
       marginBottom: Theme.spacing.sm,
-      borderRadius: Theme.radius.md,
+      borderRadius: 14,
       backgroundColor: Theme.colors.surfaceAlt,
       borderLeftWidth: 4,
     },

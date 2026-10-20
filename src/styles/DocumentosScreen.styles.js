@@ -35,11 +35,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: Theme.colors.surface,
-        borderRadius: Theme.radius.xl,
+        borderRadius: 18,
         padding: Theme.spacing.lg,
         borderWidth: 1,
         borderColor: Theme.colors.border,
-        ...Theme.shadow.sm,
     },
     docIconContainer: {
         width: 52,

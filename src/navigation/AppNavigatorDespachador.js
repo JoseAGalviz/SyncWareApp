@@ -1,7 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
-import { Image, TouchableOpacity, Alert } from "react-native";
+import { Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -13,7 +12,19 @@ import DespachoNavigator from "./DespachoNavigator";
 import DevolucionesNavigator from "./DevolucionesNavigator";
 import Theme from "../constants/Theme";
 
+import { opcionesTabBarFlotante, IconoTab, EtiquetaTab } from './tabBarFlotante';
+import AppHeader, { HeaderButton } from '../components/AppHeader';
+
 const Tab = createBottomTabNavigator();
+
+const ETIQUETAS = { Devoluciones: "Devol." };
+const ICONOS = {
+  Facturas: "receipt-outline",
+  Despacho: "checkbox-outline",
+  Lotes: "list-outline",
+  Rutagrama: "bus-outline",
+  Devoluciones: "return-down-back-outline",
+};
 
 export default function AppNavigatorDespachador() {
   const insets = useSafeAreaInsets();
@@ -41,71 +52,28 @@ export default function AppNavigatorDespachador() {
     <Tab.Navigator
       initialRouteName="Despacho"
       screenOptions={({ route }) => ({
-        headerTitle: "Cristmedicals",
-        headerTitleAlign: "center",
-        headerStyle: {
-          backgroundColor: Theme.colors.dark,
-        },
-        headerTitleStyle: {
-          color: Theme.colors.white,
-          fontSize: 16,
-          fontWeight: "600",
-          letterSpacing: 0.5,
-        },
-        headerTintColor: Theme.colors.white,
-        headerLeft: () => (
-          <TouchableOpacity onPress={handleLogout} style={{ marginLeft: 15 }}>
-            <Ionicons name="log-out-outline" size={26} color={Theme.colors.white} />
-          </TouchableOpacity>
-        ),
-        headerRight: () => (
-          <Image
-            source={require("../../assets/logo.png")}
-            style={{
-              width: 150,
-              height: 50,
-              resizeMode: "contain",
-              marginRight: -40,
-            }}
+        ...opcionesTabBarFlotante(insets),
+        // El despachador no tiene menú lateral: a la derecha del encabezado, cerrar sesión.
+        header: (props) => (
+          <AppHeader
+            title={props.options.title ?? route.name}
+            subtitle={props.options.headerSubtitle}
+            right={<HeaderButton icon="log-out-outline" label="Cerrar sesión" onPress={handleLogout} />}
           />
         ),
-        headerLeftContainerStyle: { paddingLeft: 10 },
-        headerRightContainerStyle: { paddingRight: 10 },
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === "Facturas") {
-            iconName = focused ? "receipt" : "receipt-outline";
-          } else if (route.name === "Despacho") {
-            iconName = focused ? "cube" : "cube-outline";
-          } else if (route.name === "Lotes") {
-            iconName = focused ? "layers" : "layers-outline";
-          } else if (route.name === "Rutagrama") {
-            iconName = focused ? "map" : "map-outline";
-          } else if (route.name === "Devoluciones") {
-            iconName = focused ? "return-down-back" : "return-down-back-outline";
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: Theme.colors.primary,
-        tabBarInactiveTintColor: Theme.colors.muted,
-        tabBarStyle: {
-          backgroundColor: Theme.colors.dark,
-          borderTopWidth: 0,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginBottom: 4,
-        },
+        tabBarLabel: ({ color }) => <EtiquetaTab color={color}>{ETIQUETAS[route.name] ?? route.name}</EtiquetaTab>,
+        tabBarIcon: ({ focused, color }) => (
+          <IconoTab name={ICONOS[route.name] || "ellipse-outline"} focused={focused} color={color} />
+        ),
       })}
     >
-      <Tab.Screen name="Facturas" component={FacturasScreen} />
-      <Tab.Screen name="Despacho" component={DespachoScreen} />
+      <Tab.Screen name="Facturas" component={FacturasScreen} options={{ title: "Gestión de Facturas" }} />
+      <Tab.Screen name="Despacho" component={DespachoScreen} options={{ title: "Reporte de Despacho" }} />
       <Tab.Screen name="Lotes" component={LotesScreen} />
-      <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
-      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} />
+      {/* El stack de Rutagrama trae su propio encabezado (NavHeader). */}
+      <Tab.Screen name="Rutagrama" component={DespachoNavigator} options={{ headerShown: false }} />
+      {/* Devoluciones trae su propio encabezado (stack con NavHeader). */}
+      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }

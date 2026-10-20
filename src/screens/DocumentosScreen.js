@@ -13,6 +13,7 @@ import { Asset } from 'expo-asset';
 import { showMessage } from 'react-native-flash-message';
 import Theme from '../constants/Theme';
 import styles from '../styles/DocumentosScreen.styles';
+import AppHeader from '../components/AppHeader';
 
 const DOCUMENTOS = [
     {
@@ -60,16 +61,13 @@ const DocumentosScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={Theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Documentos</Text>
-                <View style={{ width: 40 }} />
-            </View>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <AppHeader
+                title="Documentos"
+                subtitle="Guías y políticas para consultar o compartir"
+                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
+            />
 
             <View style={styles.content}>
                 {DOCUMENTOS.map(doc => (
@@ -94,7 +92,7 @@ const DocumentosScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 ))}
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 

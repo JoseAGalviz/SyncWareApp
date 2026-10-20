@@ -22,13 +22,14 @@ import { API_ENDPOINTS } from "../constants/Config";
 import { api } from "../services/api";
 import { syncAllData } from "../services/syncAllData";
 import Theme from "../constants/Theme";
+import { Pill } from "../components/ui";
 
 const STORAGE_KEY = "despacho_reportes";
 const USER_DATA_KEY = "userData";
 
 const STATUS_OPTIONS = [
-  { label: "Entregado", value: "Entregado", color: Theme.colors.success },
-  { label: "No Entregado", value: "No Entregado", color: "#FF3B30" },
+  { label: "Entregado", value: "Entregado", color: Theme.colors.primaryDark, fondo: Theme.colors.primaryLight },
+  { label: "No Entregado", value: "No Entregado", color: Theme.colors.errorText, fondo: Theme.colors.errorSoft },
 ];
 
 // ===== HOOKS =====
@@ -319,14 +320,14 @@ export default function DespachoScreen() {
 
   const renderReporteItem = useCallback(({ item }) => {
     const opcion = STATUS_OPTIONS.find((o) => o.value === item.status_despacho);
-    const color = opcion?.color ?? Theme.colors.primary;
-    const borderColor = item.enviado ? Theme.colors.success : "#FF3B30";
+    const color = opcion?.color ?? Theme.colors.text;
 
     return (
-      <View style={[styles.reporteItem, { borderLeftColor: color, borderColor: borderColor, backgroundColor: item.enviado ? "#e9f7ef" : Theme.colors.surface }]}>
-        {!!item.cliente && (
-          <Text style={styles.reporteCliente}>{item.cliente}</Text>
-        )}
+      <View style={[styles.reporteItem, !item.enviado && { borderColor: Theme.colors.warningEdge }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[styles.reporteCliente, { flex: 1 }]} numberOfLines={1}>{item.cliente || 'Sin cliente'}</Text>
+          <Pill tono={item.enviado ? 'verde' : 'ambar'}>{item.enviado ? 'Enviado' : 'Pendiente'}</Pill>
+        </View>
         <Text style={[styles.reporteStatus, { color }]}>{item.status_despacho}</Text>
         {!!item.comentario && (
           <Text style={styles.reporteComentario}>{item.comentario}</Text>
@@ -367,10 +368,33 @@ export default function DespachoScreen() {
         data={reportes}
         keyExtractor={(item) => item.id.toString()}
         style={styles.reportesList}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         ListHeaderComponent={
           <View style={styles.headerSticky}>
-            <Text style={styles.floatingTitle}>Reporte de Despacho</Text>
+            <TouchableOpacity
+              style={styles.nuevoBoton}
+              onPress={() => setShowForm(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Nuevo reporte de despacho"
+            >
+              <Ionicons name="add" size={22} color={Theme.colors.white} />
+              <Text style={styles.nuevoTexto}>Nuevo reporte</Text>
+            </TouchableOpacity>
+            <View style={styles.accionesFila}>
+              <TouchableOpacity style={styles.accion} onPress={handleUpload} disabled={isUploading} activeOpacity={0.85} accessibilityLabel="Enviar reportes pendientes">
+                {isUploading ? <ActivityIndicator size="small" color={Theme.colors.dark} /> : <Ionicons name="cloud-upload-outline" size={18} color={Theme.colors.dark} />}
+                <Text style={styles.accionTexto}>Enviar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.accion} onPress={handleSync} disabled={isSyncing} activeOpacity={0.85} accessibilityLabel="Sincronizar clientes">
+                {isSyncing ? <ActivityIndicator size="small" color={Theme.colors.dark} /> : <Ionicons name="sync-outline" size={18} color={Theme.colors.dark} />}
+                <Text style={styles.accionTexto}>Clientes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.accion, styles.accionPeligro]} onPress={handleLimpiarEnviados} activeOpacity={0.85} accessibilityLabel="Borrar reportes enviados">
+                <Ionicons name="trash-outline" size={18} color={Theme.colors.errorStrong} />
+                <Text style={[styles.accionTexto, { color: Theme.colors.errorStrong }]}>Borrar</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.floatingSubtitle}>Reportes registrados</Text>
           </View>
         }
@@ -383,52 +407,6 @@ export default function DespachoScreen() {
         initialNumToRender={10}
         maxToRenderPerBatch={5}
       />
-
-      <View style={styles.fabRow}>
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: "#FF3B30" }]}
-          onPress={handleLimpiarEnviados}
-          activeOpacity={0.8}
-          accessibilityLabel="Borrar reportes enviados"
-        >
-          <Ionicons name="trash-outline" size={22} color={Theme.colors.white} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: Theme.colors.success }]}
-          onPress={handleSync}
-          disabled={isSyncing}
-          activeOpacity={0.8}
-          accessibilityLabel="Sincronizar clientes"
-        >
-          {isSyncing
-            ? <ActivityIndicator size="small" color={Theme.colors.white} />
-            : <Ionicons name="sync-outline" size={24} color={Theme.colors.white} />
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: Theme.colors.success }]}
-          onPress={handleUpload}
-          disabled={isUploading}
-          activeOpacity={0.8}
-          accessibilityLabel="Enviar reportes pendientes"
-        >
-          {isUploading
-            ? <ActivityIndicator size="small" color={Theme.colors.white} />
-            : <Ionicons name="cloud-upload-outline" size={24} color={Theme.colors.white} />
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: Theme.colors.primary }]}
-          onPress={() => setShowForm(true)}
-          activeOpacity={0.8}
-          accessibilityLabel="Nuevo reporte de despacho"
-        >
-          <Ionicons name="add" size={28} color={Theme.colors.white} />
-        </TouchableOpacity>
-      </View>
 
       <Modal
         visible={showForm}
@@ -504,7 +482,7 @@ export default function DespachoScreen() {
                         key={opt.value}
                         style={[
                           styles.selectOption,
-                          selected && { borderColor: opt.color, backgroundColor: opt.color + "18" },
+                          selected && { borderColor: opt.color, borderWidth: 2, backgroundColor: opt.fondo },
                         ]}
                         onPress={() => setStatusDespacho(opt.value)}
                         activeOpacity={0.7}

@@ -1,8 +1,5 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
-import { TouchableOpacity, Image } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeScreenConductor from "../screens/HomeScreenConductor";
@@ -12,84 +9,81 @@ import ChequeoGuiaCargaScreen from "../screens/ChequeoGuiaCargaScreen";
 import FacturasScreen from '../screens/FacturasScreen';
 import DespachoNavigator from './DespachoNavigator';
 import DevolucionesNavigator from './DevolucionesNavigator';
-import COLORS from '../constants/Colors';
-import Theme from '../constants/Theme';
+import { crearMasNavigator, MasMenu } from './MasNavigator';
+import { NavHeader } from '../components/AppHeader';
+
+import { opcionesTabBarFlotante, IconoTab, EtiquetaTab, altoOcupadoBarra } from './tabBarFlotante';
 
 const Tab = createBottomTabNavigator();
 
-function DrawerMenuButton() {
-  const navigation = useNavigation();
-  return (
-    <TouchableOpacity
-      onPress={() => navigation.openDrawer()}
-      style={{ marginLeft: 15 }}
-    >
-      <Ionicons name="menu" size={30} color={COLORS.WHITE} />
-    </TouchableOpacity>
-  );
-}
+// Módulos del conductor que no van en la barra inferior: se abren desde la pestaña "Más".
+const ITEMS_MAS_CONDUCTOR = [
+  { name: 'ChequeoGuiaCarga', label: 'Chequeo de Guía', subtitle: 'Entrega de mercancía', headerSubtitle: 'Entrega de mercancía', icon: 'checkmark-circle-outline', tono: 'verde', component: ChequeoGuiaCargaScreen },
+  // Devoluciones trae su propio encabezado (stack con NavHeader): sin el del "Más".
+  { name: 'Devoluciones', label: 'Devoluciones', subtitle: 'Y reposiciones', icon: 'return-down-back-outline', tono: 'ambar', component: DevolucionesNavigator, headerShown: false },
+];
+const MasConductor = crearMasNavigator(ITEMS_MAS_CONDUCTOR);
+
+// Nombre corto en la barra inferior (el `title` de cada pantalla es el del encabezado).
+const ETIQUETAS = { "Guia de Carga": "Guía" };
+const ICONOS = {
+  Inicio: "home-outline",
+  "Guia de Carga": "clipboard-outline",
+  Facturas: "receipt-outline",
+  Rutagrama: "bus-outline",
+  Más: "ellipsis-horizontal",
+};
 
 export default function AppNavigatorConductor() {
   const insets = useSafeAreaInsets();
+  const [masVisible, setMasVisible] = useState(false);
+  const tabsNavRef = useRef(null);
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerTitle: "Cristmedicals",
-        headerTitleAlign: "center",
-        headerStyle: { backgroundColor: Theme.colors.dark },
-        headerTitleStyle: { color: COLORS.WHITE },
-        headerTintColor: COLORS.WHITE,
-        headerLeft: () => <DrawerMenuButton />,
-        headerRight: () => (
-          <Image
-            source={require("../../assets/logo.png")}
-            style={{
-              width: 150,
-              height: 50,
-              resizeMode: "contain",
-              marginRight: -40,
-            }}
-          />
-        ),
-        headerLeftContainerStyle: { paddingLeft: 10 },
-        headerRightContainerStyle: { paddingRight: 10 },
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === "Guia de Carga") {
-            iconName = focused ? "cube" : "cube-outline";
-          } else if (route.name === "Chequeo de Guia de Carga") {
-            iconName = focused
-              ? "checkmark-circle"
-              : "checkmark-circle-outline";
-          } else if (route.name === "Inicio") {
-            iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Facturas") {
-            iconName = focused ? "document-text" : "document-text-outline";
-          } else if (route.name === "Rutagrama") {
-            iconName = focused ? "map" : "map-outline";
-          } else if (route.name === "Devoluciones") {
-            iconName = focused ? "return-down-back" : "return-down-back-outline";
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: COLORS.SUCCESS,
-        tabBarInactiveTintColor: COLORS.MUTED,
-        tabBarStyle: {
-          backgroundColor: Theme.colors.dark,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-      })}
-    >
-      <Tab.Screen name="Inicio" component={HomeScreenConductor} />
-      <Tab.Screen name="Guia de Carga" component={GuiaCargaScreen} />
-      <Tab.Screen
-        name="Chequeo de Guia de Carga"
-        component={ChequeoGuiaCargaScreen}
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          ...opcionesTabBarFlotante(insets),
+          header: (props) => <NavHeader {...props} />,
+          tabBarLabel: ({ color }) => <EtiquetaTab color={color}>{ETIQUETAS[route.name] ?? route.name}</EtiquetaTab>,
+          tabBarIcon: ({ focused, color }) => (
+            <IconoTab name={ICONOS[route.name] || "ellipse-outline"} focused={focused} color={color} />
+          ),
+        })}
+      >
+        {/* Inicio dibuja su propio encabezado grande (saludo + accesos). */}
+        <Tab.Screen name="Inicio" component={HomeScreenConductor} options={{ headerShown: false }} />
+        <Tab.Screen
+          name="Guia de Carga"
+          component={GuiaCargaScreen}
+          options={{ title: "Guía de Carga", headerSubtitle: "Chofer · avance guardado en el teléfono" }}
+        />
+        <Tab.Screen name="Facturas" component={FacturasScreen} options={{ title: "Gestión de Facturas" }} />
+        {/* El stack de Rutagrama trae su propio encabezado (NavHeader). */}
+        <Tab.Screen name="Rutagrama" component={DespachoNavigator} options={{ headerShown: false }} />
+        <Tab.Screen
+          name="Más"
+          component={MasConductor}
+          options={{ headerShown: false }}
+          listeners={({ navigation: tabsNav }) => ({
+            // "Más" no abre pantalla: muestra el menú emergente (MasMenu).
+            tabPress: (e) => {
+              e.preventDefault();
+              tabsNavRef.current = tabsNav;
+              setMasVisible(true);
+            },
+          })}
+        />
+      </Tab.Navigator>
+      <MasMenu
+        visible={masVisible}
+        items={ITEMS_MAS_CONDUCTOR}
+        bottom={altoOcupadoBarra(insets)}
+        onClose={() => setMasVisible(false)}
+        onSelect={(item) => {
+          setMasVisible(false);
+          tabsNavRef.current?.navigate('Más', { screen: item.name });
+        }}
       />
-      <Tab.Screen name="Facturas" component={FacturasScreen} />
-      <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
-      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} />
-    </Tab.Navigator>
+    </>
   );
 }

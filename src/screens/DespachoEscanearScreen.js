@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, FlatList, Modal, StyleSheet } from 'react-native';
+import { Barra, Boton, Chip, Aviso } from '../components/ui';
 import { showMessage } from 'react-native-flash-message';
 import { Ionicons } from '@expo/vector-icons';
 import { useCameraPermissions } from 'expo-camera';
@@ -154,32 +155,124 @@ const PendienteItem = React.memo(({ item, onPress }) => {
   );
 });
 
+// Renglón del rutagrama (diseño "Despacho · Escanear"): cliente + código, y dos columnas
+// de progreso — 📦 cajas con barra y 🧾 factura. Completo = fila compacta con ✓.
 const RenglonItem = React.memo(({ item, onPress, onDescartar }) => {
   const falta = pendienteTexto(item);
   const completo = !falta;
   const horaNota = formatoHora(item.hora_nota);
   const horaFactura = formatoHora(item.hora_factura);
-  return (
-  <View style={[styles.itemRow, completo && styles.itemRowCompleto]}>
-    <TouchableOpacity style={styles.itemInfo} onPress={() => onPress(item)} activeOpacity={0.6}>
-      <Text style={styles.itemNota}>
-        {item.status === 'VAL*' ? 'VALIJA' : 'NOTA'} {item.nota}{horaNota ? ` (${horaNota})` : ''}
-        {item.factura && item.factura !== item.nota ? ` · FACTURA ${item.factura}${horaFactura ? ` (${horaFactura})` : ''}` : ''}
-      </Text>
-      <Text style={styles.itemDetalle}>{item.descrip}</Text>
-      <View style={{ flexDirection: 'row', gap: Theme.spacing.xs, marginTop: Theme.spacing.xs }}>
-        <CajasPill item={item} />
-        <FacturaPill item={item} />
-      </View>
-      <Text style={{ marginTop: Theme.spacing.xs, fontWeight: '800', color: falta ? Theme.colors.warning : Theme.colors.success }}>
-        {falta ? `PENDIENTE: ${falta}` : 'COMPLETO ✓'}
-      </Text>
+  const codigo = item.status === 'VAL*'
+    ? `VAL ${item.nota}`
+    : item.factura && item.factura === item.nota && !esNotaCredito(item.status)
+      // Renglón legado "solo factura" (nota = factura): no tiene nota de entrega.
+      ? `F-${item.factura} · sin nota`
+      : `N-${item.nota}`;
+  const C = Theme.colors;
+  const quitar = (
+    <TouchableOpacity onPress={() => onDescartar(item.id)} style={de.quitar} accessibilityLabel={`Quitar ${codigo}`}>
+      <Text style={de.quitarTexto}>Quitar</Text>
     </TouchableOpacity>
-    <TouchableOpacity style={styles.itemAccion} onPress={() => onDescartar(item.id)}>
-      <Text style={{ color: Theme.colors.error, fontWeight: '700' }}>Quitar</Text>
-    </TouchableOpacity>
-  </View>
   );
+
+  if (completo) {
+    return (
+      <TouchableOpacity style={[de.renglon, de.renglonCompleto]} onPress={() => onPress(item)} activeOpacity={0.7}>
+        <View style={de.check}><Ionicons name="checkmark" size={16} color={C.white} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={de.cliente} numberOfLines={1}>{item.descrip}</Text>
+          <Text style={de.codigo}>{codigo}</Text>
+        </View>
+        <Text style={de.resumenOk}>
+          {esNotaCredito(item.status)
+            ? (item.status === 'NCR' ? 'N/CR' : 'N/DB')
+            : `${item.cajas_escaneadas}/${item.cajas_esperadas} cajas · factura`}
+        </Text>
+        {quitar}
+      </TouchableOpacity>
+    );
+  }
+
+  const esp = Number(item.cajas_esperadas) || 0;
+  const esc = Number(item.cajas_escaneadas) || 0;
+  const pctCajas = esp ? (esc / esp) * 100 : 0;
+  const facturaOk = item.factura_verificada;
+  return (
+    <TouchableOpacity style={de.renglon} onPress={() => onPress(item)} activeOpacity={0.7}>
+      <View style={de.renglonCabecera}>
+        <Text style={[de.cliente, { flex: 1 }]} numberOfLines={1}>{item.descrip}</Text>
+        <Text style={de.codigo}>{codigo}</Text>
+      </View>
+      <View style={de.columnas}>
+        {item.espera_carga ? (
+          <View style={de.columna}>
+            <View style={de.columnaFila}>
+              <Ionicons name="cube-outline" size={16} color={C.dark} />
+              <Text style={de.columnaTexto}>Cajas {esc}/{esp}{horaNota ? ` · ${horaNota}` : ''}</Text>
+            </View>
+            <Barra pct={pctCajas} alto={6} color={pctCajas >= 100 ? C.primary : C.warning} />
+          </View>
+        ) : <View style={de.columna} />}
+        <View style={de.columna}>
+          <View style={de.columnaFila}>
+            <Ionicons name="receipt-outline" size={16} color={facturaOk ? C.dark : C.errorText} />
+            <Text style={[de.columnaTexto, !facturaOk && { color: C.errorText }]}>
+              {facturaOk ? `Factura ✓${horaFactura ? ` · ${horaFactura}` : ''}` : item.factura_pendiente_escaneo ? 'Factura lista, escanéala' : 'Sin factura'}
+            </Text>
+          </View>
+          <Barra pct={facturaOk ? 100 : 0} alto={6} />
+        </View>
+      </View>
+      <View style={de.renglonPie}>
+        <Text style={de.falta} numberOfLines={2}>Falta: {falta}</Text>
+        {quitar}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const de = StyleSheet.create({
+  renglon: {
+    backgroundColor: Theme.colors.surface,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    gap: 8,
+  },
+  renglonCompleto: { flexDirection: 'row', alignItems: 'center', gap: 10, borderColor: Theme.colors.primary },
+  renglonCabecera: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  check: { width: 28, height: 28, borderRadius: 14, backgroundColor: Theme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  cliente: { fontSize: 14, fontWeight: '700', color: Theme.colors.text },
+  codigo: { fontFamily: Theme.fontMono, fontSize: 12, color: Theme.colors.muted },
+  resumenOk: { fontSize: 12, color: Theme.colors.muted },
+  columnas: { flexDirection: 'row', gap: 10 },
+  columna: { flex: 1, gap: 4 },
+  columnaFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  columnaTexto: { fontSize: 12, fontWeight: '600', color: Theme.colors.text, flexShrink: 1 },
+  renglonPie: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  falta: { flex: 1, fontSize: 12, color: Theme.colors.warningText },
+  quitar: { paddingHorizontal: 8, paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
+  quitarTexto: { color: Theme.colors.errorStrong, fontWeight: '700', fontSize: 12 },
+  // Franja oscura de contadores bajo el encabezado.
+  franja: { backgroundColor: Theme.colors.dark, flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingBottom: 14 },
+  franjaCelda: { flex: 1, backgroundColor: Theme.colors.darkSoft, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  franjaValor: { fontSize: 18, fontWeight: '800' },
+  franjaLabel: { fontSize: 10, color: Theme.colors.onDarkSoft },
+  totales: { fontSize: 12, color: Theme.colors.muted },
+  seccionPendientes: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 8, marginBottom: 10, paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: Theme.colors.surface, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: 14,
+  },
+  seccionPendientesTexto: { fontSize: 14, fontWeight: '700', color: Theme.colors.text, flex: 1 },
+  pie: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: Theme.colors.background, borderTopWidth: 1, borderTopColor: Theme.colors.border,
+  },
 });
 
 // Pantalla de revisión antes de cerrar el rutagrama: lista todo lo escaneado, marca lo que
@@ -193,89 +286,101 @@ const RevisarCierreModal = ({ visible, items, totales, resumen, onVolver, onConf
   const bloqueado = !resumen?.puede_cerrar;
   const motivosBloqueo = [];
   if (Number(resumen?.sin_cajas || 0) > 0) motivosBloqueo.push(`${resumen.sin_cajas} pedido(s) con factura pero SIN cajas escaneadas`);
+  if (Number(resumen?.sin_factura || 0) > 0) motivosBloqueo.push(`${resumen.sin_factura} pedido(s) con cajas pero SIN la factura escaneada`);
   if (resumen?.notas_anuladas?.length) motivosBloqueo.push(`${resumen.notas_anuladas.length} nota(s) anulada(s)`);
   if (resumen?.facturas_anuladas?.length) motivosBloqueo.push(`${resumen.facturas_anuladas.length} factura(s) anulada(s)`);
   if (bloqueado && motivosBloqueo.length === 0) motivosBloqueo.push('No hay pedidos escaneados en este rutagrama.');
 
+  // Diseño "Revisión de cierre": hoja que sube desde abajo sobre el escaneo.
+  const C = Theme.colors;
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onVolver}>
-      <View style={[styles.container, { flex: 1, paddingTop: Theme.spacing.lg }]}>
-        <Text style={styles.title}>Revisá antes de cerrar</Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onVolver}>
+      <View style={rc.fondo}>
+        <View style={rc.hoja}>
+          <View style={rc.asa} />
+          <View style={rc.cabecera}>
+            <View style={{ flex: 1 }}>
+              <Text style={rc.titulo}>Revisión de cierre</Text>
+              <Text style={rc.sub}>
+                {items.length} pedido(s) · {Number(totales?.cajas || 0)} caja(s) · {Number(totales?.peso || 0).toFixed(2)} kg
+              </Text>
+            </View>
+            <TouchableOpacity style={rc.cerrar} onPress={onVolver} accessibilityLabel="Cerrar">
+              <Ionicons name="close" size={20} color={C.text} />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.listaTitulo}>
-            {items.length} pedido(s) · {Number(totales?.cajas || 0)} caja(s) · {Number(totales?.peso || 0).toFixed(2)} kg
-          </Text>
           {bloqueado ? (
-            <Text style={{ color: Theme.colors.error, fontWeight: '800', marginTop: Theme.spacing.xs }}>
-              ✕ No se puede cerrar todavía
-            </Text>
+            <View style={rc.bloqueo} accessibilityRole="alert">
+              <Text style={rc.bloqueoTitulo}>No se puede cerrar todavía</Text>
+              {motivosBloqueo.map((m) => (
+                <Text key={m} style={rc.bloqueoMotivo}>• {m}</Text>
+              ))}
+              <Text style={rc.bloqueoAyuda}>Escanea lo que falta, o toca "Quitar" en el pedido que no va.</Text>
+            </View>
           ) : hayFaltantes ? (
-            <Text style={{ color: Theme.colors.warning, fontWeight: '800', marginTop: Theme.spacing.xs }}>
-              ⚠ {incompletos.length} pedido(s) con algo pendiente
-            </Text>
+            <Aviso tono="ambar">{incompletos.length} pedido(s) con algo pendiente. ¿Seguro que quieres cerrar así?</Aviso>
           ) : (
-            <Text style={{ color: Theme.colors.success, fontWeight: '800', marginTop: Theme.spacing.xs }}>
-              ✓ Todo escaneado
-            </Text>
+            <Aviso tono="exito">Todo escaneado: cajas y facturas completas.</Aviso>
           )}
-          {motivosBloqueo.map((m) => (
-            <Text key={m} style={{ color: Theme.colors.error, marginTop: 2 }}>• {m}</Text>
-          ))}
-          {!bloqueado && Number(resumen?.sin_factura || 0) > 0 && (
-            <Text style={styles.itemDetalle}>
-              {resumen.sin_factura} pedido(s) sin factura escaneada — se despachan igual
-            </Text>
+
+          {items.length === 0 ? (
+            <Text style={styles.emptyListText}>No hay pedidos escaneados.</Text>
+          ) : (
+            <FlatList
+              style={{ flex: 1 }}
+              data={items}
+              keyExtractor={(i) => String(i.id)}
+              renderItem={({ item }) => (
+                <RenglonItem item={item} onPress={onVerRenglon} onDescartar={onQuitarRenglon} />
+              )}
+              initialNumToRender={15}
+              windowSize={7}
+            />
           )}
-        </View>
 
-        {items.length === 0 ? (
-          <Text style={styles.emptyListText}>No hay pedidos escaneados.</Text>
-        ) : (
-          <FlatList
-            style={{ flex: 1 }}
-            data={items}
-            keyExtractor={(i) => String(i.id)}
-            renderItem={({ item }) => (
-              <RenglonItem item={item} onPress={onVerRenglon} onDescartar={onQuitarRenglon} />
-            )}
-            initialNumToRender={15}
-            windowSize={7}
-          />
-        )}
-
-        <View style={{ padding: Theme.spacing.md }}>
-          {bloqueado ? (
-            <Text style={{ color: Theme.colors.error, fontWeight: '700', marginBottom: Theme.spacing.sm, textAlign: 'center' }}>
-              Escaneá las cajas que faltan, o tocá "Quitar" en el pedido que no va, para poder cerrar.
-            </Text>
-          ) : hayFaltantes ? (
-            <Text style={{ color: Theme.colors.warning, fontWeight: '700', marginBottom: Theme.spacing.sm, textAlign: 'center' }}>
-              Hay pedidos incompletos. ¿Seguro que querés cerrar el rutagrama así?
-            </Text>
-          ) : null}
-          <TouchableOpacity
-            style={[
-              styles.dangerButton,
-              bloqueado && styles.buttonDisabled,
-              !bloqueado && hayFaltantes && { backgroundColor: Theme.colors.warning },
-            ]}
-            onPress={bloqueado ? undefined : onConfirmar}
-            disabled={bloqueado}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.dangerButtonText}>
-              {bloqueado ? 'No se puede cerrar' : hayFaltantes ? 'Sí, cerrar así' : 'Cerrar el rutagrama'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={onVolver} activeOpacity={0.85}>
-            <Text style={styles.secondaryButtonText}>Volver al escaneo</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 8 }}>
+            <Boton variante="secundario" titulo="Volver a escanear" alto={50} onPress={onVolver} textStyle={{ fontSize: 15 }} />
+            <Boton
+              variante={hayFaltantes && !bloqueado ? 'oscuro' : 'primario'}
+              titulo={bloqueado ? 'Finalizar rutagrama' : hayFaltantes ? 'Sí, cerrar así' : 'Finalizar rutagrama'}
+              alto={54}
+              disabled={bloqueado}
+              onPress={onConfirmar}
+            />
+          </View>
         </View>
       </View>
     </Modal>
   );
 };
+
+const rc = StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: 'rgba(15,42,58,0.6)', justifyContent: 'flex-end' },
+  hoja: {
+    flex: 1,
+    marginTop: 64,
+    backgroundColor: Theme.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    gap: 14,
+  },
+  asa: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: Theme.colors.border },
+  cabecera: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titulo: { fontSize: 20, fontWeight: '800', color: Theme.colors.text },
+  sub: { fontSize: 13, color: Theme.colors.muted, fontFamily: Theme.fontMono },
+  cerrar: { width: 44, height: 44, borderRadius: 12, backgroundColor: Theme.colors.background, alignItems: 'center', justifyContent: 'center' },
+  bloqueo: {
+    backgroundColor: Theme.colors.errorSoft, borderWidth: 1, borderColor: Theme.colors.errorEdge,
+    borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, gap: 6,
+  },
+  bloqueoTitulo: { fontSize: 14, fontWeight: '700', color: '#7A2B2B' },
+  bloqueoMotivo: { fontSize: 13, color: '#7A2B2B' },
+  bloqueoAyuda: { fontSize: 12, color: '#7A2B2B', marginTop: 2 },
+});
 
 export default function DespachoEscanearScreen({ route, navigation }) {
   const { rutagramaId, usuarioId, rutaDesc } = route.params;
@@ -555,64 +660,58 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     }
   }
 
+  // Contadores de la franja oscura (diseño "Despacho · Escanear").
+  const nCompletos = detalle.items.filter((i) => !pendienteTexto(i)).length;
+  const nFaltanCajas = detalle.items.filter((i) => i.espera_carga && i.cajas_escaneadas < i.cajas_esperadas).length;
+  const nFaltaFactura = detalle.items.filter((i) => !i.factura_verificada && !esNotaCredito(i.status)).length;
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Escaneo de despacho</Text>
-        <View style={styles.activeHeader}>
-          <Text style={styles.activeRuta}>{rutaDesc}</Text>
-          <View style={styles.countersRow}>
-            <View style={styles.counterPill}>
-              <Text style={styles.counterLabel}>Pedidos</Text>
-              <Text style={styles.counterValue}>{detalle.totales.cantidad}</Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled">
+        <View style={de.franja}>
+          {[
+            { label: 'Completos', valor: nCompletos, color: Theme.colors.greenOnDark },
+            { label: 'Faltan cajas', valor: nFaltanCajas, color: Theme.colors.amberOnDark },
+            { label: 'Falta fact.', valor: nFaltaFactura, color: Theme.colors.amberOnDark },
+            { label: 'Sin tocar', valor: pendientesCargados ? pendientesSinEscanear : '—', color: Theme.colors.white },
+          ].map((c) => (
+            <View key={c.label} style={de.franjaCelda}>
+              <Text style={[de.franjaValor, { color: c.color }]}>{c.valor}</Text>
+              <Text style={de.franjaLabel}>{c.label}</Text>
             </View>
-            <View style={styles.counterPill}>
-              <Text style={styles.counterLabel}>Cajas</Text>
-              <Text style={styles.counterValue}>{detalle.totales.cajas}</Text>
-            </View>
-            <View style={styles.counterPill}>
-              <Text style={styles.counterLabel}>Peso</Text>
-              <Text style={styles.counterValue}>{Number(detalle.totales.peso).toFixed(2)}</Text>
-            </View>
-            <View style={styles.counterPill}>
-              <Text style={styles.counterLabel}>Sin factura</Text>
-              <Text style={styles.counterValue}>{resumen.sin_factura || 0}</Text>
-            </View>
-            <View style={styles.counterPill}>
-              <Text style={styles.counterLabel}>Pendientes</Text>
-              <Text style={styles.counterValue}>{pendientesSinEscanear}</Text>
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.toggleLabel}>Escaneá la nota o la factura — en cualquier orden</Text>
-        <EscanerInput modo={modo} setModo={setModo} isFocused={isFocused} disabled={scanned} onScan={handleEscaneo} />
-
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualVisible(true)} activeOpacity={0.85}>
-          <Text style={styles.secondaryButtonText}>Escribir código manualmente</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('DespachoFacturaVieja', { rutagramaId, usuarioId, rutaDesc })}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.secondaryButtonText}>Factura vieja / perdida</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.listaTitulo}>Pedidos ({detalle.items.length})</Text>
-        <View style={styles.filterRow}>
-          {FILTROS.map((op) => (
-            <TouchableOpacity
-              key={op.key}
-              style={[styles.filterChip, filtro === op.key && styles.filterChipActive]}
-              onPress={() => setFiltro(op.key)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterChipText, filtro === op.key && styles.filterChipTextActive]}>{op.label}</Text>
-            </TouchableOpacity>
           ))}
         </View>
+
+        <View style={{ padding: 16, paddingTop: 12, gap: 10 }}>
+          <Text style={de.totales}>
+            {detalle.totales.cantidad} pedido(s) · {detalle.totales.cajas} caja(s) · {Number(detalle.totales.peso).toFixed(2)} kg
+          </Text>
+
+          <EscanerInput
+            modo={modo}
+            setModo={setModo}
+            isFocused={isFocused}
+            disabled={scanned}
+            onScan={handleEscaneo}
+            hint="Escanea caja o factura, en cualquier orden"
+          />
+
+          <Boton
+            variante="secundario"
+            titulo="Escribir código manualmente"
+            alto={44}
+            onPress={() => setManualVisible(true)}
+            textStyle={{ fontSize: 14, fontWeight: '600' }}
+          />
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            {FILTROS.map((op) => (
+              <Chip key={op.key} label={op.label} activo={filtro === op.key} onPress={() => setFiltro(op.key)} />
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ paddingHorizontal: 16 }}>
 
         {cargando ? (
           <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginVertical: 20 }} />
@@ -630,7 +729,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         )}
 
         <TouchableOpacity
-          style={[styles.regionHeader, { marginTop: Theme.spacing.lg }]}
+          style={de.seccionPendientes}
           onPress={() => {
             const abriendo = !pendAbierto;
             setPendAbierto(abriendo);
@@ -638,27 +737,20 @@ export default function DespachoEscanearScreen({ route, navigation }) {
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.listaTitulo}>
-            Notas de esta ruta ({pendientesSinEscanear} sin escanear / {pendientes.length})
+          <Text style={de.seccionPendientesTexto}>
+            Notas de esta ruta{pendientesCargados ? ` (${pendientesSinEscanear} sin escanear / ${pendientes.length})` : ''}
           </Text>
           <Ionicons name={pendAbierto ? 'chevron-up' : 'chevron-down'} size={18} color={Theme.colors.text} />
         </TouchableOpacity>
         {pendAbierto && (
           <>
-            <View style={styles.filterRow}>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
               {[
                 { key: 'todas', label: 'Todas' },
                 { key: 'con', label: 'Con factura' },
                 { key: 'sin', label: 'Sin factura' },
               ].map((op) => (
-                <TouchableOpacity
-                  key={op.key}
-                  style={[styles.filterChip, filtroPend === op.key && styles.filterChipActive]}
-                  onPress={() => setFiltroPend(op.key)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.filterChipText, filtroPend === op.key && styles.filterChipTextActive]}>{op.label}</Text>
-                </TouchableOpacity>
+                <Chip key={op.key} label={op.label} activo={filtroPend === op.key} onPress={() => setFiltroPend(op.key)} />
               ))}
             </View>
             {pendientesFiltrados.length === 0 ? (
@@ -690,6 +782,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
             )}
           </>
         )}
+        </View>
 
         <Modal visible={manualVisible} transparent animationType="fade" onRequestClose={() => setManualVisible(false)}>
           <View style={styles.modalBackground}>
@@ -739,14 +832,14 @@ export default function DespachoEscanearScreen({ route, navigation }) {
         />
       </ScrollView>
 
-      <View style={styles.footerBar}>
-        <TouchableOpacity
-          style={[styles.dangerButton, styles.footerButton, !resumen.puede_cerrar && styles.buttonDisabled]}
+      <View style={de.pie}>
+        <Boton
+          variante={resumen.puede_cerrar ? 'primario' : 'oscuro'}
+          titulo="Finalizar y cerrar ruta"
+          icon="checkmark-done-outline"
+          alto={52}
           onPress={abrirFinalizar}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.dangerButtonText}>Finalizar y cerrar ruta</Text>
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );

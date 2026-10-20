@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { Tarjeta, Boton } from '../components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/Despacho.styles';
@@ -148,123 +149,159 @@ export default function DespachoIniciarScreen({ navigation }) {
     );
   }
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.title}>Despacho de rutas</Text>
+  // Diseño "Despacho · Iniciar" del lienzo SyncWareApp: aviso ámbar con los rutagramas
+  // abiertos (Cancelar / Retomar), tarjeta "Nuevo rutagrama" con las rutas, y una
+  // cuadrícula de accesos (historial, enlaces, recepción, notas C/D, RFID).
+  const accesos = [
+    { key: 'hist', label: 'Historial', icon: 'time-outline', onPress: () => navigation.navigate('DespachoHistorial') },
+    { key: 'enl', label: 'Enlaces', icon: 'swap-horizontal-outline', onPress: () => navigation.navigate('DespachoEnlaces') },
+    { key: 'nc', label: 'Notas C/D', icon: 'receipt-outline', onPress: () => navigation.navigate('DespachoNotasCredito') },
+    { key: 'rec1', label: 'Recepción BQTO → S/C', icon: 'cube-outline', onPress: () => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto1', rutaDesc: 'BQTO / S/C' }) },
+    { key: 'rec2', label: 'Recepción S/C → BQTO', icon: 'cube-outline', onPress: () => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto2', rutaDesc: 'S/C / BQTO' }) },
+    { key: 'rfid', label: 'RFID', sub: 'Experimental', icon: 'radio-outline', punteado: true, onPress: () => navigation.navigate('RfidMenu') },
+  ];
 
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, gap: 14 }}>
       {activos.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.listaTitulo}>
-            {activos.length === 1 ? 'Ya tenés una ruta abierta' : `Tenés ${activos.length} rutas abiertas`}
+        <View style={di.abierto}>
+          <Text style={di.abiertoTitulo}>
+            {activos.length === 1 ? 'Tienes un rutagrama abierto' : `Tienes ${activos.length} rutagramas abiertos`}
           </Text>
           {activos.map(item => (
-            <View key={item.rutagramaId} style={{ marginTop: Theme.spacing.sm }}>
-              <Text style={styles.subtitle}>{item.rutaDesc}</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => continuarActivo(item)} activeOpacity={0.85}>
-                <Text style={styles.primaryButtonText}>Continuar despacho</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => descartarActivo(item.rutagramaId)} activeOpacity={0.85}>
-                <Text style={styles.secondaryButtonText}>Quitar de la lista</Text>
-              </TouchableOpacity>
+            <View key={item.rutagramaId} style={{ gap: 10 }}>
+              <Text style={di.abiertoTexto}>
+                <Text style={{ fontFamily: Theme.fontMono, fontWeight: '700' }}>RG-{item.rutagramaId}</Text> · {item.rutaDesc}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Boton variante="peligro" titulo="Cancelar" alto={44} style={{ flex: 1, borderRadius: 12 }} textStyle={{ fontSize: 14 }} onPress={() => descartarActivo(item.rutagramaId)} />
+                <Boton variante="oscuro" titulo="Retomar" alto={44} style={{ flex: 1, borderRadius: 12 }} textStyle={{ fontSize: 14 }} onPress={() => continuarActivo(item)} />
+              </View>
             </View>
           ))}
         </View>
       )}
 
-      <Text style={styles.subtitle}>Elegí la ruta que vas a despachar.</Text>
-      <View style={styles.card}>
-            {cargandoSegmentos ? (
-              <ActivityIndicator size="small" color={Theme.colors.primary} />
-            ) : totalOpciones === 0 ? (
-              <Text style={styles.emptyListText}>No se pudo cargar el catálogo de rutas.</Text>
-            ) : (
-              gruposRuta.map(grupo => {
-                const agrupable = REGIONES_AGRUPABLES.has(grupo.region);
-                const abierta = !agrupable && regionAbierta === grupo.region;
-                return (
-                  <View key={grupo.region}>
-                    <TouchableOpacity
-                      style={styles.regionHeader}
-                      onPress={() => {
-                        if (agrupable) {
-                          iniciarConCodigo(codigoRegion(grupo.region));
-                        } else {
-                          setRegionAbierta(abierta ? null : grupo.region);
-                        }
-                      }}
-                      disabled={iniciando}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.listaTitulo}>{grupo.region} ({grupo.opciones.length})</Text>
-                      {!agrupable && (
-                        <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={18} color={Theme.colors.text} />
-                      )}
-                    </TouchableOpacity>
-                    {abierta && grupo.opciones.map(opcion => (
-                      <TouchableOpacity
-                        key={opcion.codigo}
-                        style={styles.rutaOption}
-                        onPress={() => iniciarConCodigo(opcion.codigo)}
-                        disabled={iniciando}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.rutaOptionText}>{opcion.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                );
-              })
-            )}
+      <Tarjeta style={{ padding: 16 }}>
+        <Text style={di.tituloSeccion}>Nuevo rutagrama</Text>
+        <Text style={di.etiqueta}>Ruta / región — toca una para iniciar</Text>
+        {cargandoSegmentos ? (
+          <ActivityIndicator size="small" color={Theme.colors.primary} />
+        ) : totalOpciones === 0 ? (
+          <Text style={styles.emptyListText}>No se pudo cargar el catálogo de rutas.</Text>
+        ) : (
+          gruposRuta.map(grupo => {
+            const agrupable = REGIONES_AGRUPABLES.has(grupo.region);
+            const abierta = !agrupable && regionAbierta === grupo.region;
+            return (
+              <View key={grupo.region} style={{ gap: 8 }}>
+                <TouchableOpacity
+                  style={[di.opcion, abierta && di.opcionActiva]}
+                  onPress={() => {
+                    if (agrupable) {
+                      iniciarConCodigo(codigoRegion(grupo.region));
+                    } else {
+                      setRegionAbierta(abierta ? null : grupo.region);
+                    }
+                  }}
+                  disabled={iniciando}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[di.opcionTexto, abierta && { color: Theme.colors.primaryDark }]}>{grupo.region}</Text>
+                  <Text style={di.opcionConteo}>{grupo.opciones.length} {grupo.opciones.length === 1 ? 'ruta' : 'rutas'}</Text>
+                  {agrupable ? (
+                    <Ionicons name="arrow-forward" size={18} color={Theme.colors.primaryDark} />
+                  ) : (
+                    <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={18} color={Theme.colors.muted} />
+                  )}
+                </TouchableOpacity>
+                {abierta && grupo.opciones.map(opcion => (
+                  <TouchableOpacity
+                    key={opcion.codigo}
+                    style={di.subopcion}
+                    onPress={() => iniciarConCodigo(opcion.codigo)}
+                    disabled={iniciando}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={di.subopcionTexto}>{opcion.label}</Text>
+                    <Ionicons name="play-circle-outline" size={20} color={Theme.colors.primaryDark} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          })
+        )}
         {iniciando && <ActivityIndicator size="small" color={Theme.colors.primary} style={{ marginTop: Theme.spacing.sm }} />}
+      </Tarjeta>
+
+      <View style={di.accesos}>
+        {accesos.map(a => (
+          <TouchableOpacity
+            key={a.key}
+            style={[di.acceso, a.punteado && { borderStyle: 'dashed', borderColor: Theme.colors.dashed }]}
+            onPress={a.onPress}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
+            <Ionicons name={a.icon} size={20} color={Theme.colors.dark} />
+            <Text style={di.accesoTexto} numberOfLines={2}>{a.label}</Text>
+            {a.sub ? <Text style={di.accesoSub}>{a.sub}</Text> : null}
+          </TouchableOpacity>
+        ))}
       </View>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('DespachoNotasCredito')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>Notas de Crédito / Débito</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('DespachoHistorial')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>Historial de rutagramas</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('DespachoEnlaces')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>Enlaces generados (todos)</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('RfidMenu')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>RFID (experimental)</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto1', rutaDesc: 'BQTO / S/C' })}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>Recepción de enlace (BQTO / S/C)</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('DespachoRecibirEnlace', { rutaCodigo: 'barquisimeto2', rutaDesc: 'S/C / BQTO' })}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.secondaryButtonText}>Recepción de enlace (S/C / BQTO)</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
+
+const di = StyleSheet.create({
+  abierto: {
+    backgroundColor: Theme.colors.warningSoft,
+    borderWidth: 1,
+    borderColor: Theme.colors.warningEdge,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+  },
+  abiertoTitulo: { fontSize: 14, fontWeight: '700', color: Theme.colors.warningText },
+  abiertoTexto: { fontSize: 13, color: Theme.colors.warningText },
+  tituloSeccion: { fontSize: 16, fontWeight: '700', color: Theme.colors.text },
+  etiqueta: { fontSize: 12, fontWeight: '600', color: Theme.colors.muted },
+  opcion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    borderRadius: 12,
+  },
+  opcionActiva: { borderWidth: 2, borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
+  opcionTexto: { flex: 1, fontSize: 14, fontWeight: '700', color: Theme.colors.text },
+  opcionConteo: { fontSize: 12, color: Theme.colors.muted },
+  subopcion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+    marginLeft: 12,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.background,
+  },
+  subopcionTexto: { flex: 1, fontSize: 14, color: Theme.colors.text },
+  accesos: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
+  acceso: {
+    width: '32%',
+    minHeight: 76,
+    backgroundColor: Theme.colors.surface,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 6,
+  },
+  accesoTexto: { fontSize: 12, fontWeight: '600', color: Theme.colors.text, textAlign: 'center' },
+  accesoSub: { fontSize: 10, color: Theme.colors.muted },
+});

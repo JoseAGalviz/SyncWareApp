@@ -16,6 +16,7 @@ import { CoberturaVendedoresService } from '../services/CoberturaVendedoresServi
 import { showMessage } from 'react-native-flash-message';
 import Theme from '../constants/Theme';
 import styles from '../styles/CoberturaVendedoresScreen.styles';
+import AppHeader from '../components/AppHeader';
 
 const CoberturaVendedoresScreen = ({ navigation }) => {
     const { user } = useAuth();
@@ -123,16 +124,12 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
-
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={Theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Cobertura Vendedores</Text>
-                <View style={{ width: 40 }} />
-            </View>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <AppHeader
+                title="Cobertura Vendedores"
+                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
+            />
 
             <View style={styles.searchContainer}>
                 <View style={styles.searchBox}>
@@ -193,7 +190,7 @@ const CoberturaVendedoresScreen = ({ navigation }) => {
                     removeClippedSubviews={true}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

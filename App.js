@@ -15,8 +15,8 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import AppNavigatorConductor from "./src/navigation/AppNavigatorConductor";
 import AppNavigatorDespachador from "./src/navigation/AppNavigatorDespachador";
 import CustomDrawerContent from "./src/navigation/CustomDrawerContent";
+import AvisoActualizacion from "./src/components/AvisoActualizacion";
 import UserDataScreen from "./src/screens/UserDataScreen";
-import RecepcionGuiasScreen from "./src/screens/RecepcionGuiasScreen";
 import PedidosHistorialScreen from "./src/screens/PedidosHistorialScreen";
 import MatrixExcelScreen from "./src/screens/MatrixExcelScreen";
 import PotencialCiudadesScreen from "./src/screens/PotencialCiudadesScreen";
@@ -27,16 +27,25 @@ import DocumentosScreen from "./src/screens/DocumentosScreen";
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 
+// Menú lateral del diseño: 310 px, esquinas derechas redondeadas.
+const ESTILO_DRAWER = {
+  backgroundColor: Theme.colors.surface,
+  width: 310,
+  borderTopRightRadius: 24,
+  borderBottomRightRadius: 24,
+  overflow: "hidden",
+};
+
 function MainAppDrawer() {
+  const { user } = useAuth();
+  const esVendedor = user?.rol === "vendedor";
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerStyle: {
-          backgroundColor: Theme.colors.surface,
-          width: 270,
-        },
+        drawerStyle: ESTILO_DRAWER,
+        overlayColor: "rgba(15,42,58,0.55)",
         drawerActiveTintColor: Theme.colors.primary,
         drawerInactiveTintColor: Theme.colors.muted,
         drawerLabelStyle: { fontSize: 14, fontWeight: '500' },
@@ -45,7 +54,10 @@ function MainAppDrawer() {
       <Drawer.Screen
         name="HomeTabs"
         component={AppNavigator}
-        options={{ title: "Inicio" }}
+        options={{
+          title: "Inicio",
+          drawerIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+        }}
       />
       <Drawer.Screen
         name="UserData"
@@ -56,26 +68,6 @@ function MainAppDrawer() {
         }}
       />
       <Drawer.Screen
-        name="RecibirGuías"
-        component={RecepcionGuiasScreen}
-        options={{
-          title: "Cristmedicals",
-          headerShown: true,
-          headerStyle: { backgroundColor: Theme.colors.dark },
-          headerTitleStyle: { color: Theme.colors.white, fontSize: 16, fontWeight: '600' },
-          headerTintColor: Theme.colors.white,
-          headerTitleAlign: "center",
-          headerRight: () => (
-            <Image
-              source={require("./assets/logo.png")}
-              style={{ width: 150, height: 50, resizeMode: "contain", marginRight: -40 }}
-            />
-          ),
-          drawerIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
-          drawerLabel: "Recibir Guías",
-        }}
-      />
-      <Drawer.Screen
         name="HistorialPedidos"
         component={PedidosHistorialScreen}
         options={{
@@ -83,32 +75,37 @@ function MainAppDrawer() {
           drawerIcon: ({ color, size }) => <Ionicons name="clipboard-outline" color={color} size={size} />,
         }}
       />
-      <Drawer.Screen
-        name="ConsultaMatrix"
-        component={MatrixExcelScreen}
-        options={{
-          title: "Zonas Potenciales",
-          drawerIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} />,
-        }}
-      />
-      <Drawer.Screen
-        name="ClientesPotenciales"
-        component={PotencialCiudadesScreen}
-        options={{
-          title: "Clientes Potenciales",
-          drawerIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" color={color} size={size} />,
-          drawerLabel: "Clientes Potenciales",
-        }}
-      />
-      <Drawer.Screen
-        name="CoberturaVendedores"
-        component={CoberturaVendedoresScreen}
-        options={{
-          title: "Cobertura Vendedores",
-          drawerIcon: ({ color, size }) => <Ionicons name="map-outline" color={color} size={size} />,
-          drawerLabel: "Cobertura Vendedores",
-        }}
-      />
+      {/* Reportes que no ve el vendedor (sí admin/ejecutivo/junior). */}
+      {!esVendedor && (
+        <>
+          <Drawer.Screen
+            name="ConsultaMatrix"
+            component={MatrixExcelScreen}
+            options={{
+              title: "Zonas Potenciales",
+              drawerIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} />,
+            }}
+          />
+          <Drawer.Screen
+            name="ClientesPotenciales"
+            component={PotencialCiudadesScreen}
+            options={{
+              title: "Clientes Potenciales",
+              drawerIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" color={color} size={size} />,
+              drawerLabel: "Clientes Potenciales",
+            }}
+          />
+          <Drawer.Screen
+            name="CoberturaVendedores"
+            component={CoberturaVendedoresScreen}
+            options={{
+              title: "Cobertura Vendedores",
+              drawerIcon: ({ color, size }) => <Ionicons name="map-outline" color={color} size={size} />,
+              drawerLabel: "Cobertura Vendedores",
+            }}
+          />
+        </>
+      )}
       <Drawer.Screen
         name="RutasVendedores"
         component={RutasVendedoresScreen}
@@ -141,7 +138,8 @@ function MainAppDrawerConductor() {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerStyle: { backgroundColor: Theme.colors.surface, width: 270 },
+        drawerStyle: ESTILO_DRAWER,
+        overlayColor: "rgba(15,42,58,0.55)",
         drawerActiveTintColor: Theme.colors.primary,
         drawerInactiveTintColor: Theme.colors.muted,
         drawerLabelStyle: { fontSize: 14, fontWeight: '500' },
@@ -150,7 +148,10 @@ function MainAppDrawerConductor() {
       <Drawer.Screen
         name="HomeTabsConductor"
         component={AppNavigatorConductor}
-        options={{ title: "Inicio" }}
+        options={{
+          title: "Inicio",
+          drawerIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
+        }}
       />
     </Drawer.Navigator>
   );
@@ -193,6 +194,8 @@ function AppLayout() {
         style={{ marginTop: Platform.OS === "android" ? 30 : 0 }}
         titleStyle={{ paddingTop: 5 }}
       />
+      {/* Aviso de actualización OTA (EAS Update) para todos los roles, también en el Login. */}
+      <AvisoActualizacion />
     </NavigationContainer>
   );
 }

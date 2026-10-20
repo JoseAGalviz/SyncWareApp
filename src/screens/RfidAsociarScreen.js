@@ -141,12 +141,6 @@ export default function RfidAsociarScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Asociar tags</Text>
-        </View>
         <Text style={styles.subtitle}>
           Poné el switch de la pistola en modo RFID y disparale a un solo tag por vez.
         </Text>

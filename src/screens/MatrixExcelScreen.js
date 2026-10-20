@@ -17,6 +17,8 @@ import { showMessage } from 'react-native-flash-message';
 import { printAndSharePdf } from '../utils/pdfUtils';
 import Theme from '../constants/Theme';
 import styles from '../styles/MatrixExcelScreen.styles';
+import AppHeader from '../components/AppHeader';
+import { Pill } from '../components/ui';
 
 const MatrixExcelScreen = ({ navigation }) => {
     const { user } = useAuth();
@@ -177,62 +179,42 @@ const MatrixExcelScreen = ({ navigation }) => {
 
     // ── Tarjeta individual ────────────────────────────────────────────────────
     const renderItem = ({ item }) => {
+        // Diseño "Zonas Potenciales" del lienzo SyncWareApp.
+        const Celda = ({ label, valor, bg, fg, fgLabel }) => (
+            <View style={[styles.celda, { backgroundColor: bg }]}>
+                <Text style={[styles.celdaValor, { color: fg }]} numberOfLines={1} adjustsFontSizeToFit>{valor}</Text>
+                <Text style={[styles.celdaLabel, { color: fgLabel || fg }]}>{label}</Text>
+            </View>
+        );
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                    <View style={[styles.idBadge, { backgroundColor: Theme.colors.dark }]}>
-                        <Text style={styles.idText}>ID: {item.id ?? 'N/A'}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.companyName}>{item.ciudad || 'Sin Ciudad'}</Text>
+                        <Text style={styles.subtitle}>
+                            {item.ejecutiva || 'Sin Ejecutiva'} {item.cod_ejecutiva ? `(#${item.cod_ejecutiva})` : ''} · Potencial {formatNumber(item.potencial)}
+                        </Text>
                     </View>
-                    <View style={[styles.idBadge, { backgroundColor: Theme.colors.primary }]}>
-                        <Text style={styles.idText}>Potencial: {formatNumber(item.potencial)}</Text>
-                    </View>
+                    <Pill tono="azul">Peso empresa {formatPeso(item.peso_empresa)}</Pill>
                 </View>
 
-                <Text style={styles.companyName}>{item.ciudad || 'Sin Ciudad'}</Text>
-                <Text style={styles.subtitle}>
-                    {item.ejecutiva || 'Sin Ejecutiva'} {item.cod_ejecutiva ? `(#${item.cod_ejecutiva})` : ''}
-                </Text>
-
-                <View style={styles.divider} />
-
-                <View style={styles.row}>
-                    <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>FARMACIAS</Text>
-                        <Text style={styles.infoValue}>{item.farmacias || '0'}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>PESO EMPRESA</Text>
-                        <Text style={styles.infoValue}>{formatPeso(item.peso_empresa)}</Text>
-                    </View>
+                <View style={styles.celdas}>
+                    <Celda label="Farmacias" valor={item.farmacias || '0'} bg={Theme.colors.background} fg={Theme.colors.text} fgLabel={Theme.colors.muted} />
+                    <Celda label="Activos" valor={item.activos ?? 0} bg={Theme.colors.primaryLight} fg={Theme.colors.primaryDark} fgLabel="#2E5B4A" />
+                    <Celda label="Perdidos" valor={item.perdidos ?? 0} bg={Theme.colors.errorSoft} fg={Theme.colors.errorText} fgLabel="#7A2B2B" />
+                    <Celda label="Prospectos" valor={item.prospectos ?? 0} bg={Theme.colors.warningSoft} fg={Theme.colors.warningText} />
                 </View>
 
                 <View style={styles.row}>
                     <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>MENSUAL UNID.</Text>
-                        <Text style={styles.infoValue}>{formatNumber(item.mesual_unid)}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>MENSUAL CRIST.</Text>
+                        <Text style={styles.infoLabel}>Mensual Crist.</Text>
                         <Text style={styles.infoValue}>{formatNumber(item.mesual_crist)}</Text>
                     </View>
-                </View>
-
-                <View style={styles.row}>
                     <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>ACTIVOS</Text>
-                        <Text style={[styles.infoValue, { color: Theme.colors.success }]}>{item.activos ?? 0}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>PERDIDOS</Text>
-                        <Text style={[styles.infoValue, { color: Theme.colors.error }]}>{item.perdidos ?? 0}</Text>
-                    </View>
-                    <View style={styles.infoCol}>
-                        <Text style={styles.infoLabel}>PROSPECTOS</Text>
-                        <Text style={[styles.infoValue, { color: Theme.colors.warning }]}>{item.prospectos ?? 0}</Text>
+                        <Text style={styles.infoLabel}>Mensual unidades</Text>
+                        <Text style={styles.infoValue}>{formatNumber(item.mesual_unid)} u.</Text>
                     </View>
                 </View>
-
-                <View style={styles.footerDivider} />
 
                 <View style={styles.cardFooter}>
                     <Text style={styles.footerText}>Vendedor: {item.vendedor || 'N/D'} ({item.usuario || 'N/D'})</Text>
@@ -242,27 +224,27 @@ const MatrixExcelScreen = ({ navigation }) => {
         );
     };
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+    const sinPdf = generatingPdf || loading || filteredData.length === 0;
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={Theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Zonas Potenciales</Text>
-                <TouchableOpacity
-                    onPress={handleGeneratePdf}
-                    disabled={generatingPdf || loading || filteredData.length === 0}
-                    style={{ padding: 8, opacity: (generatingPdf || loading || filteredData.length === 0) ? 0.4 : 1 }}
-                >
-                    {generatingPdf
-                        ? <ActivityIndicator size="small" color={Theme.colors.primary} />
-                        : <Ionicons name="download-outline" size={24} color={Theme.colors.primary} />
-                    }
-                </TouchableOpacity>
-            </View>
+    return (
+        <View style={styles.container}>
+            <AppHeader
+                title="Zonas Potenciales"
+                onMenu={() => navigation.openDrawer?.()}
+                right={
+                    <TouchableOpacity
+                        onPress={handleGeneratePdf}
+                        disabled={sinPdf}
+                        style={[styles.pdfBoton, sinPdf && { opacity: 0.4 }]}
+                        accessibilityLabel="Descargar PDF"
+                    >
+                        {generatingPdf
+                            ? <ActivityIndicator size="small" color={Theme.colors.white} />
+                            : <Ionicons name="download-outline" size={18} color={Theme.colors.white} />}
+                        <Text style={styles.pdfTexto}>PDF</Text>
+                    </TouchableOpacity>
+                }
+            />
 
             {/* Search Bar */}
             <View style={styles.searchContainer}>
@@ -270,7 +252,8 @@ const MatrixExcelScreen = ({ navigation }) => {
                     <Ionicons name="search" size={20} color={Theme.colors.muted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Buscar por ciudad o potencial..."
+                        placeholder="Buscar zona o potencial"
+                        placeholderTextColor={Theme.colors.light}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
@@ -313,7 +296,7 @@ const MatrixExcelScreen = ({ navigation }) => {
                     removeClippedSubviews={true}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

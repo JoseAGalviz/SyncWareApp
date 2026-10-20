@@ -145,12 +145,6 @@ export default function DespachoNotasCreditoScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Notas de Crédito / Débito</Text>
-        </View>
         <Text style={styles.subtitle}>Escaneá la nota y se guarda. Sin ruta.</Text>
 
         <View style={styles.countersRow}>

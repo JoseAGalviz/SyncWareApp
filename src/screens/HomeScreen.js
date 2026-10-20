@@ -1,5 +1,9 @@
-import React, { useLayoutEffect, useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions, Linking, Modal, TextInput, Platform, ScrollView, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Linking, Modal, TextInput, Platform, ScrollView, RefreshControl, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Theme from '../constants/Theme';
+import { HeaderButton } from '../components/AppHeader';
+import { Tarjeta, Pill, Barra, Seccion, IconoCaja } from '../components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncAllData } from '../services/syncAllData'; // Importa la función correctamente
@@ -27,6 +31,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [totalClientes, setTotalClientes] = useState(0);
   const [endpointResult, setEndpointResult] = useState(null);
   const [syncing, setSyncing] = useState(false);
@@ -266,22 +271,6 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Configurar el header de navegación
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          style={styles.menuButton}
-          accessibilityLabel="Abrir menú"
-          accessibilityHint="Despliega el menú de navegación"
-        >
-          <Ionicons name="menu" size={30} color={COLORS.WHITE} />
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
-
   // Efectos para cargar datos al montar el componente
   useEffect(() => {
     obtenerTotales();
@@ -289,287 +278,195 @@ export default function HomeScreen({ navigation }) {
     fetchKpiData();
   }, [obtenerTotales, cargarClientes, fetchKpiData]);
 
+  // Accesos del inicio ("Herramientas"). Mis Negociaciones y Cartera de Clientes no se
+  // muestran al vendedor; los que dependen de co_ven, solo si el usuario lo tiene.
+  const esVendedor = user?.rol === 'vendedor';
+  const tieneCoVen = !!(user && user.co_ven);
+  const acciones = [
+    tieneCoVen && {
+      key: 'cobranza', label: generatingPDF ? 'Generando PDF...' : 'Cobranza Preventiva', icon: 'document-text-outline',
+      tono: 'ambar', onPress: handleCobranzaPreventiva, disabled: syncing || generatingPDF, loading: generatingPDF,
+    },
+    tieneCoVen && {
+      key: 'comparador', label: 'Comparador de Precios', icon: 'git-compare-outline', tono: 'azul',
+      onPress: () => Linking.openURL(`${Config.DESPACHO_URL}/listado/negociacion.php`),
+    },
+    {
+      key: 'catalogo', label: 'Catálogo Personalizado', icon: 'book-outline', tono: 'verde',
+      onPress: () => Linking.openURL('https://catalogo-cristmedicals.netlify.app/'),
+    },
+    !esVendedor && {
+      key: 'negociaciones', label: 'Mis Negociaciones', icon: 'checkmark-done-circle-outline', tono: 'violeta',
+      onPress: handleOpenNegociaciones,
+    },
+    tieneCoVen && !esVendedor && {
+      key: 'cartera', label: 'Cartera de Clientes', icon: 'people-outline', tono: 'azul',
+      onPress: handleOpenCartera,
+    },
+  ].filter(Boolean);
+
+  // Indicadores derivados (mismas fórmulas que antes).
+  const k = kpiData || {};
+  const ventasNetas = Number(k.ventas_factura_sum || 0) * 0.9;
+  const pctVentas = Number(k.metaVentas) > 0 ? (ventasNetas / Number(k.metaVentas)) * 100 : 0;
+  const pctNeg = Number(k.metaGrupoNeg) > 0 ? (Number(k.negociacion) / Number(k.metaGrupoNeg)) * 100 : 0;
+  const vencidoCobrar = Number(k.metaSaldoVencidoInicio || 0) + Number(k.neto_facturas_mes_transito || 0);
+  const pctCobranza = vencidoCobrar > 0 ? (Number(k.saldo_facturas_mes || 0) / vencidoCobrar) * 100 : 0;
+  const mesActual = new Date().toLocaleDateString('es-VE', { month: 'long', year: 'numeric' });
+  const primerNombre = String(user?.nombre || 'Usuario').trim().split(/\s+/)[0];
+  const dias = [
+    ['Lun', k.diaLunes], ['Mar', k.diaMartes], ['Mié', k.diaMiercoles],
+    ['Jue', k.diaJueves], ['Vie', k.diaViernes], ['Sáb', k.diaSabado],
+  ];
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={hs.pantalla}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={true}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.PRIMARY]}
-            tintColor={COLORS.PRIMARY}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} tintColor={C.white} />
         }
       >
-        <View style={styles.container}>
-          <Text style={styles.subtitle}>Hola, {user ? user.nombre : 'Usuario'}</Text>
-          <Text style={styles.welcomeText}>Aquí tienes el resumen de tu actividad de hoy.</Text>
+        {/* Encabezado grande azul noche con saludo; las tarjetas de abajo lo solapan. */}
+        <View style={[hs.header, { paddingTop: insets.top + 16 }]}>
+          <View style={hs.headerFila}>
+            <HeaderButton icon="menu" label="Abrir menú" onPress={() => navigation.openDrawer()} />
+            <Text style={hs.headerEtiqueta}>Inicio</Text>
+          </View>
+          <View>
+            <Text style={hs.saludo}>Hola, {primerNombre}</Text>
+            <Text style={hs.saludoSub}>Este es tu resumen de hoy</Text>
+          </View>
+        </View>
 
-          <View style={styles.syncRow}>
+        <View style={hs.contenido}>
+          <View style={hs.fila2}>
             <TouchableOpacity
-              style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+              style={[hs.tarjetaTop, syncing && { opacity: 0.6 }]}
               onPress={handleSync}
               disabled={syncing}
+              accessibilityRole="button"
               accessibilityLabel="Sincronizar datos"
-              accessibilityHint="Sincroniza los datos con el servidor"
             >
               {syncing ? (
-                <ActivityIndicator size={18} color={COLORS.PRIMARY} style={styles.syncIcon} />
+                <View style={hs.iconoCargando}><ActivityIndicator color={C.primaryDark} /></View>
               ) : (
-                <Ionicons name="refresh" size={18} color={COLORS.PRIMARY} style={styles.syncIcon} />
+                <IconoCaja name="sync-outline" tono="verde" />
               )}
-              <Text style={styles.syncButtonText}>
-                {syncing ? 'Sincronizando...' : 'Sincronizar datos'}
-              </Text>
+              <Text style={hs.tarjetaTitulo}>{syncing ? 'Sincronizando...' : 'Sincronizar datos'}</Text>
+              <Text style={hs.tarjetaSub}>Clientes y catálogo</Text>
             </TouchableOpacity>
-
-            <View style={styles.clientesInfoBox} accessibilityLabel="Clientes asignados">
-              <Text style={styles.infoTitle}>Clientes asignados</Text>
-              <Text style={styles.infoNumber}>{totalClientes}</Text>
-              <Text style={styles.infoSubtitle}>Total sincronizados</Text>
+            <View style={hs.tarjetaTop} accessibilityLabel={`Clientes asignados: ${totalClientes}`}>
+              <IconoCaja name="people-outline" tono="azul" />
+              <Text style={hs.tarjetaTitulo}>Clientes asignados</Text>
+              <Text style={hs.numeroGrande}>{totalClientes}</Text>
             </View>
-
           </View>
 
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: COLORS.SUCCESS }]}
-            onPress={handleOpenNegociaciones}
-            accessibilityLabel="Ir a Mis Negociaciones"
-            accessibilityHint="Abre el dashboard de mis negociaciones en el navegador"
-          >
-            <View style={styles.btnIconContainer}>
-              <Ionicons name="stats-chart" size={22} color={COLORS.WHITE} />
-            </View>
-            <Text style={styles.actionButtonText}>Mis Negociaciones</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
-          </TouchableOpacity>
-
-          {user && user.co_ven && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: COLORS.PRIMARY }]}
-              onPress={handleCobranzaPreventiva}
-              disabled={syncing || generatingPDF}
-              accessibilityLabel="Generar reporte de Cobranza Preventiva"
-              accessibilityHint="Genera y comparte un PDF con el reporte de cobranza preventiva"
-            >
-              <View style={styles.btnIconContainer}>
-                {generatingPDF ? (
-                  <ActivityIndicator size={20} color={COLORS.WHITE} />
-                ) : (
-                  <Ionicons name="card-outline" size={22} color={COLORS.WHITE} />
-                )}
-              </View>
-              <Text style={styles.actionButtonText}>
-                {generatingPDF ? 'Generando PDF...' : 'Cobranza Preventiva'}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
-            </TouchableOpacity>
-          )}
-
-          {user && user.co_ven && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: COLORS.ACCENT }]}
-              onPress={handleOpenCartera}
-              accessibilityLabel="Ir a Cartera de Clientes"
-              accessibilityHint="Abre la pantalla de Cartera de Clientes"
-            >
-              <View style={styles.btnIconContainer}>
-                <Ionicons name="people" size={22} color={COLORS.WHITE} />
-              </View>
-              <Text style={styles.actionButtonText}>Cartera de Clientes</Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
-            </TouchableOpacity>
-          )}
-
-          {user && user.co_ven && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#7B5EA7' }]}
-              onPress={() => Linking.openURL(`${Config.DESPACHO_URL}/listado/negociacion.php`)}
-              accessibilityLabel="Ir a Comparador de Precios y Negociaciones"
-              accessibilityHint="Abre la pantalla de Comparador de Precios y Negociaciones"
-            >
-              <View style={styles.btnIconContainer}>
-                <Ionicons name="swap-horizontal" size={22} color={COLORS.WHITE} />
-              </View>
-              <Text style={styles.actionButtonText}>Comparador - Precios - Negociaciones</Text>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#E07B39' }]}
-            onPress={() => Linking.openURL('https://catalogo-cristmedicals.netlify.app/')}
-            accessibilityLabel="Ir a Catálogo Personalizado"
-            accessibilityHint="Abre el catálogo personalizado en el navegador"
-          >
-            <View style={styles.btnIconContainer}>
-              <Ionicons name="book-outline" size={22} color={COLORS.WHITE} />
-            </View>
-            <Text style={styles.actionButtonText}>Catálogo Personalizado</Text>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.WHITE} style={{ opacity: 0.6 }} />
-          </TouchableOpacity>
-
-
-          {/* KPI Metrics Section */}
-          {loadingKpi && (
-            <View style={styles.kpiLoadingContainer}>
-              <ActivityIndicator size={30} color={COLORS.PRIMARY} />
-              <Text style={styles.kpiLoadingText}>Cargando indicadores...</Text>
-            </View>
-          )}
-
-          {kpiData && !loadingKpi && (
-            <View style={styles.kpiContainer}>
-
-              {/* Ventas y Clientes */}
-              <View style={styles.kpiNewSection}>
-                <View style={styles.kpiTitleRow}>
-                  <Ionicons name="stats-chart-outline" size={18} color={COLORS.PRIMARY} />
-                  <Text style={styles.kpiNewSectionTitle}>Ventas y Clientes</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Meta de Ventas:</Text>
-                  <Text style={styles.kpiDataValue}>${Number(kpiData.metaVentas || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Ventas Actuales:</Text>
-                  <Text style={styles.kpiDataValue}>${(Number(kpiData.ventas_factura_sum || 0) * 0.9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>% Cumplido:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    {Number(kpiData.metaVentas) > 0 ? ((Number(kpiData.ventas_factura_sum) * 0.9 / Number(kpiData.metaVentas)) * 100).toFixed(2) : '0.00'}%
-                  </Text>
-                </View>
-
-                <View style={[styles.kpiDivider, { marginVertical: 10 }]} />
-
-                {/* Meta Cartera Activa */}
-                <View style={styles.kpiTitleRow}>
-                  <Text style={[styles.kpiNewSectionTitle, { marginLeft: 0 }]}>Meta Cartera Activa</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Meta:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.metaCarteraAct || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Clientes Activos:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.clientes_activos_factura || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>% Cumplido:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    {Number(kpiData.metaCarteraAct) > 0 ? ((Number(kpiData.clientes_activos_factura) / Number(kpiData.metaCarteraAct)) * 100).toFixed(2) : '0.00'}%
-                  </Text>
-                </View>
-              </View>
-
-              {/* Gestión de Clientes */}
-              <View style={styles.kpiNewSection}>
-                <View style={styles.kpiTitleRow}>
-                  <Ionicons name="people-outline" size={18} color={COLORS.PRIMARY} />
-                  <Text style={styles.kpiNewSectionTitle}>Gestión de Clientes</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Clientes Recuperados:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.clientes_recuperados || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Clientes con Convenio:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.clientes_convenio || '0'}</Text>
-                </View>
-              </View>
-
-              {/* Productos y Negociación */}
-              <View style={styles.kpiNewSection}>
-                <View style={styles.kpiTitleRow}>
-                  <Ionicons name="briefcase-outline" size={18} color={COLORS.PRIMARY} />
-                  <Text style={styles.kpiNewSectionTitle}>Productos y Negociación</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Meta Negociaciones:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.metaGrupoNeg || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Negociaciones:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.negociacion || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Cumplido:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    {Number(kpiData.metaGrupoNeg) > 0 ? ((Number(kpiData.negociacion) / Number(kpiData.metaGrupoNeg)) * 100).toFixed(2) : '0.00'}%
-                  </Text>
-                </View>
-              </View>
-
-              {/* Cartera y Cobranza */}
-              <View style={styles.kpiNewSection}>
-                <View style={styles.kpiTitleRow}>
-                  <Ionicons name="card-outline" size={18} color={COLORS.PRIMARY} />
-                  <Text style={styles.kpiNewSectionTitle}>Cartera y Cobranza</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Vencido a cobrar:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    ${(Number(kpiData.metaSaldoVencidoInicio || 0) + Number(kpiData.neto_facturas_mes_transito || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Saldo en tránsito:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    ${Number(kpiData.saldo_facturas_mes || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Cumplido:</Text>
-                  <Text style={styles.kpiDataValue}>
-                    {(Number(kpiData.metaSaldoVencidoInicio || 0) + Number(kpiData.neto_facturas_mes_transito || 0)) > 0
-                      ? ((Number(kpiData.saldo_facturas_mes || 0) / (Number(kpiData.metaSaldoVencidoInicio || 0) + Number(kpiData.neto_facturas_mes_transito || 0))) * 100).toFixed(2)
-                      : '0.00'}%
-                  </Text>
-                </View>
-              </View>
-
-              {/* Visitas por Día */}
-              <View style={styles.kpiNewSection}>
-                <View style={styles.kpiTitleRow}>
-                  <Ionicons name="calendar-outline" size={18} color={COLORS.PRIMARY} />
-                  <Text style={styles.kpiNewSectionTitle}>Visitas por Día</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Lunes:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaLunes || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Martes:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaMartes || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Miércoles:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaMiercoles || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Jueves:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaJueves || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Viernes:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaViernes || '0'}</Text>
-                </View>
-                <View style={styles.kpiDataItem}>
-                  <Text style={styles.kpiDataLabel}>Sábado:</Text>
-                  <Text style={styles.kpiDataValue}>{kpiData.diaSabado || '0'}</Text>
-                </View>
-                <View style={[styles.kpiDataItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: '#EEEEEE', paddingTop: 8 }]}>
-                  <Text style={[styles.kpiDataLabel, { fontWeight: 'bold' }]}>TOTAL VISITAS:</Text>
-                  <Text style={[styles.kpiDataValue, { fontWeight: 'bold' }]}>{kpiData.totVisitas || '0'}</Text>
-                </View>
+          {acciones.length ? (
+            <View style={{ gap: 12 }}>
+              <Seccion titulo="Herramientas" />
+              <View style={hs.grilla}>
+                {acciones.map((accion) => (
+                  <TouchableOpacity
+                    key={accion.key}
+                    style={hs.herramienta}
+                    onPress={accion.onPress}
+                    disabled={accion.disabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={accion.label}
+                    activeOpacity={0.75}
+                  >
+                    {accion.loading ? (
+                      <View style={hs.iconoCargando}><ActivityIndicator color={C.warningIcon} /></View>
+                    ) : (
+                      <IconoCaja name={accion.icon} tono={accion.tono} tam={36} />
+                    )}
+                    <Text style={hs.herramientaLabel}>{accion.label}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
-          )}
+          ) : null}
+
+          <View style={{ gap: 12 }}>
+            <Seccion titulo="Mis indicadores" derecha={mesActual.charAt(0).toUpperCase() + mesActual.slice(1)} />
+
+            {loadingKpi && (
+              <View style={hs.cargandoKpi}>
+                <ActivityIndicator color={C.primary} />
+                <Text style={{ color: C.muted, fontSize: 13 }}>Cargando indicadores...</Text>
+              </View>
+            )}
+
+            {kpiData && !loadingKpi && (
+              <>
+                <Tarjeta style={hs.kpi}>
+                  <View style={hs.kpiCabecera}>
+                    <Text style={hs.kpiTitulo}>Ventas y Clientes</Text>
+                    <Pill tono="verde">{pctVentas.toFixed(1)}% cumplido</Pill>
+                  </View>
+                  <Barra pct={pctVentas} alto={10} />
+                  <View style={hs.kpiGrid3}>
+                    <Dato label="Meta" valor={`$${money(k.metaVentas)}`} />
+                    <Dato label="Ventas" valor={`$${money(ventasNetas)}`} />
+                    <Dato label="Cartera activa" valor={`${k.clientes_activos_factura || 0} / ${k.metaCarteraAct || 0}`} />
+                  </View>
+                </Tarjeta>
+
+                <Tarjeta style={hs.kpi}>
+                  <Text style={hs.kpiTitulo}>Gestión de Clientes</Text>
+                  <View style={hs.fila2}>
+                    <Caja label="Recuperados" valor={k.clientes_recuperados || 0} />
+                    <Caja label="Con convenio" valor={k.clientes_convenio || 0} />
+                  </View>
+                </Tarjeta>
+
+                <Tarjeta style={hs.kpi}>
+                  <View style={hs.kpiCabecera}>
+                    <Text style={hs.kpiTitulo}>Productos y Negociación</Text>
+                    <Pill tono="ambar">{pctNeg.toFixed(1)}% cumplido</Pill>
+                  </View>
+                  <Barra pct={pctNeg} color={C.warning} alto={10} />
+                  <View style={hs.fila2}>
+                    <Dato label="Meta" valor={k.metaGrupoNeg || 0} />
+                    <Dato label="Negociaciones" valor={k.negociacion || 0} />
+                  </View>
+                </Tarjeta>
+
+                <View style={hs.kpiOscura}>
+                  <Text style={[hs.kpiTitulo, { color: C.white }]}>Cartera y Cobranza</Text>
+                  <View style={hs.kpiCabecera}>
+                    <Text style={{ fontSize: 13, color: C.onDarkSoft }}>Vencido a cobrar</Text>
+                    <Text style={{ fontSize: 24, fontWeight: '800', color: C.white }}>${money(vencidoCobrar)}</Text>
+                  </View>
+                  <View style={hs.kpiCabecera}>
+                    <Text style={{ fontSize: 12, color: C.onDarkSoft }}>Saldo en tránsito ${money(k.saldo_facturas_mes)}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: C.greenOnDark }}>{pctCobranza.toFixed(1)}% cumplido</Text>
+                  </View>
+                </View>
+
+                <Tarjeta style={hs.kpi}>
+                  <View style={hs.kpiCabecera}>
+                    <Text style={hs.kpiTitulo}>Visitas por día</Text>
+                    <Pill tono="azul">Total {k.totVisitas || 0}</Pill>
+                  </View>
+                  <View style={hs.dias}>
+                    {dias.map(([dia, valor]) => (
+                      <View key={dia} style={hs.dia}>
+                        <Text style={hs.diaValor}>{valor || 0}</Text>
+                        <Text style={hs.diaLabel}>{dia}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Tarjeta>
+
+                <Text style={{ textAlign: 'center', fontSize: 12, color: C.muted }}>Desliza hacia abajo para actualizar</Text>
+              </>
+            )}
+          </View>
 
 
           {/* Overlay de sincronización */}
@@ -621,9 +518,61 @@ export default function HomeScreen({ navigation }) {
           </Modal>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-// Estilos adaptados y reorganizados
+// ── Piezas y estilos del Inicio (diseño "Inicio (vendedor)" del lienzo SyncWareApp) ──
+const C = Theme.colors;
+const money = (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const Dato = ({ label, valor }) => (
+  <View style={{ flex: 1 }}>
+    <Text style={{ fontSize: 11, color: C.muted }}>{label}</Text>
+    <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }} numberOfLines={1} adjustsFontSizeToFit>{valor}</Text>
+  </View>
+);
+
+const Caja = ({ label, valor }) => (
+  <View style={{ flex: 1, backgroundColor: C.background, borderRadius: 12, padding: 12 }}>
+    <Text style={{ fontSize: 11, color: C.muted }}>{label}</Text>
+    <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>{valor}</Text>
+  </View>
+);
+
+const hs = StyleSheet.create({
+  pantalla: { flex: 1, backgroundColor: C.background },
+  header: { backgroundColor: C.dark, paddingHorizontal: 20, paddingBottom: 56, gap: 16 },
+  headerFila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerEtiqueta: { flex: 1, fontSize: 13, color: C.onDarkText },
+  saludo: { fontSize: 24, fontWeight: '800', color: C.white },
+  saludoSub: { fontSize: 14, color: C.onDarkSoft, marginTop: 4 },
+  contenido: { paddingHorizontal: 16, marginTop: -40, gap: 20 },
+  fila2: { flexDirection: 'row', gap: 12 },
+  tarjetaTop: {
+    flex: 1, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 18,
+    padding: 16, gap: 10,
+    shadowColor: C.dark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 3,
+  },
+  iconoCargando: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  tarjetaTitulo: { fontSize: 15, fontWeight: '700', color: C.text },
+  tarjetaSub: { fontSize: 12, color: C.muted },
+  numeroGrande: { fontSize: 26, fontWeight: '800', color: C.dark },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  herramienta: {
+    width: '48.4%', minHeight: 96, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    borderRadius: 16, padding: 14, justifyContent: 'space-between', gap: 10,
+  },
+  herramientaLabel: { fontSize: 14, fontWeight: '600', color: C.text },
+  cargandoKpi: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  kpi: { padding: 16, gap: 12 },
+  kpiCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  kpiTitulo: { fontSize: 15, fontWeight: '700', color: C.text },
+  kpiGrid3: { flexDirection: 'row', gap: 8 },
+  kpiOscura: { backgroundColor: C.dark, borderRadius: 18, padding: 16, gap: 10 },
+  dias: { flexDirection: 'row', gap: 6 },
+  dia: { flex: 1, backgroundColor: C.background, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  diaValor: { fontSize: 16, fontWeight: '800', color: C.text },
+  diaLabel: { fontSize: 11, color: C.muted },
+});
 

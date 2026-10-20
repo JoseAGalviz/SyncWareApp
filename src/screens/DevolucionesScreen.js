@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import styles from '../styles/Devoluciones.styles';
 import Theme from '../constants/Theme';
+import { Tarjeta, Pill, Boton, Chip, IconoCaja } from '../components/ui';
 import {
   obtenerDevoluciones,
   sincronizarPendientes,
@@ -12,11 +13,19 @@ import {
   iniciarAutoSync,
 } from '../services/devolucionesQueue';
 
+// Diseño "Devoluciones" del lienzo SyncWareApp: tarjeta de cola de envío, filtros por tipo,
+// tarjetas con estado (Enviada / En cola / Error) y botón fijo "Nueva devolución".
+const C = Theme.colors;
 const ESTADOS = {
-  enviada: { texto: 'ENVIADA', estilo: styles.estadoEnviada, color: Theme.colors.successDark },
-  pendiente: { texto: 'PENDIENTE', estilo: styles.estadoPendiente, color: Theme.colors.warning },
-  rechazada: { texto: 'RECHAZADA', estilo: styles.estadoRechazada, color: Theme.colors.error },
+  enviada: { texto: 'Enviada', tono: 'verde' },
+  pendiente: { texto: 'En cola', tono: 'ambar' },
+  rechazada: { texto: 'Error', tono: 'rojo' },
 };
+const FILTROS = [
+  { key: 'todas', label: 'Todas' },
+  { key: 'Devolucion', label: 'Devolución' },
+  { key: 'Reposicion', label: 'Reposición' },
+];
 
 function describirResumen(r) {
   const partes = [];
@@ -29,29 +38,31 @@ function describirResumen(r) {
 const DevolucionItem = React.memo(({ item, onReintentar }) => {
   const estado = ESTADOS[item.status] || ESTADOS.pendiente;
   const unidades = item.productos.reduce((s, p) => s + p.cantidad_afectada, 0);
+  const tipo = item.tipo_novedad === 'Reposicion' ? 'Reposición' : 'Devolución';
   return (
-    <View style={styles.card}>
+    <Tarjeta error={item.status === 'rechazada'} style={{ borderRadius: 16, gap: 6, marginBottom: 12 }}>
       <View style={styles.filaEntre}>
-        <Text style={styles.filaTitulo} numberOfLines={1}>
-          {item.tipo_novedad === 'Reposicion' ? 'Reposición' : 'Devolución'} · {item.observacion_clave}
-        </Text>
-        <View style={[styles.estadoPill, estado.estilo]}>
-          <Text style={[styles.estadoTexto, { color: estado.color }]}>{estado.texto}</Text>
-        </View>
+        <Text style={styles.filaTitulo} numberOfLines={1}>{item.cliente} · {tipo}</Text>
+        <Pill tono={estado.tono}>{estado.texto}</Pill>
       </View>
-      <Text style={styles.filaDetalle} numberOfLines={1}>{item.cliente} ({item.co_cli})</Text>
       <Text style={styles.filaDetalle}>
-        Factura {item.factura_numero} · {item.productos.length} artículo(s), {unidades} und · {item.fotos.length} foto(s)
+        {item.productos.length} artículo(s), {unidades} und · Factura{' '}
+        <Text style={{ fontFamily: Theme.fontMono }}>{item.factura_numero}</Text>
+        {item.fotos.length ? ` · ${item.fotos.length} foto(s)` : ''}
       </Text>
-      <Text style={styles.filaDetalle}>{new Date(item.creado_en).toLocaleString('es-VE')}</Text>
-      {item.mensaje ? <Text style={styles.mensajeError}>{item.mensaje}</Text> : null}
+      <Text style={styles.filaDetalle}>Clave: {item.observacion_clave} · {new Date(item.creado_en).toLocaleString('es-VE')}</Text>
+      {item.mensaje ? <Text style={styles.mensajeError}>No se pudo enviar: {item.mensaje}</Text> : null}
       {item.status === 'rechazada' ? (
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => onReintentar(item.id_local)}>
-          <Ionicons name="refresh" size={16} color={Theme.colors.primary} />
-          <Text style={styles.secondaryButtonText}>Reintentar envío</Text>
-        </TouchableOpacity>
+        <Boton
+          variante="peligro"
+          titulo="Reintentar envío"
+          alto={40}
+          onPress={() => onReintentar(item.id_local)}
+          style={{ alignSelf: 'flex-start', borderRadius: 10 }}
+          textStyle={{ fontSize: 13 }}
+        />
       ) : null}
-    </View>
+    </Tarjeta>
   );
 });
 
@@ -107,53 +118,63 @@ export default function DevolucionesScreen({ navigation }) {
     sincronizar();
   }, [sincronizar]);
 
+  const [filtro, setFiltro] = useState('todas');
   const pendientes = lista.filter((d) => d.status === 'pendiente').length;
+  const visibles = filtro === 'todas' ? lista : lista.filter((d) => d.tipo_novedad === filtro);
 
   const encabezado = (
-    <View>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Devoluciones</Text>
-      </View>
-      <Text style={styles.subtitle}>Reposiciones y devoluciones enviadas desde este teléfono.</Text>
-
-      <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('DevolucionNueva')}>
-        <Text style={styles.primaryButtonText}>+ Nueva devolución / reposición</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.secondaryButton, { marginBottom: Theme.spacing.lg }, sincronizando && styles.buttonDisabled]}
-        onPress={sincronizar}
-        disabled={sincronizando}
-      >
-        {sincronizando
-          ? <ActivityIndicator color={Theme.colors.primary} />
-          : <Ionicons name="cloud-upload-outline" size={18} color={Theme.colors.primary} />}
-        <Text style={styles.secondaryButtonText}>Sincronizar ahora</Text>
-      </TouchableOpacity>
-
-      {pendientes > 0 ? (
-        <View style={styles.bannerPendientes}>
-          <Text style={styles.bannerPendientesTexto}>
-            {pendientes} sin enviar — se enviarán solas al recuperar señal.
+    <View style={{ gap: 12, marginBottom: 12 }}>
+      <Tarjeta style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <IconoCaja name="cloud-upload-outline" tono="ambar" tam={44} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>
+            {pendientes > 0 ? `${pendientes} en cola de envío` : 'Todo enviado'}
+          </Text>
+          <Text style={{ fontSize: 12, color: C.muted }}>
+            {pendientes > 0 ? 'Se enviarán al recuperar conexión' : 'No hay devoluciones pendientes'}
           </Text>
         </View>
-      ) : null}
+        <Boton
+          variante="oscuro"
+          titulo="Sincronizar ahora"
+          alto={44}
+          cargando={sincronizando}
+          onPress={sincronizar}
+          style={{ borderRadius: 12, paddingHorizontal: 12 }}
+          textStyle={{ fontSize: 13 }}
+        />
+      </Tarjeta>
+
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {FILTROS.map((f) => (
+          <Chip key={f.key} label={f.label} activo={filtro === f.key} onPress={() => setFiltro(f.key)} />
+        ))}
+      </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={lista}
+        data={visibles}
         keyExtractor={(d) => d.id_local}
         renderItem={({ item }) => <DevolucionItem item={item} onReintentar={onReintentar} />}
         ListHeaderComponent={encabezado}
         ListEmptyComponent={
-          cargando ? <ActivityIndicator color={Theme.colors.primary} /> : <Text style={styles.emptyText}>Aún no hay devoluciones registradas.</Text>
+          cargando ? <ActivityIndicator color={C.primary} /> : <Text style={styles.emptyText}>Aún no hay devoluciones registradas.</Text>
         }
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={cargar} />}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 96 }]}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={cargar} colors={[C.primary]} />}
       />
+      <View style={styles.botonFijo}>
+        <Boton
+          titulo="Nueva devolución / reposición"
+          icon="add"
+          alto={56}
+          onPress={() => navigation.navigate('DevolucionNueva')}
+          style={styles.botonFijoSombra}
+        />
+      </View>
     </View>
   );
 }

@@ -709,13 +709,6 @@ export default function DevolucionNuevaScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Nueva novedad</Text>
-        </View>
-
         {/* 1. Tipo y clave */}
         <View style={styles.card}>
           <Text style={styles.cardTitulo}>Tipo de novedad</Text>

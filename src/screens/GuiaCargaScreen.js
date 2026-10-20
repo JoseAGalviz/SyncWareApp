@@ -19,6 +19,8 @@ import { showMessage } from "react-native-flash-message";
 import SoundManager from '../utils/SoundManager';
 import { Ionicons } from '@expo/vector-icons';
 import GlobalColors from '../constants/Colors';
+import Theme from '../constants/Theme';
+import { Pill, Barra } from '../components/ui';
 import styles from '../styles/GuiaCargaScreen.styles';
 
 // --- Constantes ---
@@ -131,25 +133,25 @@ const TableHeader = ({ headers }) => (
   </View>
 );
 
-const DetailRow = ({ item, escaneo, index }) => {
-  // Determinar estatus
+// Renglón del diseño "Guía de Carga (chofer)": cliente, estado y Fact. ✓ / Nota ✓ / paquetes.
+const DetailRow = ({ item, escaneo }) => {
   const isFull = escaneo?.factura && escaneo?.nota;
   const isPartial = !isFull && (escaneo?.factura || escaneo?.nota);
-  const status = isFull ? 'full' : isPartial ? 'partial' : 'none';
-
-  // Estilo base
-  let rowStyle = index % 2 === 0 ? styles.rowEven : styles.rowOdd;
-  if (isFull) rowStyle = styles.rowAmbos;
-  else if (isPartial) rowStyle = styles.rowUno;
-
   return (
-    <View style={[styles.tableRow, rowStyle]}>
-      <View style={{ width: 40, alignItems: 'center', justifyContent: 'center' }}>
-        <StatusIcon status={status} />
+    <View style={[styles.renglon, isFull && styles.renglonCompleto]}>
+      <View style={styles.renglonCabecera}>
+        <Text style={styles.renglonCliente} numberOfLines={1}>{item.descrip?.trim() || 'Sin cliente'}</Text>
+        {isFull ? <Pill tono="verde">COMPLETO</Pill> : isPartial ? <Pill tono="ambar">PARCIAL</Pill> : <Pill>PENDIENTE</Pill>}
       </View>
-      <Text style={styles.tableCell}>{item.factura} / {item.nota}</Text>
-      <Text style={styles.tableCell}>{item.paquetes}</Text>
-      <Text style={styles.tableCell}>{item.descrip?.trim()}</Text>
+      <View style={styles.renglonDatos}>
+        <Text style={styles.renglonDato}>
+          Fact. <Text style={styles.renglonCodigo}>{item.factura || '—'}</Text> {escaneo?.factura ? '✓' : '○'}
+        </Text>
+        <Text style={styles.renglonDato}>
+          Nota <Text style={styles.renglonCodigo}>{item.nota || '—'}</Text> {escaneo?.nota ? '✓' : '○'}
+        </Text>
+        <Text style={styles.renglonDato}>{item.paquetes} paquete(s)</Text>
+      </View>
     </View>
   );
 };
@@ -859,14 +861,15 @@ export default function GuiaCargaScreen({ navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Gestión de Carga (En Vivo)</Text>
           <View style={styles.searchRow}>
             <TextInput
               style={styles.searchInput}
-              placeholder="N° de Guía"
+              placeholder="N° de rutagrama"
+              placeholderTextColor={Theme.colors.light}
               keyboardType="numeric"
               value={numeroCarga}
               onChangeText={setNumeroCarga}
+              accessibilityLabel="Número de rutagrama"
             />
             <TouchableOpacity
               style={[styles.btn, styles.btnPrimary]}
@@ -1009,44 +1012,35 @@ export default function GuiaCargaScreen({ navigation }) {
                   </View>
                 )}
 
-                {/* Resumen "Cargado" */}
-                <Text style={styles.sectionTitle}>Resumen de Carga</Text>
-                {guiaData.cargado && guiaData.cargado.length > 0 ? (
-                  <View style={styles.table}>
-                    <TableHeader headers={['Ruta', 'Conductor', 'Vehículo', 'Realizado']} />
-                    {guiaData.cargado.map((item, idx) => (
-                      <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.rowEven : styles.rowOdd]}>
-                        <Text style={styles.tableCell}>{item.ruta}</Text>
-                        <Text style={styles.tableCell}>{item.conductor}</Text>
-                        <Text style={styles.tableCell}>{item.vehiculo}</Text>
-                        <Text style={styles.tableCell}>{item.realizado}</Text>
+                {/* Resumen: ruta + avance (diseño "Guía de Carga") */}
+                {(() => {
+                  const total = guiaData.detalle?.length || 0;
+                  const completos = Object.values(escaneos).filter(e => e.factura && e.nota).length;
+                  const parciales = Object.values(escaneos).filter(e => (e.factura || e.nota) && !(e.factura && e.nota)).length;
+                  const cab = guiaData.cargado?.[0];
+                  return (
+                    <View style={styles.resumen}>
+                      <View style={styles.resumenCabecera}>
+                        <Text style={styles.resumenRuta} numberOfLines={1}>{cab ? `Ruta ${cab.ruta}` : 'Sin datos de cabecera'}</Text>
+                        {isPolling ? <Text style={styles.resumenVivo}>● En vivo</Text> : null}
                       </View>
-                    ))}
-                  </View>
-                ) : <Text style={styles.noData}>Sin datos de cabecera.</Text>}
-
-                {/* Detalle "Pedidos" */}
-                <View style={{ flexDirection: 'column', marginVertical: 10 }}>
-                  <Text style={styles.sectionTitle}>
-                    Detalle de Pedidos
-                  </Text>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryText}>Total: {guiaData.detalle?.length || 0}</Text>
-                    <Text style={[styles.summaryText, { color: COLORS.success }]}>
-                      Completos: {Object.values(escaneos).filter(e => e.factura && e.nota).length}
-                    </Text>
-                    <Text style={[styles.summaryText, { color: COLORS.warning }]}>
-                      Parciales: {Object.values(escaneos).filter(e => (e.factura || e.nota) && !(e.factura && e.nota)).length}
-                    </Text>
-                  </View>
-                </View>
+                      {cab ? (
+                        <Text style={styles.resumenMeta}>
+                          {[cab.conductor && `Chofer ${cab.conductor}`, cab.vehiculo, cab.realizado && `Realizado ${cab.realizado}`].filter(Boolean).join(' · ')}
+                        </Text>
+                      ) : null}
+                      <View style={styles.resumenProgreso}>
+                        <Barra pct={total ? (completos / total) * 100 : 0} alto={10} style={{ flex: 1 }} />
+                        <Text style={styles.resumenConteo}>{completos}/{total}</Text>
+                      </View>
+                      {parciales > 0 ? <Text style={styles.resumenMeta}>{parciales} parcial(es)</Text> : null}
+                    </View>
+                  );
+                })()}
               </View>
 
               {/* LISTA DE PEDIDOS */}
-              <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 }}>
-                {/* Header de la tabla fijo */}
-                <TableHeader headers={['St', 'Fact/Nota', 'Paq', 'Desc']} />
-
+              <View style={{ marginBottom: 20 }}>
                 {guiaData.detalle && guiaData.detalle.length > 0 ? (
                   <>
                     {guiaData.detalle.map((item, index) => {

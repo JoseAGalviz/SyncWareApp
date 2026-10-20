@@ -4,6 +4,7 @@ import Theme from './Theme';
 
 const COLORS = {
   PRIMARY:    Theme.colors.primary,
+  PRIMARY_LIGHT: Theme.colors.primaryLight,
   SECONDARY:  Theme.colors.dark,
   ACCENT:     Theme.colors.info,
   SUCCESS:    Theme.colors.success,

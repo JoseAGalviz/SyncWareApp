@@ -19,6 +19,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { showMessage } from "react-native-flash-message";
 import COLORS from '../constants/Colors';
+import Theme from '../constants/Theme';
+import { Pill } from '../components/ui';
 import styles from '../styles/VisitaScreen.styles';
 import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
@@ -32,7 +34,7 @@ const RADIO_OPTIONS = [
 const RADIO_TIPO_GESTION = [
   { label: "Concretada", value: "concretada", color: COLORS.SUCCESS },
   { label: "En Proceso", value: "en_proceso", color: COLORS.WARNING },
-  { label: "Negativa", value: "negativa", color: "#FF3B30" },
+  { label: "Negativa", value: "negativa", color: COLORS.ERROR },
 ];
 
 const StorageKeys = {
@@ -51,31 +53,43 @@ const Colors = {
   PRIMARY: COLORS.PRIMARY,
   SECONDARY: COLORS.SUCCESS,
   WARNING: COLORS.WARNING,
-  ERROR: "#FF3B30",
-  BACKGROUND: "#F8FAFC",
-  TEXT: COLORS.SECONDARY,
+  ERROR: COLORS.ERROR,
+  BACKGROUND: COLORS.BACKGROUND,
+  TEXT: COLORS.TEXT,
   LIGHT_TEXT: COLORS.MUTED,
   WHITE: COLORS.WHITE,
-  LIGHT_BACKGROUND: "#E3F6F2",
-  DARK_YELLOW: "#FFC107"
+  LIGHT_BACKGROUND: COLORS.PRIMARY_LIGHT,
+  DARK_YELLOW: COLORS.WARNING
 };
 
 // ===== COMPONENTES DE UI REUTILIZABLES =====
-const RadioButton = ({ label, value, selected, onSelect, color }) => (
-  <TouchableOpacity 
-    style={styles.radioOption} 
-    onPress={onSelect} 
-    activeOpacity={0.7}
-    accessibilityLabel={`Opción ${label}`}
-    accessibilityState={{ checked: selected }}
-  >
-    <View style={[
-      styles.radioCircle, 
-      selected && (color ? { backgroundColor: color, borderColor: color } : styles.radioCircleSelected)
-    ]} />
-    <Text style={styles.radioLabel}>{label}</Text>
-  </TouchableOpacity>
-);
+// Opción tipo "chip" del diseño: seleccionada = azul noche (tipo) o teñida con el color del
+// estado (concretada / en proceso / negativa) cuando viene `color`.
+const TINTE_ESTADO = {
+  [COLORS.SUCCESS]: { bg: Theme.colors.primaryLight, borde: Theme.colors.primary, fg: Theme.colors.primaryDark },
+  [COLORS.WARNING]: { bg: Theme.colors.warningSoft, borde: Theme.colors.warning, fg: Theme.colors.warningText },
+  [COLORS.ERROR]: { bg: Theme.colors.errorSoft, borde: Theme.colors.error, fg: Theme.colors.errorText },
+};
+const RadioButton = ({ label, value, selected, onSelect, color }) => {
+  const tinte = color ? TINTE_ESTADO[color] : null;
+  const seleccion = selected
+    ? tinte
+      ? { backgroundColor: tinte.bg, borderColor: tinte.borde, borderWidth: 2 }
+      : { backgroundColor: Theme.colors.dark, borderColor: Theme.colors.dark }
+    : null;
+  const colorTexto = selected ? (tinte ? tinte.fg : Theme.colors.white) : Theme.colors.text;
+  return (
+    <TouchableOpacity
+      style={[styles.radioOption, seleccion]}
+      onPress={onSelect}
+      activeOpacity={0.7}
+      accessibilityLabel={`Opción ${label}`}
+      accessibilityState={{ checked: selected }}
+    >
+      <Text style={[styles.radioLabel, { color: colorTexto, fontWeight: selected ? '700' : '500' }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+};
 
 const InputWithIcon = ({ 
   iconName, 
@@ -87,9 +101,9 @@ const InputWithIcon = ({
   accessibilityLabel 
 }) => (
   <View style={styles.inputIconRow}>
-    <Ionicons name={iconName} size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+    <Ionicons name={iconName} size={20} color={Theme.colors.muted} style={styles.inputIcon} />
     <TextInput
-      style={[styles.input, { flex: 1 }]}
+      style={styles.inputIconText}
       placeholder={placeholder}
       value={value}
       onChangeText={onChangeText}
@@ -557,15 +571,12 @@ export default function VisitaScreen() {
         activeOpacity={0.8}
         accessibilityLabel={`Ver detalles de gestión para ${item.cliente}`}
       >
-        <View
-          style={[
-            styles.gestionItem,
-            item.enviada
-              ? { borderColor: Colors.SECONDARY, backgroundColor: "#e9f7ef" } // <-- Fondo verde claro y borde verde
-              : { borderColor: Colors.ERROR, backgroundColor: Colors.WHITE },
-          ]}
-        >
-          <Text style={styles.gestionCliente}>{item.cliente}</Text>
+        <View style={[styles.gestionItem, !item.enviada && { borderColor: Theme.colors.warningEdge }]}>
+          <View style={styles.gestionCabecera}>
+            <View style={[styles.gestionPunto, { backgroundColor: item.enviada ? Theme.colors.primary : Theme.colors.warning }]} />
+            <Text style={[styles.gestionCliente, { flex: 1 }]} numberOfLines={1}>{item.cliente}</Text>
+            <Pill tono={item.enviada ? 'verde' : 'ambar'}>{item.enviada ? 'Enviada' : 'Pendiente'}</Pill>
+          </View>
           
           {item.tipos && item.tipos.length > 0 && (
             <Text style={styles.gestionInfo}>
@@ -578,7 +589,7 @@ export default function VisitaScreen() {
                 return (
                   <Text
                     key={tipo}
-                    style={{ fontWeight: "bold", color: Colors.PRIMARY }}
+                    style={{ fontWeight: "bold", color: Theme.colors.text }}
                   >
                     {label}
                     {idx < item.tipos.length - 1 ? ", " : ""}
@@ -682,10 +693,37 @@ export default function VisitaScreen() {
         data={gestiones}
         keyExtractor={item => item.id}
         style={styles.gestionesList}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         ListHeaderComponent={
           <View style={styles.headerSticky}>
-            <Text style={styles.floatingTitle}>Gestión de Visitas</Text>
+            {gestiones.some((g) => !g.enviada) ? (
+              <View style={styles.bannerPendientes}>
+                <Ionicons name="cloud-offline-outline" size={16} color={Theme.colors.warningText} />
+                <Text style={styles.bannerPendientesTexto}>
+                  {gestiones.filter((g) => !g.enviada).length} gestión(es) por sincronizar
+                </Text>
+              </View>
+            ) : null}
+            <TouchableOpacity
+              style={styles.nuevaGestionBoton}
+              onPress={() => setShowGestionForm(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Añadir nueva gestión"
+            >
+              <Ionicons name="add" size={22} color={Theme.colors.white} />
+              <Text style={styles.nuevaGestionTexto}>Nueva gestión</Text>
+            </TouchableOpacity>
+            <View style={styles.accionesFila}>
+              <TouchableOpacity style={styles.accionSecundaria} onPress={handleUploadGestiones} activeOpacity={0.85} accessibilityLabel="Subir gestiones al servidor">
+                <Ionicons name="cloud-upload-outline" size={18} color={Theme.colors.dark} />
+                <Text style={styles.accionSecundariaTexto}>Sincronizar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.accionSecundaria, styles.accionPeligro]} onPress={handleDeleteGestionesEnviadas} activeOpacity={0.85} accessibilityLabel="Eliminar gestiones enviadas">
+                <Ionicons name="trash-outline" size={18} color={Theme.colors.errorStrong} />
+                <Text style={[styles.accionSecundariaTexto, { color: Theme.colors.errorStrong }]}>Borrar enviadas</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.floatingSubtitle}>Gestiones realizadas</Text>
           </View>
         }
@@ -699,34 +737,6 @@ export default function VisitaScreen() {
         maxToRenderPerBatch={5}
         windowSize={5}
       />
-
-      <View style={styles.fabRow}>
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: Colors.PRIMARY }]}
-          onPress={() => setShowGestionForm(true)}
-          activeOpacity={0.8}
-          accessibilityLabel="Añadir nueva gestión"
-        >
-          <Ionicons name="add" size={28} color={Colors.WHITE} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: Colors.SECONDARY }]}
-          onPress={handleUploadGestiones}
-          accessibilityLabel="Subir gestiones al servidor"
-        >
-          <Ionicons name="cloud-upload-outline" size={24} color={Colors.WHITE} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.roundButton, { backgroundColor: COLORS.ERROR }]}
-          onPress={handleDeleteGestionesEnviadas}
-          activeOpacity={0.8}
-          accessibilityLabel="Eliminar gestiones enviadas"
-        >
-          <Ionicons name="trash-outline" size={24} color={Colors.WHITE} />
-        </TouchableOpacity>
-      </View>
 
       <Modal
         visible={showGestionForm}
@@ -962,8 +972,8 @@ export default function VisitaScreen() {
         statusBarTranslucent={true}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: COLORS.LIGHT_BG, borderColor: Colors.SECONDARY, borderWidth: 2 }]}>
-            <Text style={[styles.title, { color: Colors.SECONDARY, marginBottom: 12 }]}>Detalle de Gestión</Text>
+          <View style={styles.modalContent}>
+            <Text style={[styles.title, { marginBottom: 12 }]}>Detalle de Gestión</Text>
             
             {gestionSeleccionada && (
               <ScrollView>

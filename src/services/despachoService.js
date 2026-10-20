@@ -57,6 +57,17 @@ export const DespachoService = {
     return api.get(`${BASE}/historial?${qs.join('&')}`);
   },
 
+  // Recepción del vendedor: sus pedidos de rutagramas ya cerrados (despachoVendedor.js en
+  // api-app). Sin validaciones contra Profit — solo marca nota/factura recibidas.
+  vendedorRutagramas: (usuarioId) =>
+    api.get(`${BASE}/vendedor/rutagramas?usuario_id=${encodeURIComponent(usuarioId)}`),
+
+  vendedorRutagrama: (rutagramaId, usuarioId) =>
+    api.get(`${BASE}/vendedor/rutagramas/${rutagramaId}?usuario_id=${encodeURIComponent(usuarioId)}`),
+
+  vendedorEscanear: (rutagramaId, { usuario_id, codigo }) =>
+    api.post(`${BASE}/vendedor/rutagramas/${rutagramaId}/escanear`, { usuario_id, codigo }),
+
   // Módulo NC/ND independiente: sin ruta. Se escanea el código y se guarda.
   ncEscanear: ({ usuario_id, codigo }) =>
     api.post(`${BASE}/nc/escanear`, { usuario_id, codigo }),

@@ -18,6 +18,7 @@ import { showMessage } from 'react-native-flash-message';
 import { printAndSharePdf } from '../utils/pdfUtils';
 import Theme from '../constants/Theme';
 import styles from '../styles/PotencialCiudadesScreen.styles';
+import AppHeader, { HeaderTextButton } from '../components/AppHeader';
 
 const PotencialCiudadesScreen = ({ navigation }) => {
     const { user } = useAuth();
@@ -317,29 +318,21 @@ const PotencialCiudadesScreen = ({ navigation }) => {
 
     // ── Render principal ──────────────────────────────────────────────────────
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={Theme.colors.dark} />
-
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={Theme.colors.white} />
-                </TouchableOpacity>
-                <View style={styles.headerCenter}>
-                    <Ionicons name="bar-chart-outline" size={20} color={Theme.colors.success} />
-                    <Text style={styles.headerTitle}>  Clientes Potenciales</Text>
-                </View>
-                <TouchableOpacity
-                    onPress={handleGeneratePdf}
-                    disabled={generatingPdf || loading || filteredData.length === 0}
-                    style={{ padding: 8, opacity: (generatingPdf || loading || filteredData.length === 0) ? 0.4 : 1 }}
-                >
-                    {generatingPdf
-                        ? <ActivityIndicator size="small" color={Theme.colors.white} />
-                        : <Ionicons name="download-outline" size={24} color={Theme.colors.white} />
-                    }
-                </TouchableOpacity>
-            </View>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <AppHeader
+                title="Clientes Potenciales"
+                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
+                right={
+                    <HeaderTextButton
+                        icon="download-outline"
+                        label="PDF"
+                        onPress={handleGeneratePdf}
+                        disabled={loading || filteredData.length === 0}
+                        cargando={generatingPdf}
+                    />
+                }
+            />
 
             {/* Barra de búsqueda */}
             <View style={styles.searchContainer}>
@@ -430,7 +423,7 @@ const PotencialCiudadesScreen = ({ navigation }) => {
                     removeClippedSubviews={true}
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

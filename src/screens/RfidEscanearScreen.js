@@ -396,12 +396,6 @@ export default function RfidEscanearScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-            <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Escanear (inventario)</Text>
-        </View>
         <Text style={styles.subtitle}>
           Sostené el gatillo para acumular todas las notas en rango. "Detener y guardar" cierra la sesión.
         </Text>

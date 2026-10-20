@@ -1,7 +1,5 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
-import { TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,106 +10,108 @@ import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 import LotesScreen from "../screens/LotesScreen";
 import DespachoNavigator from './DespachoNavigator';
 import DevolucionesNavigator from './DevolucionesNavigator';
+import RecibirNavigator from './RecibirNavigator';
+import { crearMasNavigator, MasMenu } from './MasNavigator';
+import { useAvisoRutagramasVendedor } from '../hooks/useAvisoRutagramasVendedor';
+import { useAuth } from '../context/AuthContext';
 import Theme from '../constants/Theme';
 
 
+import { opcionesTabBarFlotante, IconoTab, EtiquetaTab, altoOcupadoBarra } from './tabBarFlotante';
+import { NavHeader } from '../components/AppHeader';
+
 const Tab = createBottomTabNavigator();
 
-function DrawerMenuButton() {
-  const navigation = useNavigation();
-  return (
-    <TouchableOpacity
-      onPress={() => navigation.openDrawer()}
-      style={{ marginLeft: 15 }}
-    >
-      <Ionicons name="menu" size={28} color={Theme.colors.white} />
-    </TouchableOpacity>
-  );
-}
+// Nombre corto en la barra inferior (el `title` de cada pantalla es el del encabezado).
+const ETIQUETAS = { "Montar Pedidos": "Pedidos" };
+
+// Módulos que no van en la barra inferior: se abren desde la pestaña "Más".
+const ITEMS_MAS = [
+  { name: 'Lotes', label: 'Lotes', subtitle: 'Agrupar facturas', icon: 'list-outline', tono: 'verde', component: LotesScreen },
+  // Rutagrama trae su propio encabezado (stack con NavHeader): sin el del "Más".
+  { name: 'Rutagrama', label: 'Rutagrama', subtitle: 'Despacho de rutas', icon: 'bus-outline', tono: 'azul', component: DespachoNavigator, headerShown: false },
+  // Devoluciones trae su propio encabezado (stack con NavHeader): sin el del "Más".
+  { name: 'Devoluciones', label: 'Devoluciones', subtitle: 'Y reposiciones', icon: 'return-down-back-outline', tono: 'ambar', component: DevolucionesNavigator, headerShown: false },
+];
+const MasTodos = crearMasNavigator(ITEMS_MAS);
+// El vendedor no opera rutagramas (recibe lo suyo en "Recibir"): su "Más" va sin Rutagrama.
+const ITEMS_MAS_VENDEDOR = ITEMS_MAS.filter((i) => i.name !== 'Rutagrama');
+const MasVendedor = crearMasNavigator(ITEMS_MAS_VENDEDOR);
 
 // Define tu navegación de pestañas
 export default function AppNavigator() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const [masVisible, setMasVisible] = useState(false);
+  const tabsNavRef = useRef(null);
+  const { user } = useAuth();
+  const esVendedor = user?.rol === "vendedor";
+  // Aviso de rutagramas cerrados con pedidos del vendedor (sin push): tocarlo abre el tab
+  // "Recibir", directo en el rutagrama si es uno solo.
+  const { pendientes } = useAvisoRutagramasVendedor((cargadoId) =>
+    navigation.navigate('HomeTabs', {
+      screen: 'Recibir',
+      params: { screen: 'RecibirRutagramas', params: cargadoId ? { abrirId: cargadoId } : undefined },
+    })
+  );
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerTitle: "Cristmedicals",
-        headerTitleAlign: "center",
-        headerStyle: {
-          backgroundColor: Theme.colors.dark,
-        },
-        headerTitleStyle: {
-          color: Theme.colors.white,
-          fontSize: 16,
-          fontWeight: '600',
-          letterSpacing: 0.5,
-        },
-        headerTintColor: Theme.colors.white,
-        headerLeft: () => <DrawerMenuButton />,
-        headerRight: () => (
-          <Image
-            source={require("../../assets/logo.png")}
-            style={{
-              width: 150,
-              height: 50,
-              resizeMode: "contain",
-              marginRight: -40,
-            }}
-          />
-        ),
-        headerLeftContainerStyle: { paddingLeft: 10 },
-        headerRightContainerStyle: { paddingRight: 10 },
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === "Inicio") {
-            iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Visita") {
-            iconName = focused ? "calendar" : "calendar-outline";
-          } else if (route.name === "Facturas") {
-            iconName = focused ? "receipt" : "receipt-outline";
-          } else if (route.name === "Lotes") {
-            iconName = focused ? "layers" : "layers-outline";
-          } else if (route.name === "Recibir Guías de Carga") {
-            iconName = focused ? "cube" : "cube-outline";
-          } else if (route.name === "Montar Pedidos") {
-            iconName = focused ? "cart" : "cart-outline";
-          } else if (route.name === "Historial") {
-            iconName = focused ? "clipboard" : "clipboard-outline";
-          } else if (route.name === "Consulta Matrix") {
-            iconName = focused ? "grid" : "grid-outline";
-          } else if (route.name === "Rutagrama") {
-            iconName = focused ? "map" : "map-outline";
-          } else if (route.name === "Devoluciones") {
-            iconName = focused ? "return-down-back" : "return-down-back-outline";
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: Theme.colors.primary,
-        tabBarInactiveTintColor: Theme.colors.muted,
-        tabBarStyle: {
-          backgroundColor: Theme.colors.dark,
-          borderTopWidth: 0,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginBottom: 4,
-        },
-      })}
-    >
-      <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Visita" component={VisitaScreen} />
-      <Tab.Screen name="Facturas" component={FacturasScreen} />
-      <Tab.Screen name="Lotes" component={LotesScreen} />
-      <Tab.Screen
-        name="Montar Pedidos"
-        component={MontarPedidoScreen}
-        options={{ headerShown: false }}
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          ...opcionesTabBarFlotante(insets),
+          header: (props) => <NavHeader {...props} />,
+          tabBarLabel: ({ color }) => <EtiquetaTab color={color}>{ETIQUETAS[route.name] ?? route.name}</EtiquetaTab>,
+          tabBarIcon: ({ focused, color }) => {
+            const iconos = {
+              Inicio: "home-outline",
+              Visita: "location-outline",
+              Facturas: "receipt-outline",
+              "Montar Pedidos": "cart-outline",
+              Recibir: "cube-outline",
+              Más: "ellipsis-horizontal",
+            };
+            return <IconoTab name={iconos[route.name] || "ellipse-outline"} focused={focused} color={color} />;
+          },
+        })}
+      >
+        {/* Inicio dibuja su propio encabezado grande (saludo + resumen). */}
+        <Tab.Screen name="Inicio" component={HomeScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Visita" component={VisitaScreen} options={{ title: "Gestión de Visitas" }} />
+        <Tab.Screen name="Facturas" component={FacturasScreen} options={{ title: "Gestión de Facturas" }} />
+        <Tab.Screen
+          name="Montar Pedidos"
+          component={MontarPedidoScreen}
+          options={{ headerShown: false, title: "Pedidos" }}
+        />
+        <Tab.Screen
+          name="Recibir"
+          component={RecibirNavigator}
+          options={{ headerShown: false, tabBarBadge: pendientes > 0 ? pendientes : undefined }}
+        />
+        <Tab.Screen
+          name="Más"
+          component={esVendedor ? MasVendedor : MasTodos}
+          options={{ headerShown: false }}
+          listeners={({ navigation: tabsNav }) => ({
+            // "Más" no abre pantalla: muestra el menú emergente (MasMenu).
+            tabPress: (e) => {
+              e.preventDefault();
+              tabsNavRef.current = tabsNav;
+              setMasVisible(true);
+            },
+          })}
+        />
+      </Tab.Navigator>
+      <MasMenu
+        visible={masVisible}
+        items={esVendedor ? ITEMS_MAS_VENDEDOR : ITEMS_MAS}
+        bottom={altoOcupadoBarra(insets)}
+        onClose={() => setMasVisible(false)}
+        onSelect={(item) => {
+          setMasVisible(false);
+          tabsNavRef.current?.navigate('Más', { screen: item.name });
+        }}
       />
-      <Tab.Screen name="Rutagrama" component={DespachoNavigator} />
-      <Tab.Screen name="Devoluciones" component={DevolucionesNavigator} />
-    </Tab.Navigator>
+    </>
   );
 }

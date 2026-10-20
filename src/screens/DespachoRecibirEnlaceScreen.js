@@ -66,12 +66,6 @@ export default function DespachoRecibirEnlaceScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Theme.spacing.sm }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: Theme.spacing.sm }}>
-          <Ionicons name="arrow-back" size={22} color={Theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Recepción de enlace ({rutaDesc})</Text>
-      </View>
       <Text style={styles.subtitle}>Cargas despachadas desde la otra sede, esperando confirmación de llegada.</Text>
 
       {cargando ? (

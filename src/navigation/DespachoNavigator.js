@@ -2,7 +2,6 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DespachoIniciarScreen from '../screens/DespachoIniciarScreen';
 import DespachoEscanearScreen from '../screens/DespachoEscanearScreen';
-import DespachoFacturaViejaScreen from '../screens/DespachoFacturaViejaScreen';
 import DespachoNotasCreditoScreen from '../screens/DespachoNotasCreditoScreen';
 import DespachoHistorialScreen from '../screens/DespachoHistorialScreen';
 import DespachoRecibirEnlaceScreen from '../screens/DespachoRecibirEnlaceScreen';
@@ -11,6 +10,7 @@ import DespachoEnlacesScreen from '../screens/DespachoEnlacesScreen';
 import RfidMenuScreen from '../screens/RfidMenuScreen';
 import RfidAsociarScreen from '../screens/RfidAsociarScreen';
 import RfidEscanearScreen from '../screens/RfidEscanearScreen';
+import { NavHeader } from '../components/AppHeader';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,18 +20,32 @@ const Stack = createNativeStackNavigator();
 // de la pistola Chainway SR160 — independiente del flujo real, ver STATUS.md.
 export default function DespachoNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="DespachoIniciar" component={DespachoIniciarScreen} />
-      <Stack.Screen name="DespachoEscanear" component={DespachoEscanearScreen} />
-      <Stack.Screen name="DespachoFacturaVieja" component={DespachoFacturaViejaScreen} />
-      <Stack.Screen name="DespachoNotasCredito" component={DespachoNotasCreditoScreen} />
-      <Stack.Screen name="DespachoHistorial" component={DespachoHistorialScreen} />
-      <Stack.Screen name="DespachoRecibirEnlace" component={DespachoRecibirEnlaceScreen} />
-      <Stack.Screen name="DespachoRecibirEnlaceDetalle" component={DespachoRecibirEnlaceDetalleScreen} />
-      <Stack.Screen name="DespachoEnlaces" component={DespachoEnlacesScreen} />
-      <Stack.Screen name="RfidMenu" component={RfidMenuScreen} />
-      <Stack.Screen name="RfidAsociar" component={RfidAsociarScreen} />
-      <Stack.Screen name="RfidEscanear" component={RfidEscanearScreen} />
+    // Encabezado del diseño (NavHeader) para todo el stack: en la primera pantalla lleva el
+    // menú lateral; en las demás, "volver". El navegador padre (pestaña / "Más") va sin
+    // encabezado propio para no duplicarlo.
+    <Stack.Navigator screenOptions={{ header: (props) => <NavHeader {...props} /> }}>
+      <Stack.Screen name="DespachoIniciar" component={DespachoIniciarScreen} options={{ title: 'Rutagrama', headerSubtitle: 'Despacho de rutas' }} />
+      <Stack.Screen
+        name="DespachoEscanear"
+        component={DespachoEscanearScreen}
+        options={({ route }) => ({ title: `RG-${route.params?.rutagramaId ?? ''}`, headerTitleMono: true, headerSubtitle: route.params?.rutaDesc })}
+      />
+      <Stack.Screen name="DespachoNotasCredito" component={DespachoNotasCreditoScreen} options={{ title: 'Notas de Crédito / Débito', headerSubtitle: 'Sin ruta: se escanea y se guarda' }} />
+      <Stack.Screen name="DespachoHistorial" component={DespachoHistorialScreen} options={{ title: 'Historial de rutagramas' }} />
+      <Stack.Screen
+        name="DespachoRecibirEnlace"
+        component={DespachoRecibirEnlaceScreen}
+        options={({ route }) => ({ title: 'Recepción de enlace', headerSubtitle: route.params?.rutaDesc })}
+      />
+      <Stack.Screen
+        name="DespachoRecibirEnlaceDetalle"
+        component={DespachoRecibirEnlaceDetalleScreen}
+        options={({ route }) => ({ title: `Enlace #${route.params?.rutagramaId ?? ''}`, headerSubtitle: 'Recibir' })}
+      />
+      <Stack.Screen name="DespachoEnlaces" component={DespachoEnlacesScreen} options={{ title: 'Enlaces generados' }} />
+      <Stack.Screen name="RfidMenu" component={RfidMenuScreen} options={{ title: 'RFID', headerSubtitle: 'Experimental' }} />
+      <Stack.Screen name="RfidAsociar" component={RfidAsociarScreen} options={{ title: 'Asociar tags' }} />
+      <Stack.Screen name="RfidEscanear" component={RfidEscanearScreen} options={{ title: 'Escanear (inventario)' }} />
     </Stack.Navigator>
   );
 }

@@ -533,24 +533,25 @@ export default function ChequeoGuiaCargaScreen() {
   if (!guiaSeleccionada) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Entrega de mercancía</Text>
         <View style={{ marginBottom: 10 }}>
           <TouchableOpacity
             style={{
-              backgroundColor: Theme.colors.success,
-              borderRadius: Theme.radius.md,
-              paddingVertical: Theme.spacing.md,
-              paddingHorizontal: Theme.spacing.xl,
-              alignSelf: "center",
-              marginBottom: 6,
+              backgroundColor: Theme.colors.surface,
+              borderWidth: 1,
+              borderColor: Theme.colors.border,
+              borderRadius: 14,
+              height: 48,
+              justifyContent: "center",
+              marginBottom: 8,
               flexDirection: "row",
               alignItems: "center",
-              ...Theme.shadow.xs,
+              gap: 8,
             }}
             onPress={() => setMostrarCargadas(!mostrarCargadas)}
           >
-            <Text style={{ color: Theme.colors.white, fontWeight: "700", fontSize: 16 }}>
-              {mostrarCargadas ? "Ocultar" : "Ver"} Guías Cargadas
+            <Ionicons name={mostrarCargadas ? "chevron-up" : "chevron-down"} size={18} color={Theme.colors.dark} />
+            <Text style={{ color: Theme.colors.text, fontWeight: "700", fontSize: 14 }}>
+              {mostrarCargadas ? "Ocultar" : "Ver"} guías cargadas
             </Text>
           </TouchableOpacity>
           {mostrarCargadas && (

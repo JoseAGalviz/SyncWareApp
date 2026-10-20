@@ -8,18 +8,18 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: Theme.spacing.lg,
-    paddingTop: Theme.spacing.md,
+    paddingTop: Theme.spacing.lg,
     paddingBottom: Theme.spacing.sm,
   },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    borderRadius: Theme.radius.lg,
-    paddingHorizontal: Theme.spacing.md,
-    height: 48,
   },
   searchIcon: {
     marginRight: Theme.spacing.sm,
@@ -35,12 +35,11 @@ const styles = StyleSheet.create({
   },
   pedidoCard: {
     backgroundColor: Theme.colors.surface,
-    borderRadius: Theme.radius.xl,
-    padding: Theme.spacing.lg,
-    marginBottom: Theme.spacing.md,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Theme.colors.border,
-    ...Theme.shadow.sm,
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
