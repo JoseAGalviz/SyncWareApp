@@ -19,7 +19,7 @@ import { Tarjeta, Pill, Aviso, Boton, Segmentado } from '../components/ui';
 // Diseño: "Recibir · Escaneo" del lienzo SyncWareApp.
 const C = Theme.colors;
 const limpiar = (raw) => String(raw || '').trim().replace(/\s+/g, '').toUpperCase();
-const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10}|VAL\d+)$/i;
+const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10}|VAL\d+|REP\d+)$/i;
 const COOLDOWN_MS = 1500;
 
 const Marca = ({ ok, label }) => (

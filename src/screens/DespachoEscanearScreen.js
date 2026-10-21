@@ -29,7 +29,8 @@ const FILTROS = [
 // Acepta el código tal cual (con o sin letra de serie). El backend hace la conversión
 // del código de barras; acá solo se limpia para el cooldown y el envío.
 const limpiarCodigo = (raw) => String(raw || '').trim().replace(/\s+/g, '').toUpperCase();
-const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
+// VAL… / REP…: valija / reposición de sistema_operaciones (api-app despachoValijas.js).
+const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10}|VAL\d{7}|REP\d{7})$/i;
 
 const esNotaCredito = (s) => s === 'NCR' || s === 'NDB';
 
@@ -133,10 +134,10 @@ const PendienteItem = React.memo(({ item, onPress }) => {
   return (
     <TouchableOpacity style={styles.itemRow} onPress={() => onPress(item)} activeOpacity={0.6}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemNota}>{item.es_valija ? 'Valija' : 'Nota'} {item.fact_num}</Text>
+        <Text style={styles.itemNota}>{item.es_reposicion ? 'Reposición' : item.es_valija ? 'Valija' : 'Nota'} {item.fact_num}</Text>
         <Text style={styles.itemDetalle}>{item.cli_des}</Text>
         <View style={{ flexDirection: 'row', gap: Theme.spacing.xs, marginTop: Theme.spacing.xs }}>
-          {/* Valija de sistema_operaciones: no lleva factura. */}
+          {/* Valija o reposición de sistema_operaciones: no lleva factura. */}
           {!item.es_valija && (
             <View style={[styles.statusPill, tieneFactura ? styles.statusVerificada : styles.statusEscaneada]}>
               <Text style={[styles.statusPillText, tieneFactura ? styles.statusTextVerificada : styles.statusTextEscaneada]}>
@@ -164,6 +165,9 @@ const RenglonItem = React.memo(({ item, onPress, onDescartar }) => {
   const horaFactura = formatoHora(item.hora_factura);
   const codigo = item.status === 'VAL*'
     ? `VAL ${item.nota}`
+    : item.status === 'RPS*'
+      // Reposición de sistema_operaciones (REP…): sin factura.
+      ? item.nota
     : item.factura && item.factura === item.nota && !esNotaCredito(item.status)
       // Renglón legado "solo factura" (nota = factura): no tiene nota de entrega.
       ? `F-${item.factura} · sin nota`
@@ -569,7 +573,7 @@ export default function DespachoEscanearScreen({ route, navigation }) {
     const valor = limpiarCodigo(manualValor);
     if (!valor) return;
     if (!FORMATO_VALIDO.test(valor)) {
-      showMessage({ message: 'Formato no reconocido', description: `"${valor}" debería ser hasta 10 dígitos, con o sin letra al inicio.`, type: 'warning', duration: 3000 });
+      showMessage({ message: 'Formato no reconocido', description: `"${valor}" debería ser hasta 10 dígitos, con o sin letra al inicio, o una valija/reposición (VAL…/REP…).`, type: 'warning', duration: 3000 });
       return;
     }
     setProcesandoManual(true);
