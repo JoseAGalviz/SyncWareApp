@@ -7,21 +7,26 @@ import { DespachoService } from '../services/despachoService';
 import { Tarjeta, Pill, Barra, Stat, Aviso } from '../components/ui';
 
 // Vendedor: rutagramas ya cerrados con pedidos suyos (últimos días, ver despachoVendedor.js
-// en api-app). Al tocar uno se escanea lo que recibió (RecibirRutagramaScreen).
+// en api-app). Al tocar uno se escanea lo que recibió (RecibirRutagramaScreen), del
+// rutagrama completo; el avance es del rutagrama entero y aparte el de sus pedidos.
 // Diseño: "Recibir · Rutagramas" del lienzo SyncWareApp.
 const C = Theme.colors;
 
 const RutagramaItem = React.memo(({ item, onPress }) => {
-  const nuevo = !item.completo && !item.iniciado;
+  const nuevo = !item.completo && !item.iniciado && !item.cerrada;
   const pct = item.pedidos ? (item.recibidos / item.pedidos) * 100 : 0;
-  if (item.completo) {
+  if (item.completo || item.cerrada) {
+    const faltan = item.pedidos - item.recibidos;
     return (
       <Tarjeta onPress={() => onPress(item)} style={{ gap: 8 }}>
         <View style={st.fila}>
           <Text style={st.codigo}>RG-{item.cargado_id}</Text>
-          <Pill tono="verde">RECIBIDO ✓</Pill>
+          {faltan > 0 ? <Pill tono="ambar">CERRADO · FALTAN {faltan}</Pill> : <Pill tono="verde">RECIBIDO ✓</Pill>}
         </View>
-        <Text style={st.meta}>{item.ruta} · cerrado {item.fecha_cierre} · {item.pedidos}/{item.pedidos} pedidos recibidos</Text>
+        <Text style={st.meta}>
+          {item.ruta} · cerrado {item.fecha_cierre} · {item.recibidos}/{item.pedidos} pedidos recibidos
+          {item.cierre?.por ? ` · recepción cerrada por ${item.cierre.por}` : ''}
+        </Text>
       </Tarjeta>
     );
   }
@@ -41,6 +46,7 @@ const RutagramaItem = React.memo(({ item, onPress }) => {
         <Barra pct={pct} color={C.warning} style={{ flex: 1 }} />
         <Text style={st.progresoTexto}>{item.recibidos}/{item.pedidos} pedidos recibidos</Text>
       </View>
+      <Text style={st.meta}>Tuyos: {item.mis_recibidos}/{item.mis_pedidos}</Text>
     </Tarjeta>
   );
 });
@@ -86,7 +92,7 @@ export default function RecibirRutagramasScreen({ navigation, route }) {
     navigation.navigate('RecibirRutagrama', { rutagramaId: item.cargado_id, usuarioId: userData.id });
   }, [navigation, userData]);
 
-  const pendientes = items.filter((i) => !i.completo).length;
+  const pendientes = items.filter((i) => !i.completo && !i.cerrada).length;
 
   return (
     <FlatList

@@ -29,7 +29,7 @@ export function useAvisoRutagramasVendedor(onAbrir) {
 
       const res = await DespachoService.vendedorRutagramas(usuario.id);
       const items = res?.items || [];
-      const sinRecibir = items.filter((i) => !i.completo);
+      const sinRecibir = items.filter((i) => !i.completo && !i.cerrada);
       setPendientes(sinRecibir.length);
 
       let avisados = [];

@@ -16,15 +16,27 @@ const limpiarCodigo = (raw) => String(raw || '').trim().replace(/\s+/g, '').toUp
 const FORMATO_VALIDO = /^([AB]\d{7}|\d{1,10})$/i;
 const COOLDOWN_MS = 900;
 
+// Cada renglón pide nota Y factura (salvo valijas/legado, `pide_factura` false): se muestra
+// cuál de los dos falta, igual que en el despacho.
+const etiquetaRenglon = (item) => {
+  if (item.recibido) return 'RECIBIDO';
+  if (item.nota_ok) return 'FALTA FACTURA';
+  if (item.factura_ok && item.pide_factura) return 'FALTA NOTA';
+  return 'PENDIENTE';
+};
+
 const RenglonItem = React.memo(({ item }) => (
   <View style={styles.itemRow}>
     <View style={styles.itemInfo}>
-      <Text style={styles.itemNota}>Nota {item.nota}{item.factura ? ` · Factura ${item.factura}` : ''}</Text>
+      <Text style={styles.itemNota}>
+        Nota {item.nota}{item.nota_ok ? ' ✓' : ''}
+        {item.factura && item.pide_factura ? ` · Factura ${item.factura}${item.factura_ok ? ' ✓' : ''}` : ''}
+      </Text>
       <Text style={styles.itemDetalle}>{item.descrip}</Text>
     </View>
     <View style={[styles.statusPill, item.recibido ? styles.statusVerificada : styles.statusPendiente]}>
       <Text style={[styles.statusPillText, item.recibido ? styles.statusTextVerificada : styles.statusTextPendiente]}>
-        {item.recibido ? 'RECIBIDO' : 'PENDIENTE'}
+        {etiquetaRenglon(item)}
       </Text>
     </View>
   </View>
@@ -79,11 +91,14 @@ export default function DespachoRecibirEnlaceDetalleScreen({ route, navigation }
     setGuardando(true);
     try {
       const res = await DespachoService.escanearEnlace(rutagramaId, { usuario_id: usuarioId, codigo });
+      const doc = res?.documento === 'factura' ? `FACTURA ${res?.factura || codigo}` : `NOTA ${res?.nota || codigo}`;
+      const falta = res?.falta === 'factura' ? `Falta escanear la factura ${res?.factura || ''}`.trim()
+        : res?.falta === 'nota' ? `Falta escanear la nota ${res?.nota || ''}`.trim() : null;
       showMessage({
-        message: `RECIBIDA NOTA ${res?.nota || codigo}`,
-        description: `${res?.descrip || ''}\nRecibidos ${res?.recibidos ?? '?'}/${res?.total ?? '?'}`.trim(),
-        type: 'success',
-        duration: 2000,
+        message: falta ? `ESCANEADA ${doc}` : `RECIBIDO PEDIDO — ${doc}`,
+        description: [res?.descrip, falta, `Recibidos ${res?.recibidos ?? '?'}/${res?.total ?? '?'}`].filter(Boolean).join('\n'),
+        type: falta ? 'info' : 'success',
+        duration: falta ? 3000 : 2000,
       });
       await cargarDetalle();
       return true;
