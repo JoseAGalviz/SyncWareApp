@@ -124,6 +124,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Theme.colors.muted,
   },
+  facturaObservacion: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Theme.colors.warning,
+    marginTop: 2,
+  },
+  loteObservaciones: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Theme.colors.warning,
+    marginTop: 2,
+  },
   verMas: {
     fontSize: 13,
     fontWeight: '600',

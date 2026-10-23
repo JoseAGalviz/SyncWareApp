@@ -51,6 +51,8 @@ const LoteCard = React.memo(({ lote, abierto, onToggle }) => {
     [lote.facturas]
   );
   const visibles = verTodas ? facturas : facturas.slice(0, MAX_FACTURAS_VISIBLES);
+  // Recibidas con observación de San Cristóbal (sin sello, mal estado...).
+  const conObservacion = lote.facturas.filter((f) => f.observacion).length;
 
   return (
     <TouchableOpacity
@@ -66,6 +68,9 @@ const LoteCard = React.memo(({ lote, abierto, onToggle }) => {
           <Text style={styles.loteDetalle}>Enviado: {fechaCorta(lote.fecha_cierre || lote.fecha_creacion)}</Text>
           {lote.ultima_recepcion ? (
             <Text style={styles.loteDetalle}>Última recepción: {fechaCorta(lote.ultima_recepcion)}</Text>
+          ) : null}
+          {conObservacion ? (
+            <Text style={styles.loteObservaciones}>{conObservacion} con observación</Text>
           ) : null}
         </View>
         <View style={[styles.estadoBadge, { backgroundColor: estado.color }]}>
@@ -96,7 +101,9 @@ const LoteCard = React.memo(({ lote, abierto, onToggle }) => {
                 <Text style={styles.facturaSub}>
                   {f.co_cli || ''}
                   {f.recepcionada ? ` · Recibida ${fechaCorta(f.fecha_recepcion)}` : ' · Sin recibir'}
+                  {f.recibido_por ? ` por ${f.recibido_por}` : ''}
                 </Text>
+                {f.observacion ? <Text style={styles.facturaObservacion}>{f.observacion}</Text> : null}
               </View>
             </View>
           ))}
