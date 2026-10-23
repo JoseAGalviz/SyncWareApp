@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
   TIEMPOS_PAGO: "/api/transferencias/tiempos-pago",
   CREAR_PEDIDO: "/api/pedidosApp/crear",
   OBTENER_PEDIDOS: "/api/pedidosApp/pedidos",
+  HISTORIAL_PEDIDOS: "/api/pedidosApp/historial",
   DESCUENTOS_ESCALA: "/api/pedidosApp/descuentos-escala",
   GESTIONES: "/api/gestiones",
   REPORTE_DESPACHO: "/api/gestiones/reporteDespacho",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,182 +7,120 @@ import {
     TextInput,
     ActivityIndicator,
     RefreshControl,
-    Modal,
     ScrollView,
-    Alert,
     StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { API_ENDPOINTS } from '../constants/Config';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Theme from '../constants/Theme';
 import styles from '../styles/PedidosHistorialScreen.styles';
-import AppHeader from '../components/AppHeader';
+import PedidoDetalleModal, {
+    ESTADOS_PEDIDO,
+    formatDate,
+    formatCurrency,
+    avisosAnulacion,
+} from '../components/PedidoDetalleModal';
+
+// Historial de pedidos del vendedor logueado con su estado real en Profit
+// (GET /api/pedidosApp/historial): si ya se convirtió en nota(s), cuáles, y si
+// alcabala la anuló, con el comentario que dejaron.
 
 
-const ESTADO_COLORS = {
-    pendiente: { bg: 'transparent', border: 'transparent', text: 'transparent', label: '' },
-    aprobado: { bg: '#ecfdf5', border: '#a7f3d0', text: '#047857', label: 'Aprobado' },
-    rechazado: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: 'Rechazado' },
-    procesado: { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', label: 'Procesado' },
-};
+const FILTROS = [
+    { key: 'TODOS', label: 'Todos' },
+    { key: 'PENDIENTE', label: 'Sin procesar' },
+    { key: 'EN_ALCABALA', label: 'Alcabala' },
+    { key: 'PROCESADO', label: 'Procesados' },
+    { key: 'ANULADO', label: 'Anulados' },
+    { key: 'CERRADO_SIN_NOTA', label: 'Cerrados' },
+];
 
-const PedidosHistorialScreen = ({ navigation }) => {
+const RANGOS_DIAS = [7, 30, 90];
+
+
+const PedidosHistorialScreen = () => {
+    const { user } = useAuth();
     const [pedidos, setPedidos] = useState([]);
-    const [filteredPedidos, setFilteredPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [filtro, setFiltro] = useState('TODOS');
+    const [dias, setDias] = useState(30);
     const [selectedPedido, setSelectedPedido] = useState(null);
-    const [detailModalVisible, setDetailModalVisible] = useState(false);
 
-    useEffect(() => {
-        fetchPedidos();
-    }, []);
-
-    // Debounce: filtrar en cada tecla trababa la UI con listas grandes.
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            filterPedidos();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery, pedidos]);
-
-    const fetchPedidos = useCallback(async (opts = {}) => {
-        const { forzarServidor = false } = opts;
+    const fetchPedidos = useCallback(async () => {
+        if (!user?.co_ven) {
+            setError('Tu usuario no tiene código de vendedor.');
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         try {
-            // Cargar desde el historial local (caché)
-            const historialJson = await AsyncStorage.getItem('PEDIDOS_CACHE');
-            let data = historialJson ? JSON.parse(historialJson) : [];
-            if (data.length) {
-                console.log(`📦 Historial cargado desde caché: ${data.length} pedidos.`);
-            }
-
-            // Solo se consulta al servidor si la caché vino vacía (posible pérdida tras
-            // reinstalar/actualizar la app) o en un refresh manual explícito — nunca en
-            // cada apertura normal de la pantalla, para no cargar la API de más.
-            if (data.length === 0 || forzarServidor) {
-                try {
-                    const userDataStr = await AsyncStorage.getItem('userData');
-                    const userData = userDataStr ? JSON.parse(userDataStr) : null;
-                    if (userData?.co_ven) {
-                        const remotos = await api.get(
-                            `${API_ENDPOINTS.OBTENER_PEDIDOS}?co_ven=${encodeURIComponent(userData.co_ven)}`
-                        );
-                        if (Array.isArray(remotos) && remotos.length) {
-                            const porCodigo = new Map(data.map(p => [p.codigo_pedido, p]));
-                            for (const r of remotos) {
-                                if (porCodigo.has(r.codigo_pedido)) continue;
-                                porCodigo.set(r.codigo_pedido, {
-                                    id: r.fact_num,
-                                    codigo_pedido: r.codigo_pedido,
-                                    fact_num: r.fact_num,
-                                    nombre_cliente: r.cod_cliente,
-                                    fecha_creacion: r.fecha,
-                                    items_count: null,
-                                    estado: 'pendiente',
-                                    tot_neto: r.tot_neto,
-                                    descrip: r.descrip,
-                                });
-                            }
-                            data = Array.from(porCodigo.values());
-                            await AsyncStorage.setItem('PEDIDOS_CACHE', JSON.stringify(data));
-                            console.log(`☁️ Historial repuesto/actualizado desde el servidor: ${remotos.length} pedido(s).`);
-                        }
-                    }
-                } catch (remoteErr) {
-                    console.error('No se pudo recuperar historial remoto:', remoteErr);
-                    // Se sigue con lo que haya en caché local — no bloquea la pantalla.
-                }
-            }
-
-            // Ordenar por fecha más reciente primero
-            data.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-
-            setPedidos(data);
-        } catch (error) {
-            console.error('Error fetching pedidos from cache:', error);
-            Alert.alert('Error', 'No se pudieron cargar los pedidos del historial.');
+            setError(null);
+            const data = await api.get(
+                `${API_ENDPOINTS.HISTORIAL_PEDIDOS}?co_ven=${encodeURIComponent(user.co_ven)}&dias=${dias}`
+            );
+            setPedidos(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Error cargando historial de pedidos:', err);
+            setError('No se pudo cargar el historial. Desliza hacia abajo para reintentar.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [user?.co_ven, dias]);
+
+    useEffect(() => {
+        setLoading(true);
+        fetchPedidos();
+    }, [fetchPedidos]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        fetchPedidos({ forzarServidor: true });
-    }, []);
+        fetchPedidos();
+    }, [fetchPedidos]);
 
-    const filterPedidos = () => {
-        let filtered = pedidos;
-
-        // Filtrar por búsqueda
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(p =>
+    const filteredPedidos = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return pedidos.filter((p) => {
+            if (filtro !== 'TODOS' && p.estado !== filtro) return false;
+            if (!query) return true;
+            return (
+                String(p.fact_num).includes(query) ||
                 String(p.codigo_pedido || '').toLowerCase().includes(query) ||
-                String(p.nombre_cliente || '').toLowerCase().includes(query) ||
-                String(p.cod_cliente || '').toLowerCase().includes(query)
+                String(p.cli_des || '').toLowerCase().includes(query) ||
+                String(p.co_cli || '').toLowerCase().includes(query) ||
+                p.notas.some((n) => String(n.fact_num).includes(query))
             );
-        }
-
-        setFilteredPedidos(filtered);
-    };
-
-    const handleViewDetail = (pedido) => {
-        setSelectedPedido(pedido);
-        setDetailModalVisible(true);
-    };
-
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
         });
-    };
+    }, [pedidos, filtro, searchQuery]);
 
-    const formatCurrency = (amount) => {
-        return parseFloat(amount || 0).toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        });
-    };
-
+    const conteos = useMemo(() => {
+        const c = { TODOS: pedidos.length };
+        for (const p of pedidos) c[p.estado] = (c[p.estado] || 0) + 1;
+        return c;
+    }, [pedidos]);
 
     const renderPedidoCard = ({ item }) => {
-        const estadoConfig = ESTADO_COLORS[item.estado] || ESTADO_COLORS.pendiente;
+        const estado = ESTADOS_PEDIDO[item.estado] || ESTADOS_PEDIDO.PENDIENTE;
+        const avisos = item.estado === 'ANULADO' ? avisosAnulacion(item) : [];
 
         return (
-            <TouchableOpacity
-                style={styles.pedidoCard}
-                onPress={() => handleViewDetail(item)}
-                activeOpacity={0.7}
-            >
+            <TouchableOpacity style={styles.pedidoCard} onPress={() => setSelectedPedido(item)} activeOpacity={0.7}>
                 <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
                         <MaterialIcons name="receipt-long" size={24} color={Theme.colors.primary} />
                         <View style={styles.cardHeaderInfo}>
-                            <Text style={styles.pedidoCode}>{item.codigo_pedido}</Text>
-                            <Text style={styles.pedidoDate}>{formatDate(item.fecha_creacion)}</Text>
+                            <Text style={styles.pedidoCode}>Pedido {item.fact_num}</Text>
+                            <Text style={styles.pedidoDate}>{formatDate(item.fec_emis)}</Text>
                         </View>
                     </View>
-                    {estadoConfig.label ? (
-                        <View style={[
-                            styles.estadoBadge,
-                            { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
-                        ]}>
-                            <Text style={[styles.estadoText, { color: estadoConfig.text }]}>
-                                {estadoConfig.label}
-                            </Text>
-                        </View>
-                    ) : null}
+                    <View style={[styles.estadoBadge, { backgroundColor: estado.bg, borderColor: estado.border }]}>
+                        <Text style={[styles.estadoText, { color: estado.text }]}>{estado.label}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.cardDivider} />
@@ -191,33 +129,35 @@ const PedidosHistorialScreen = ({ navigation }) => {
                     <View style={styles.infoRow}>
                         <MaterialIcons name="business" size={16} color="#64748b" />
                         <Text style={styles.clienteText} numberOfLines={1}>
-                            {item.nombre_cliente || 'Cliente Desconocido'}
+                            {item.cli_des || item.co_cli}
                         </Text>
                     </View>
-
                     <View style={styles.infoRow}>
-                        <MaterialIcons name="fingerprint" size={16} color="#64748b" />
-                        <Text style={styles.infoText}>{item.cod_cliente}</Text>
+                        <MaterialIcons name="description" size={16} color="#64748b" />
+                        <Text style={styles.infoText} numberOfLines={1}>
+                            {item.notas.length
+                                ? `Notas: ${item.notas.map((n) => n.fact_num).join(', ')}`
+                                : 'Sin notas todavía'}
+                        </Text>
                     </View>
-
-                    <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>Items</Text>
-                            <Text style={styles.statValue}>{item.items_count || 0}</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>Total Bruto</Text>
-                            <Text style={styles.statValue}>{formatCurrency(item.tot_bruto)}</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>Total Neto</Text>
-                            <Text style={[styles.statValue, styles.statValueHighlight]}>
-                                {formatCurrency(item.tot_neto)}
+                    <View style={styles.infoRow}>
+                        <MaterialIcons name="attach-money" size={16} color="#64748b" />
+                        <Text style={[styles.infoText, styles.statValueHighlight]}>{formatCurrency(item.tot_neto)}</Text>
+                    </View>
+                    {avisos.length > 0 ? (
+                        <View style={styles.comentarioBox}>
+                            <Text style={styles.comentarioTitulo}>{avisos[0].titulo}</Text>
+                            <Text style={styles.comentarioTexto} numberOfLines={3}>
+                                {avisos[0].texto}
                             </Text>
                         </View>
-                    </View>
+                    ) : null}
+                    {item.estado === 'CERRADO_SIN_NOTA' && item.descrip ? (
+                        <View style={[styles.comentarioBox, styles.cerradoBox]}>
+                            <Text style={[styles.comentarioTitulo, styles.cerradoTitulo]}>Cerrado en Profit</Text>
+                            <Text style={styles.comentarioTexto} numberOfLines={3}>{item.descrip}</Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 <View style={styles.cardFooter}>
@@ -228,126 +168,13 @@ const PedidosHistorialScreen = ({ navigation }) => {
         );
     };
 
-    const DetailModal = () => {
-        if (!selectedPedido) return null;
-        const estadoConfig = ESTADO_COLORS[selectedPedido.estado] || ESTADO_COLORS.pendiente;
-
-        return (
-            <Modal
-                visible={detailModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setDetailModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <View>
-                                <Text style={styles.modalTitle}>Detalles del Pedido</Text>
-                                <Text style={styles.modalSubtitle}>{selectedPedido.codigo_pedido}</Text>
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => setDetailModalVisible(false)}
-                                style={styles.closeButton}
-                            >
-                                <MaterialIcons name="close" size={24} color={Theme.colors.muted} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                            {/* Estado */}
-                            {estadoConfig.label ? (
-                                <View style={styles.detailSection}>
-                                    <Text style={styles.detailSectionTitle}>Estado</Text>
-                                    <View style={[
-                                        styles.estadoBadgeLarge,
-                                        { backgroundColor: estadoConfig.bg, borderColor: estadoConfig.border }
-                                    ]}>
-                                        <Text style={[styles.estadoTextLarge, { color: estadoConfig.text }]}>
-                                            {estadoConfig.label}
-                                        </Text>
-                                    </View>
-                                </View>
-                            ) : null}
-
-                            {/* Información del Cliente */}
-                            <View style={styles.detailSection}>
-                                <Text style={styles.detailSectionTitle}>Cliente</Text>
-                                <View style={styles.detailCard}>
-                                    <DetailRow icon="business" label="Nombre" value={selectedPedido.nombre_cliente} />
-                                    <DetailRow icon="fingerprint" label="Código" value={selectedPedido.cod_cliente} />
-                                </View>
-                            </View>
-
-                            {/* Información del Pedido */}
-                            <View style={styles.detailSection}>
-                                <Text style={styles.detailSectionTitle}>Información del Pedido</Text>
-                                <View style={styles.detailCard}>
-                                    <DetailRow icon="event" label="Fecha" value={formatDate(selectedPedido.fecha_creacion)} />
-                                    <DetailRow icon="inventory-2" label="Total Items" value={selectedPedido.items_count || 0} />
-                                </View>
-                            </View>
-
-                            {/* Resumen Financiero */}
-                            <View style={styles.detailSection}>
-                                <Text style={styles.detailSectionTitle}>Resumen Financiero</Text>
-                                <View style={styles.detailCard}>
-                                    <DetailRow label="Total Bruto" value={formatCurrency(selectedPedido.tot_bruto)} />
-                                    <DetailRow label="Total Neto" value={formatCurrency(selectedPedido.tot_neto)} highlight />
-                                    <DetailRow label="Saldo" value={formatCurrency(selectedPedido.saldo)} />
-                                </View>
-                            </View>
-
-                            {/* Detalle de Productos */}
-                            <View style={styles.detailSection}>
-                                <Text style={styles.detailSectionTitle}>Productos</Text>
-                                <View style={styles.itemsListContainer}>
-                                    {selectedPedido.items && selectedPedido.items.length > 0 ? (
-                                        selectedPedido.items.map((item, index) => (
-                                            <View key={index} style={styles.itemRow}>
-                                                <View style={styles.itemInfo}>
-                                                    <Text style={styles.itemDescription} numberOfLines={2}>
-                                                        {item.art_des || 'Producto sin descripción'}
-                                                    </Text>
-                                                    <Text style={styles.itemCode}>{item.co_art}</Text>
-                                                </View>
-                                                <View style={styles.itemQuantityContainer}>
-                                                    <Text style={styles.itemQuantityLabel}>CANT.</Text>
-                                                    <Text style={styles.itemQuantityValue}>{item.cant_sc}</Text>
-                                                </View>
-                                            </View>
-                                        ))
-                                    ) : (
-                                        <Text style={styles.emptyItemsText}>No hay items en este pedido</Text>
-                                    )}
-                                </View>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-        );
-    };
-
-    const DetailRow = ({ icon, label, value, highlight }) => (
-        <View style={styles.detailRow}>
-            <View style={styles.detailRowLeft}>
-                {icon && <MaterialIcons name={icon} size={16} color={Theme.colors.muted} style={styles.detailIcon} />}
-                <Text style={styles.detailLabel}>{label}</Text>
-            </View>
-            <Text style={[styles.detailValue, highlight && styles.detailValueHighlight]}>
-                {value}
-            </Text>
-        </View>
-    );
-
     const ListEmpty = () => (
         <View style={styles.emptyContainer}>
             <MaterialIcons name="receipt-long" size={64} color={Theme.colors.border} />
             <Text style={styles.emptyText}>
-                {searchQuery.trim()
+                {error || (searchQuery.trim() || filtro !== 'TODOS'
                     ? 'No se encontraron pedidos'
-                    : 'Aún no hay pedidos generados'}
+                    : `Sin pedidos en los últimos ${dias} días`)}
             </Text>
         </View>
     );
@@ -355,18 +182,13 @@ const PedidosHistorialScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <AppHeader
-                title="Historial de Pedidos"
-                onMenu={navigation.openDrawer ? () => navigation.openDrawer() : undefined}
-            />
 
-            {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputWrapper}>
                     <MaterialIcons name="search" size={20} color={Theme.colors.muted} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Buscar por código, cliente..."
+                        placeholder="Buscar pedido, nota o cliente..."
                         placeholderTextColor={Theme.colors.muted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -377,10 +199,34 @@ const PedidosHistorialScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+                    {FILTROS.map((f) => (
+                        <TouchableOpacity
+                            key={f.key}
+                            style={[styles.chip, filtro === f.key && styles.chipActivo]}
+                            onPress={() => setFiltro(f.key)}
+                        >
+                            <Text style={[styles.chipText, filtro === f.key && styles.chipTextActivo]}>
+                                {f.label} ({conteos[f.key] || 0})
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <View style={styles.chipsRow}>
+                    {RANGOS_DIAS.map((d) => (
+                        <TouchableOpacity
+                            key={d}
+                            style={[styles.chip, dias === d && styles.chipActivo]}
+                            onPress={() => setDias(d)}
+                        >
+                            <Text style={[styles.chipText, dias === d && styles.chipTextActivo]}>{d} días</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
             </View>
 
-
-            {/* Lista de Pedidos */}
             {loading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={Theme.colors.primary} />
@@ -390,7 +236,7 @@ const PedidosHistorialScreen = ({ navigation }) => {
                 <FlatList
                     data={filteredPedidos}
                     renderItem={renderPedidoCard}
-                    keyExtractor={(item) => String(item.id)}
+                    keyExtractor={(item) => String(item.fact_num)}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={ListEmpty}
                     refreshControl={
@@ -408,10 +254,9 @@ const PedidosHistorialScreen = ({ navigation }) => {
                 />
             )}
 
-            <DetailModal />
+            <PedidoDetalleModal pedido={selectedPedido} onClose={() => setSelectedPedido(null)} />
         </View>
     );
 };
-
 
 export default PedidosHistorialScreen;

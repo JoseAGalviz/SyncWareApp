@@ -8,6 +8,8 @@ import VisitaScreen from "../screens/VisitaScreen";
 import FacturasScreen from "../screens/FacturasScreen";
 import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 import LotesScreen from "../screens/LotesScreen";
+import PedidosHistorialScreen from "../screens/PedidosHistorialScreen";
+import CotizacionesPorDiaScreen from "../screens/CotizacionesPorDiaScreen";
 import DespachoNavigator from './DespachoNavigator';
 import DevolucionesNavigator from './DevolucionesNavigator';
 import RecibirNavigator from './RecibirNavigator';
@@ -35,7 +37,13 @@ const ITEMS_MAS = [
 ];
 const MasTodos = crearMasNavigator(ITEMS_MAS);
 // El vendedor no opera rutagramas (recibe lo suyo en "Recibir"): su "Más" va sin Rutagrama.
-const ITEMS_MAS_VENDEDOR = ITEMS_MAS.filter((i) => i.name !== 'Rutagrama');
+// Suma "Mis pedidos": estado en Profit de sus pedidos (notas, alcabala, anulación), y
+// "Cotizaciones por día": lo mismo agrupado por día para validar qué se procesó.
+const ITEMS_MAS_VENDEDOR = [
+  { name: 'MisPedidos', label: 'Mis pedidos', subtitle: 'Notas y alcabala', icon: 'document-text-outline', tono: 'azul', component: PedidosHistorialScreen },
+  { name: 'CotizacionesPorDia', label: 'Cotizaciones por día', subtitle: 'Procesadas y no', icon: 'calendar-outline', tono: 'verde', component: CotizacionesPorDiaScreen },
+  ...ITEMS_MAS.filter((i) => i.name !== 'Rutagrama'),
+];
 const MasVendedor = crearMasNavigator(ITEMS_MAS_VENDEDOR);
 
 // Define tu navegación de pestañas
