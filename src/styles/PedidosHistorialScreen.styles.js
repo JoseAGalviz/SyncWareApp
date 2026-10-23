@@ -457,6 +457,16 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  discrepanciaAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Theme.spacing.sm,
+  },
+  discrepanciaAvisoTexto: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   renglonesResumen: {
     flexDirection: 'row',
     justifyContent: 'space-between',

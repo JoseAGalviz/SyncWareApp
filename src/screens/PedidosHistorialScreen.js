@@ -39,6 +39,13 @@ const FILTROS = [
 
 const RANGOS_DIAS = [7, 30, 90];
 
+// pedido.discrepancia (historial con discrepancias=1): ALTA = cantidades que no
+// cuadran entre cotización, nota y factura; MEDIA = solo precio o descuento.
+const DISCREPANCIA_PEDIDO = {
+    ALTA: { bg: '#fef2f2', border: '#f87171', text: '#b91c1c', label: 'Cantidades no cuadran con la cotización' },
+    MEDIA: { bg: '#fefce8', border: '#facc15', text: '#a16207', label: 'Precio o descuento distinto al cotizado' },
+};
+
 
 const PedidosHistorialScreen = () => {
     const { user } = useAuth();
@@ -61,7 +68,7 @@ const PedidosHistorialScreen = () => {
         try {
             setError(null);
             const data = await api.get(
-                `${API_ENDPOINTS.HISTORIAL_PEDIDOS}?co_ven=${encodeURIComponent(user.co_ven)}&dias=${dias}`
+                `${API_ENDPOINTS.HISTORIAL_PEDIDOS}?co_ven=${encodeURIComponent(user.co_ven)}&dias=${dias}&discrepancias=1`
             );
             setPedidos(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -107,9 +114,20 @@ const PedidosHistorialScreen = () => {
     const renderPedidoCard = ({ item }) => {
         const estado = ESTADOS_PEDIDO[item.estado] || ESTADOS_PEDIDO.PENDIENTE;
         const avisos = item.estado === 'ANULADO' ? avisosAnulacion(item) : [];
+        const discrepancia = DISCREPANCIA_PEDIDO[item.discrepancia];
 
         return (
-            <TouchableOpacity style={styles.pedidoCard} onPress={() => setSelectedPedido(item)} activeOpacity={0.7}>
+            <TouchableOpacity
+                style={[styles.pedidoCard, discrepancia && { backgroundColor: discrepancia.bg, borderColor: discrepancia.border }]}
+                onPress={() => setSelectedPedido(item)}
+                activeOpacity={0.7}
+            >
+                {discrepancia ? (
+                    <View style={styles.discrepanciaAviso}>
+                        <MaterialIcons name="warning-amber" size={16} color={discrepancia.text} />
+                        <Text style={[styles.discrepanciaAvisoTexto, { color: discrepancia.text }]}>{discrepancia.label}</Text>
+                    </View>
+                ) : null}
                 <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
                         <MaterialIcons name="receipt-long" size={24} color={Theme.colors.primary} />
