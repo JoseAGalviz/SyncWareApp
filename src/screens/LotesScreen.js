@@ -245,6 +245,11 @@ export default function LotesScreen() {
       Alert.alert('Factura no encontrada');
       return null;
     }
+    // QR fiscal que no se pudo resolver a un Nº de factura.
+    if (response.status === 422) {
+      Alert.alert('QR no reconocido', result?.error || 'Vuelve a escanear o ingresa el número manualmente.');
+      return null;
+    }
     if (!response.ok) {
       Alert.alert('Error', 'No se pudo consultar la factura. Verifica tu conexión o intenta más tarde.');
       throw new Error('No se pudo consultar la factura.');
@@ -280,16 +285,19 @@ export default function LotesScreen() {
       Alert.alert('Debes crear un lote primero.');
       return;
     }
-    if (facturaYaEnAlgunLote(numFactura)) {
-      Alert.alert('Esta factura ya fue registrada en un lote.');
-      return;
-    }
     setScanned(true);
     setLoading(true);
     setError(null);
     try {
+      // Lo escaneado puede ser el código de barras, el número tipeado o la URL del QR
+      // fiscal: el backend devuelve el fact_num real y con ese se arma el lote.
       const result = await consultarFactura(numFactura);
       if (!result) {
+        setTimeout(() => setScanned(false), 500);
+        return;
+      }
+      if (facturaYaEnAlgunLote(result.fact_num)) {
+        Alert.alert(`La factura ${result.fact_num} ya fue registrada en un lote.`);
         setTimeout(() => setScanned(false), 500);
         return;
       }
@@ -507,7 +515,7 @@ export default function LotesScreen() {
                   <Text style={styles.sectionHeaderText}>Escanear factura</Text>
                 </View>
                 <Text style={styles.sectionHint}>
-                  Apunta la cámara al código de barras de la factura.
+                  Apunta la cámara al código de barras o al QR fiscal de la factura.
                 </Text>
 
                 {isFocused && permission?.granted ? (
