@@ -10,6 +10,7 @@ import MontarPedidoScreen from "../screens/MontarPedidoScreen";
 import LotesScreen from "../screens/LotesScreen";
 import PedidosHistorialScreen from "../screens/PedidosHistorialScreen";
 import CotizacionesPorDiaScreen from "../screens/CotizacionesPorDiaScreen";
+import RecepcionLotesScreen from "../screens/RecepcionLotesScreen";
 import DespachoNavigator from './DespachoNavigator';
 import DevolucionesNavigator from './DevolucionesNavigator';
 import RecibirNavigator from './RecibirNavigator';
@@ -30,6 +31,8 @@ const ETIQUETAS = { "Montar Pedidos": "Pedidos" };
 // Módulos que no van en la barra inferior: se abren desde la pestaña "Más".
 const ITEMS_MAS = [
   { name: 'Lotes', label: 'Lotes', subtitle: 'Agrupar facturas', icon: 'list-outline', tono: 'verde', component: LotesScreen },
+  // Si San Cristóbal ya recibió las facturas de los lotes enviados.
+  { name: 'RecepcionLotes', label: 'Recepción de lotes', subtitle: 'Qué ya llegó', icon: 'checkmark-done-outline', tono: 'azul', component: RecepcionLotesScreen },
   // Rutagrama trae su propio encabezado (stack con NavHeader): sin el del "Más".
   { name: 'Rutagrama', label: 'Rutagrama', subtitle: 'Despacho de rutas', icon: 'bus-outline', tono: 'azul', component: DespachoNavigator, headerShown: false },
   // Devoluciones trae su propio encabezado (stack con NavHeader): sin el del "Más".
